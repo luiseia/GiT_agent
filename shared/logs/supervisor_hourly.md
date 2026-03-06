@@ -1,6 +1,6 @@
 # Supervisor Hourly Summary
-> Period: 2026-03-06 00:54 — 13:05
-> Supervisor cycles: #1 through #66 (including hibernate/resume)
+> Period: 2026-03-06 00:54 — 15:54
+> Supervisor cycles: #1 through #82 (including hibernate/resume)
 
 ## ORCH Instructions
 | ID | Priority | Subject | Delivered | Completed | Result |
@@ -35,11 +35,11 @@
 - conductor: STUCK on Usage settings screen since ~02:44, needs Esc
 - critic/ops: idle, healthy but unused
 
-## Blockers (as of 13:05, unchanged for ~10 hours)
-1. Conductor stuck on Usage screen -> no new ORCH instructions can be issued
-2. Admin context critically low -> cannot collect P1 results or start Plan E
-3. BUG-12 code fix applied locally but NOT committed to GiT repo
-4. BUG-9 (gradient clipping) and BUG-10 (optimizer cold start) remain UNPATCHED
+## Blockers (as of 15:54)
+- RESOLVED: Conductor unstuck at 13:36
+- RESOLVED: ORCH_002 (BUG-9) diagnosed, ORCH_003 (P2 launch) completed
+- REMAINING: BUG-10 (optimizer cold start) UNPATCHED
+- REMAINING: offset_th=0.262 (regression, only degraded metric in P2)
 
 ## Events Timeline
 | Time | Event |
@@ -86,3 +86,12 @@
 | 12:14 | Deep check #61: stalled ~9hrs |
 | 12:35 | Deep check #63: stalled ~9.5hrs |
 | 13:05 | Status #66 + 11th hourly. Stalled ~10hrs. Supervisor running 12hrs. |
+| 13:36 | **SYSTEM RESUMED** Conductor unstuck, ORCH_002 (BUG-9) created |
+| 13:37 | ORCH_002 delivered to admin |
+| 13:38 | ORCH_002 completed, ORCH_003 created (P1 eval + P2 launch) |
+| 14:10 | ORCH_003 delivered to admin |
+| 14:18 | ORCH_003 completed: P1@6000 eval done, P2 launched (max_norm=10.0) |
+| 14:20 | P2 training confirmed stable, BUG-9 fix working (40% unclipped) |
+| 14:51 | GPU 1/3 freed (external PETR jobs ended) |
+| 15:12 | Conductor analyzed P2@1000: truck_R monitoring, offset_th=0.262 |
+| 15:54 | Status #82 + 13th hourly. P2 running iter ~1500/6000. |
