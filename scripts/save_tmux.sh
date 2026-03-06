@@ -122,18 +122,19 @@ cleaned=$(find "$SNAPSHOT_DIR" -name "agent-*.log" -mmin +${RETENTION_MIN} -dele
         echo "| all_loops.sh | ❌ 未运行 | - |"
     fi
 
-    # sync_loop crontab
-    if crontab -l 2>/dev/null | grep -q "sync_loop"; then
-        sync_log="${AGENT_DIR}/shared/logs/sync_cron.log"
-        if [ -f "$sync_log" ]; then
-            sync_mtime=$(stat -c %Y "$sync_log")
-            sync_ago=$(( (now_epoch - sync_mtime) / 60 ))
-            echo "| sync_loop | ✅ crontab | 最后活跃 ${sync_ago}min ago |"
+    # sync_loop 进程
+    SYNC_PID=$(pgrep -f "sync_loop.sh" | head -1)
+    if [ -n "$SYNC_PID" ]; then
+        sync_start=$(stat -c %Y /proc/"$SYNC_PID" 2>/dev/null || echo "$now_epoch")
+        sync_elapsed=$(( (now_epoch - sync_start) / 60 ))
+        if [ "$sync_elapsed" -ge 60 ]; then
+            sync_str="$((sync_elapsed / 60))h$((sync_elapsed % 60))m"
         else
-            echo "| sync_loop | ✅ crontab | 无日志记录 |"
+            sync_str="${sync_elapsed}m"
         fi
+        echo "| sync_loop | ✅ PID ${SYNC_PID} | 运行 ${sync_str} |"
     else
-        echo "| sync_loop | ❌ 未在 crontab | - |"
+        echo "| sync_loop | ❌ 未运行 | - |"
     fi
 
     # usage_watchdog crontab
