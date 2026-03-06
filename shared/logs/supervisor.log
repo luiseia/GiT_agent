@@ -144,3 +144,5 @@
 [11:12:13] Our agents still stalled. admin/conductor unchanged.
 [11:22:30] STATUS #56: unchanged
 [11:32:43] STATUS #57: unchanged
+[11:42:59] === DEEP CHECK #58 ===
+[11:42:59] GPU 2 back to 548MB (external job ended). Agents still stalled.
