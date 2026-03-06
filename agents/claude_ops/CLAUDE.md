@@ -114,3 +114,24 @@ find shared/snapshots/ -name "agent-*.log" -mmin +1440 -delete
 2. 保存最后一份完整快照
 3. `git push` 确保记录不丢失
 4. 等待人类介入
+
+---
+
+## 项目上下文（GiT Occupancy Prediction）
+
+### 实验状态概览
+| 计划 | 状态 | 说明 |
+|------|------|------|
+| Plan A~D | 已终止 | 类别竞争/梯度失衡，迭代优化 |
+| **P1** | **进行中** | Center/Around 权重分化，加载 D@500 |
+
+### 需要在 STATUS.md 中跟踪的红线
+| 指标 | 红线 |
+|------|------|
+| truck_recall | < 0.08 |
+| bg_false_alarm | > 0.25 |
+
+### 关键 BUG 状态（影响训练健康度判断）
+- **BUG-9 (致命, UNPATCHED)**: 100% 梯度裁剪——训练看似正常但学习效率极低
+- **BUG-10 (高, UNPATCHED)**: 优化器冷启动——训练前 100-200 步不稳定
+- **BUG-12 (紧急)**: 评估 slot 排序不一致——指标可能不准确

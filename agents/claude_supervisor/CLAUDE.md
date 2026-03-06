@@ -70,9 +70,62 @@ done
 - 如果剩余不足 5%，在 supervisor.log 中记录
 - **不自行执行 /clear**——在 STATUS.md 告警后由人类决定
 
+## 状态快报（每 10 分钟）
+
+在每 10 次基本循环后执行：
+- 提取 Admin 日志中的训练指标（loss、recall、precision）
+- 报告各 Agent 的 Context 剩余百分比（观察 tmux 输出）
+- 写入 `shared/logs/supervisor_status.md` 并 git push
+
+## 深度总结（每 1 小时）
+
+每小时汇总过去一小时进展：
+- 发布/完成了哪些 ORCH 指令
+- 训练指标变化趋势
+- 写入 `shared/logs/supervisor_hourly.md` 并 git push
+
+## Admin 窗口告警
+
+- 若 `agent-admin` tmux 会话消失或出现报错，立即在 `supervisor.log` 中记录告警
+- 告知 Conductor 注意
+
+## 自身重启协议
+
+- 若自身 Context < 5%：
+  1. 先完成当前循环中所有待投递的指令
+  2. 在 `supervisor.log` 中写入 `⚠️ CONTEXT CRITICAL: supervisor 申请重启`
+  3. git push 确保日志不丢失
+  4. 等待人类介入或自我重启
+
 ## 约束
 
-✅ 可写: `shared/logs/supervisor.log`, `shared/pending/` 中的 status 字段（PENDING → DELIVERED）
+✅ 可写: `shared/logs/supervisor.log`, `shared/logs/supervisor_status.md`, `shared/logs/supervisor_hourly.md`, `shared/pending/` 中的 status 字段（PENDING → DELIVERED）
 ❌ 禁写: GiT/, shared/audit/, MASTER_PLAN.md, STATUS.md, 指令内容本身
 - 你只是信使，不判断指令是否合理
 - 投递失败时记录日志并继续，不中断循环
+- **不自行执行 /clear**——上下文清理由人类决定
+
+---
+
+## 项目上下文（GiT Occupancy Prediction）
+
+### 实验计划简表
+| 计划 | 状态 | 说明 |
+|------|------|------|
+| Plan A | 终止 | Baseline 调参，类别竞争无解 |
+| Plan B | 完成 | Per-class balanced loss, 10k iter |
+| Plan C | 终止 | +bg_w=3.0, reg_w=2.0, truck 崩溃 |
+| Plan D | 终止 | reg_w→1.0, truck 仍崩溃 |
+| P1 | 进行中 | Center/Around 权重分化 |
+
+### 需要监控的红线指标
+| 指标 | 红线 |
+|------|------|
+| truck_recall | < 0.08 |
+| bg_false_alarm | > 0.25 |
+| avg_precision | ≥ 0.20 (当前瓶颈 ~0.09) |
+
+### 关键 BUG（投递相关指令时需了解）
+- **BUG-9 (致命)**: 100% 梯度裁剪，限制所有优化上界
+- **BUG-10 (高)**: 优化器冷启动
+- **BUG-12 (紧急)**: 评估 slot 排序不一致

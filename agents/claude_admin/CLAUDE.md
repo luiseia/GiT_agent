@@ -96,3 +96,55 @@ git add shared/logs/ && git commit -m "admin: training update" && git push
 - 绝不跳过 Critic 标记为 STOP 的方案
 - 代码提交格式: `fix: ...` / `feat: ...` / `train: ...`
 - 调度提交格式: `admin: done ORCH_XXX`
+
+---
+
+## 项目上下文（GiT Occupancy Prediction）
+
+### 研究方向
+- **任务**: 单帧多视图图像 → BEV grid occupancy 预测
+- **模型**: ViT-Base (冻结) encoder + Transformer 自回归 decoder
+- **数据集**: nuScenes-mini (323 图, ~3500 3D 框)
+- **BEV Grid**: 20×20 cells, 100m×100m, 每 cell 3 深度 slot
+
+### 核心代码文件
+| 文件 | 内容 |
+|------|------|
+| `git_occ_head.py` | Occupancy head: loss 计算 (marker/cls/reg)、per-class balance、center/around 权重 |
+| `occ_2d_box_eval.py` | 评估脚本: recall/precision/bg_FA、slot 排序 |
+| `generate_occ_flow_labels.py` | 标签生成: 3D→BEV 投影、depth 排序、IBW 权重 |
+
+### 实验计划历史
+| 计划 | 状态 | 核心变更 | 加载点 |
+|------|------|---------|--------|
+| Plan B | 完成 | Per-class balanced loss | - |
+| Plan C | 终止 | +bg_w=3.0, reg_w=2.0 | B@2000 |
+| Plan D | 终止 | reg_w→1.0 | C@1000 |
+| **P1** | **进行中** | center_w=2.0, around_w=0.5 | **D@500** |
+
+### 待修复 BUG（按优先级）
+| BUG | 严重性 | 位置 | 描述 |
+|-----|--------|------|------|
+| **BUG-12** | 紧急 | `occ_2d_box_eval.py` | 评估 slot 排序不一致，可能双倍 precision |
+| **BUG-9** | 致命 | config: clip_grad max_norm=0.5 | 100% 梯度裁剪 (实测梯度 3.85-59.55) |
+| **BUG-10** | 高 | config: resume=False | 优化器冷启动，前 100-200 步不稳定 |
+| BUG-8 | 高 | `git_occ_head.py:871-881` | cls loss 缺 bg_balance_weight |
+| BUG-11 | 中 | `generate_occ_flow_labels.py:77` | 默认类别顺序地雷 |
+| BUG-4~7 | 中/低 | 各处 | 深度排序/投影边界/slot赋值/magic number (DEFERRED) |
+
+### 红线指标
+| 指标 | 红线 | 当前状态 |
+|------|------|---------|
+| truck_recall | < 0.08 | 持续触碰红线，根因: truck 被 car/bus 吸收 |
+| bg_false_alarm | > 0.25 | Plan C 曾爆表(0.294)，D/P1 已改善 |
+| avg_precision | ≥ 0.20 | 持续瓶颈 ~0.09，BUG-12 修复后可能改善 |
+
+### Loss 配置速查（当前 P1）
+```
+marker_loss: CE with per-class avg weight
+cls_loss: CE with per-class avg + bg_balance_weight=3.0
+reg_loss: L1, reg_loss_weight=1.0
+center_weight: 2.0 (GT 中心 cell)
+around_weight: 0.5 (其他覆盖 cell)
+clip_grad: max_norm=0.5 (⚠️ BUG-9)
+```
