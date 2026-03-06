@@ -193,3 +193,7 @@
 [15:02:20] STATUS #77: P2 training + val possibly running
 [15:02:20] GPU 1/3: 3.3GB (val?), GPU 0/2: 22-23GB (P2 train)
 [15:02:20] Conductor waiting for P2@500 val results
+[15:12:41] === DEEP CHECK #78 ===
+[15:12:41] P2 training stable, GPU 0/2 = 22-23GB
+[15:12:41] Conductor: P2@500 analyzed, P2@1000 ETA ~15:15 is decision point
+[15:12:41] Decision criteria: truck_R>=0.15→continue, truck_R<0.10→BUG-8 fix
