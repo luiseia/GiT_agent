@@ -182,3 +182,4 @@
 [14:20:51] BUG-9 fix working: 40% iters unclipped (was 0%)
 [14:20:51] P1@6000: truck_R=0.358, bus_R=0.627, bg_FA=0.163
 [14:20:51] P2 ETA ~19:15, first val ~14:55
+[14:31:12] STATUS #74: P2 training stable (GPU0=24.6GB, GPU2=23GB), agents idle
