@@ -1,6 +1,6 @@
 # Supervisor Hourly Summary
-> Period: 2026-03-06 00:54 — 12:03
-> Supervisor cycles: #1 through #60 (including hibernate/resume)
+> Period: 2026-03-06 00:54 — 13:05
+> Supervisor cycles: #1 through #66 (including hibernate/resume)
 
 ## ORCH Instructions
 | ID | Priority | Subject | Delivered | Completed | Result |
@@ -35,7 +35,7 @@
 - conductor: STUCK on Usage settings screen since ~02:44, needs Esc
 - critic/ops: idle, healthy but unused
 
-## Blockers (as of 12:03, unchanged for ~9 hours)
+## Blockers (as of 13:05, unchanged for ~10 hours)
 1. Conductor stuck on Usage screen -> no new ORCH instructions can be issued
 2. Admin context critically low -> cannot collect P1 results or start Plan E
 3. BUG-12 code fix applied locally but NOT committed to GiT repo
@@ -83,3 +83,6 @@
 | 11:12 | Deep check #55: GPU2 briefly used by external user (yl0826) |
 | 11:43 | Deep check #58: stalled ~8.5hrs, GPU2 back to idle |
 | 12:03 | Status #60 + 10th hourly summary. Stalled ~9hrs. Supervisor running 11hrs. |
+| 12:14 | Deep check #61: stalled ~9hrs |
+| 12:35 | Deep check #63: stalled ~9.5hrs |
+| 13:05 | Status #66 + 11th hourly. Stalled ~10hrs. Supervisor running 12hrs. |
