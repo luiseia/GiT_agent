@@ -183,3 +183,6 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 | BUG-12 | 高 | URGENT | 评估 slot 排序不一致 |
 
 > 下一个 BUG 编号: **BUG-13**
+
+## 宪法保护
+agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。

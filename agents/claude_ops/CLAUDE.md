@@ -151,3 +151,6 @@ find shared/snapshots/ -name "agent-*.log" -mmin +1440 -delete
 - **BUG-9 (致命, UNPATCHED)**: 100% 梯度裁剪——训练看似正常但学习效率极低
 - **BUG-10 (高, UNPATCHED)**: 优化器冷启动——训练前 100-200 步不稳定
 - **BUG-12 (紧急)**: 评估 slot 排序不一致——指标可能不准确
+
+## 宪法保护
+agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。

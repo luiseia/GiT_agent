@@ -164,3 +164,6 @@ center_weight: 2.0 (GT 中心 cell)
 around_weight: 0.5 (其他覆盖 cell)
 clip_grad: max_norm=0.5 (⚠️ BUG-9)
 ```
+
+## 宪法保护
+agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。

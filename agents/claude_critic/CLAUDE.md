@@ -152,3 +152,6 @@ git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
 2. **BUG-9 限制所有优化上界**——只能改梯度方向，无法改幅度
 3. **avg_precision ~0.09**（目标 0.20）——持续最大瓶颈
 4. **自回归误差级联**——30-token 序列中 slot 2 的 bg_recall 比 slot 0 低 ~19%
+
+## 宪法保护
+agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。
