@@ -27,37 +27,30 @@ TRIGGER_REASON=""
 USAGE_PCT=""
 RESET_INFO=""
 
-# ─── 检测方式 1: 被动抓取屏幕中的用量百分比 ─────────────
-# 不发送 /usage（会打开交互式面板卡住 Agent），直接读取已有输出
-for session in "${SESSIONS[@]}"; do
-    if tmux has-session -t "$session" 2>/dev/null; then
-        SCREEN=$(tmux capture-pane -t "$session" -p -S -100)
+# ─── 检测方式 1: /usage 命令（发送后 Escape 关闭面板）────
+if tmux has-session -t agent-conductor 2>/dev/null; then
+    tmux send-keys -t agent-conductor "/usage" Enter
+    sleep 5
+    tmux send-keys -t agent-conductor Escape
+    sleep 1
+    USAGE_OUTPUT=$(tmux capture-pane -t agent-conductor -p -S -30)
 
-        # 匹配用量百分比，如 "75%" "75.3%"
-        PCT=$(echo "$SCREEN" | grep -oP '\d+\.?\d*%' | tail -1 | tr -d '%')
-        # 匹配刷新倒计时
-        RESET=$(echo "$SCREEN" | grep -oiP '[Rr]esets?\s+in\s+.*' | tail -1)
+    # 解析用量百分比: 匹配类似 "75%" 或 "75.3%" 的模式
+    USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%' | head -1 | tr -d '%')
+    # 解析刷新倒计时: "Resets in X hr Y min" 或类似格式
+    RESET_INFO=$(echo "$USAGE_OUTPUT" | grep -oiP '[Rr]esets?\s+in\s+.*' | head -1)
 
-        if [ -n "$PCT" ]; then
-            OVER=$(echo "$PCT >= 80" | bc -l 2>/dev/null)
-            if [ "$OVER" = "1" ]; then
-                USAGE_PCT="$PCT"
-                RESET_INFO="$RESET"
-                log "用量: ${PCT}% (${session})  |  ${RESET:-无刷新信息}"
-                TRIGGER=1
-                TRIGGER_REASON="用量超过 80% (${PCT}% @ ${session})"
-                break
-            fi
-            # 记录最高用量用于日志
-            if [ -z "$USAGE_PCT" ] || [ "$(echo "$PCT > ${USAGE_PCT:-0}" | bc -l 2>/dev/null)" = "1" ]; then
-                USAGE_PCT="$PCT"
-                RESET_INFO="$RESET"
-            fi
+    if [ -n "$USAGE_PCT" ]; then
+        log "用量: ${USAGE_PCT}%  |  ${RESET_INFO:-无刷新信息}"
+        OVER=$(echo "$USAGE_PCT >= 80" | bc -l 2>/dev/null)
+        if [ "$OVER" = "1" ]; then
+            TRIGGER=1
+            TRIGGER_REASON="用量超过 80% (${USAGE_PCT}%)"
         fi
+    else
+        log "⚠️ 无法解析 /usage 输出"
     fi
-done
-[ -n "$USAGE_PCT" ] && log "用量: ${USAGE_PCT}%  |  ${RESET_INFO:-无刷新信息}"
-[ -z "$USAGE_PCT" ] && log "⚠️ 未从任何会话中解析到用量百分比"
+fi
 
 # ─── 检测方式 2: 限流关键词扫描 ──────────────────────────
 RATE_LIMIT_PATTERN="rate limit|usage limit|too many requests|429|try again"
