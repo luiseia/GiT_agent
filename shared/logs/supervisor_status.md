@@ -1,39 +1,38 @@
 # Supervisor Status Report
-> Generated: 2026-03-06 00:54
-> Cycle: #1 (Deep Check)
+> Generated: 2026-03-06 01:05
+> Cycle: #2 (10-min Status)
 
 ## Agent Status
-| Agent | tmux | Status |
-|-------|------|--------|
-| conductor | UP | idle, all agents launched |
-| admin | UP | active, thinking (GiT/) |
-| critic | UP | active, reading CLAUDE.md |
-| ops | UP | active, updating STATUS.md |
-| supervisor | UP | cycle #1 running |
+| Agent | tmux | Activity | Current Task |
+|-------|------|----------|--------------|
+| conductor | UP | idle | Waiting for cycle #2 (~01:27) |
+| admin | UP | ACTIVE | Working on ORCH_001 — BUG-12 fix, searching slot ordering code |
+| critic | UP | idle | No audit requests, waiting for AUDIT_REQUEST |
+| ops | UP | active | Configuring crontab/sync with flock |
+| supervisor | UP | active | Cycle #2 status report |
 
-## Pending Instructions
-- No PENDING ORCH instructions
-- No AUDIT_REQUEST without VERDICT
+## Instruction Pipeline
+| ID | Priority | Subject | Status |
+|----|----------|---------|--------|
+| ORCH_0306_0057_001 | HIGH | BUG-12 slot ordering fix | DELIVERED -> admin working |
 
 ## Training Metrics
-- truck_recall: awaiting admin report
-- bg_false_alarm: awaiting admin report
-- avg_precision: awaiting admin report (~0.09 last known)
+- truck_recall: awaiting admin report (red line < 0.08)
+- bg_false_alarm: awaiting admin report (red line > 0.25)
+- avg_precision: awaiting admin report (bottleneck ~0.09, target >= 0.20)
 
-## Known BUGs (UNPATCHED)
-- BUG-9 (fatal): 100% gradient clipping
-- BUG-10 (high): optimizer cold start
-- BUG-12 (urgent): eval slot ordering inconsistency
+## Known BUGs
+- BUG-9 (fatal, UNPATCHED): 100% gradient clipping
+- BUG-10 (high, UNPATCHED): optimizer cold start
+- BUG-12 (urgent): eval slot ordering — **admin actively fixing**
 
-## Context Health
-- supervisor: healthy (cycle just started)
-- All tmux sessions alive, no crashes detected
+## Alerts
+- None. All systems nominal.
 
 ## sync_loop.sh
-- Started at 00:53, running in background
-- crontab not configured (running as daemon instead)
+- Running since 00:53, successfully delivered ORCH_001 at 00:59
 
-## Next Actions
-- Continue monitoring every 30 minutes
-- Status report every 10 minutes
-- Hourly deep summary at ~01:54
+## Next
+- Next status report: ~01:15
+- Next deep check: ~01:24
+- Hourly summary: ~01:54
