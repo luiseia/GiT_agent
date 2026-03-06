@@ -53,7 +53,7 @@ fi
 
 # ─── 检测方式 2: 限流关键词扫描 ──────────────────────────
 RATE_LIMIT_PATTERN="rate limit|usage limit|too many requests|429|try again"
-for session in "${SESSIONS[@]}" agent-ops; do
+for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
         PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -50)
         MATCH=$(echo "$PANE_OUTPUT" | grep -iE "$RATE_LIMIT_PATTERN" | head -3)
