@@ -1,0 +1,11 @@
+# GiT_agent 是纯调度仓库，不应有大文件
+# 模型权重、训练数据等都在 GiT/ 仓库中
+
+# 系统文件
+.DS_Store
+*.swp
+*~
+.cache/
+
+# 注意：shared/snapshots/*.log 会入库（便于远程回溯）
+# 由 ops 脚本定期清理超过 24h 的旧快照
