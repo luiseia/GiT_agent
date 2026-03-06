@@ -190,3 +190,6 @@
 [14:51:54] STATUS #76: P2 stable, GPU 1/3 freed (external jobs ended)
 [14:51:54] GPU 1: 31GB->15MB, GPU 3: 31GB->15MB. P2 on GPU 0/2 unchanged.
 [14:51:54] First val imminent (~14:55, iter 500)
+[15:02:20] STATUS #77: P2 training + val possibly running
+[15:02:20] GPU 1/3: 3.3GB (val?), GPU 0/2: 22-23GB (P2 train)
+[15:02:20] Conductor waiting for P2@500 val results
