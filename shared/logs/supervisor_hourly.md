@@ -1,6 +1,6 @@
 # Supervisor Hourly Summary
-> Period: 2026-03-06 00:54 — 15:54
-> Supervisor cycles: #1 through #82 (including hibernate/resume)
+> Period: 2026-03-06 00:54 — 16:56
+> Supervisor cycles: #1 through #88 (including hibernate/resume)
 
 ## ORCH Instructions
 | ID | Priority | Subject | Delivered | Completed | Result |
@@ -95,3 +95,5 @@
 | 14:51 | GPU 1/3 freed (external PETR jobs ended) |
 | 15:12 | Conductor analyzed P2@1000: truck_R monitoring, offset_th=0.262 |
 | 15:54 | Status #82 + 13th hourly. P2 running iter ~1500/6000. |
+| 16:15 | Deep check #84: conductor monitoring bg_FA threshold |
+| 16:56 | Status #88 + 14th hourly. P2 stable ~iter 2500/6000. ETA ~19:15. |
