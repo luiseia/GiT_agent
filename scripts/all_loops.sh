@@ -148,6 +148,9 @@ while true; do
         log "⚠️ admin: 会话不存在"
     fi
 
-    log "=== 循环指令发送完毕，等待 1800 秒 ==="
-    sleep 1800
+    log "=== 循环指令发送完毕，等待 30 分钟 ==="
+    for i in $(seq 1 30); do
+        sleep 60
+        log "⏳ 等待中... ${i}/30 分钟"
+    done
 done
