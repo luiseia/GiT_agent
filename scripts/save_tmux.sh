@@ -99,6 +99,57 @@ cleaned=$(find "$SNAPSHOT_DIR" -name "agent-*.log" -mmin +${RETENTION_MIN} -dele
 
     [ "$ALERTS" -eq 0 ] && echo "- ✅ 无告警"
 
+    # ─── 基础设施状态 ─────────────────────────────────
+    echo ""
+    echo "## 基础设施"
+    echo "| 组件 | 状态 | 详情 |"
+    echo "|------|------|------|"
+
+    now_epoch=$(date +%s)
+
+    # all_loops.sh 进程
+    LOOPS_PID=$(pgrep -f "all_loops.sh" | head -1)
+    if [ -n "$LOOPS_PID" ]; then
+        start_epoch=$(stat -c %Y /proc/"$LOOPS_PID" 2>/dev/null || echo "$now_epoch")
+        elapsed=$(( (now_epoch - start_epoch) / 60 ))
+        if [ "$elapsed" -ge 60 ]; then
+            elapsed_str="$((elapsed / 60))h$((elapsed % 60))m"
+        else
+            elapsed_str="${elapsed}m"
+        fi
+        echo "| all_loops.sh | ✅ PID ${LOOPS_PID} | 运行 ${elapsed_str} |"
+    else
+        echo "| all_loops.sh | ❌ 未运行 | - |"
+    fi
+
+    # sync_loop crontab
+    if crontab -l 2>/dev/null | grep -q "sync_loop"; then
+        sync_log="${AGENT_DIR}/shared/logs/sync_cron.log"
+        if [ -f "$sync_log" ]; then
+            sync_mtime=$(stat -c %Y "$sync_log")
+            sync_ago=$(( (now_epoch - sync_mtime) / 60 ))
+            echo "| sync_loop | ✅ crontab | 最后活跃 ${sync_ago}min ago |"
+        else
+            echo "| sync_loop | ✅ crontab | 无日志记录 |"
+        fi
+    else
+        echo "| sync_loop | ❌ 未在 crontab | - |"
+    fi
+
+    # usage_watchdog crontab
+    if crontab -l 2>/dev/null | grep -q "watchdog"; then
+        wd_log="${AGENT_DIR}/shared/logs/watchdog_cron.log"
+        if [ -f "$wd_log" ]; then
+            wd_mtime=$(stat -c %Y "$wd_log")
+            wd_ago=$(( (now_epoch - wd_mtime) / 60 ))
+            echo "| watchdog | ✅ crontab | 最后活跃 ${wd_ago}min ago |"
+        else
+            echo "| watchdog | ✅ crontab | 无日志记录 |"
+        fi
+    else
+        echo "| watchdog | ❌ 未在 crontab | - |"
+    fi
+
 } > "$STATUS_FILE"
 
 log "📊 STATUS.md 已更新 (告警: ${ALERTS:-0})"
