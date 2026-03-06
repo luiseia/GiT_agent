@@ -1,6 +1,6 @@
 # Supervisor Hourly Summary
-> Period: 2026-03-06 00:54 — 02:44
-> Supervisor cycles: #1 through #6 (including hibernate/resume)
+> Period: 2026-03-06 00:54 — 03:58
+> Supervisor cycles: #1 through #13 (including hibernate/resume)
 
 ## ORCH Instructions
 | ID | Priority | Subject | Delivered | Completed | Result |
@@ -8,8 +8,9 @@
 | ORCH_001 | HIGH | BUG-12 slot ordering | 00:59 | 01:30 | truck_R +72%, bus_R +28% |
 
 ## Training Progress
-- P1 (Center/Around weight differentiation): iter 5700/6000, nearing completion
-- Plan E: admin planning next steps after P1 completes
+- P1 (Center/Around weight differentiation): COMPLETED (GPU 0/2 released at ~03:00)
+- Final results not yet collected (admin context too low)
+- Plan E: pending, blocked on admin context
 
 ## Key Metrics (post BUG-12 fix, P1@4000)
 | Metric | Value | Red Line | Status |
@@ -29,10 +30,16 @@
 | BUG-12 | urgent | **FIXED** — eval slot ordering |
 
 ## Agent Health
-- All 5 tmux sessions maintained throughout the period
-- admin: context critically low (auto-compact warning)
-- conductor: 23% weekly usage, idle
-- critic/ops: idle, healthy
+- All 5 tmux sessions maintained throughout the entire period
+- admin: CONTEXT CRITICAL (auto-compact warning since ~01:30, stalled since ~03:06)
+- conductor: STUCK on Usage settings screen since ~02:44, needs Esc
+- critic/ops: idle, healthy but unused
+
+## Blockers (as of 03:58)
+1. Conductor stuck on Usage screen -> no new ORCH instructions can be issued
+2. Admin context critically low -> cannot collect P1 results or start Plan E
+3. BUG-12 code fix applied locally but NOT committed to GiT repo
+4. BUG-9 (gradient clipping) and BUG-10 (optimizer cold start) remain UNPATCHED
 
 ## Events Timeline
 | Time | Event |
@@ -48,3 +55,7 @@
 | 01:37 | Emergency hibernate (CEO command) |
 | 01:38 | Resumed from hibernate, confirmed ORCH_001 done |
 | 02:44 | Status #6 + hourly summary |
+| 03:06 | Deep check #8: GPU 0/2 released, P1 likely COMPLETED |
+| 03:06+ | System STALLED: admin context critical, conductor stuck on Usage screen |
+| 03:37 | Deep check #11: stalled >30min, human intervention needed |
+| 03:58 | Status #13 + 2nd hourly summary. Stalled ~1hr |
