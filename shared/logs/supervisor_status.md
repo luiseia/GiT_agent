@@ -1,42 +1,46 @@
 # Supervisor Status Report
-> Generated: 2026-03-06 03:06
-> Cycle: #8 (Deep Check)
+> Generated: 2026-03-06 03:37
+> Cycle: #11 (Deep Check)
+> System stalled since ~03:06 (~30 min)
 
-## MAJOR EVENT: GPU 0 & 2 Released
-GPU 0: 22.4GB → 15MB used (freed ~22GB)
-GPU 2: 23.0GB → 550MB used (freed ~22GB)
-**P1 training likely COMPLETED or stopped.**
+## System State: STALLED — Awaiting Human Intervention
+
+### What happened
+- P1 training completed (GPU 0/2 released at ~03:00)
+- Admin completed ORCH_001 (BUG-12 fix) at 01:30
+- No new ORCH instructions issued since
+- Admin context critically low, cannot self-advance
+- Conductor stuck on Usage settings screen
+
+### What needs to happen
+1. **Conductor**: Press Esc to exit Usage screen, then trigger cycle #3 to issue new instructions (Plan E?)
+2. **Admin**: `/clear` to free context, then collect P1 final results (iter 6000 checkpoint)
+3. **Admin**: Commit BUG-12 fix to GiT repo
 
 ## Agent Status
-| Agent | tmux | Activity | Alert |
-|-------|------|----------|-------|
-| conductor | UP | **STUCK on Usage screen** | Needs Esc to exit |
-| admin | UP | Polling for ORCH, no new tasks | **CONTEXT CRITICALLY LOW** |
-| critic | UP | 4th check done, idle | - |
+| Agent | tmux | Status | Alert |
+|-------|------|--------|-------|
+| conductor | UP | STUCK (Usage screen) | Needs Esc |
+| admin | UP | Polling, no tasks | CONTEXT CRITICAL |
+| critic | UP | idle | - |
 | ops | UP | idle | - |
-| supervisor | UP | deep check #8 | - |
+| supervisor | UP | monitoring | - |
 
-## GPU Status (CHANGED)
-| GPU | Used | Free | Change |
-|-----|------|------|--------|
-| 0 | 15 MB | 48.6 GB | RELEASED (-22GB) |
-| 1 | 31.2 GB | 17.4 GB | unchanged |
-| 2 | 550 MB | 48.0 GB | RELEASED (-22GB) |
-| 3 | 31.2 GB | 17.4 GB | unchanged |
+## GPU (unchanged since 03:06)
+| GPU | Used | Free |
+|-----|------|------|
+| 0 | 15 MB | 48.6 GB |
+| 1 | 31.2 GB | 17.4 GB |
+| 2 | 548 MB | 48.0 GB |
+| 3 | 31.2 GB | 17.4 GB |
 
-## Instruction Pipeline
-- ORCH_001: COMPLETED
-- New PENDING: 0
+## Pipeline
+- PENDING: 0 | DELIVERED: 0 | COMPLETED: 1 (ORCH_001)
 - AUDIT backlog: 0
 
-## Alerts (Priority Order)
-1. **P1 training likely finished** — GPU 0/2 freed, admin should collect results
-2. **Admin context critically low** — auto-compact warning persistent
-3. **Conductor stuck** — on Usage settings screen, may need Esc
-4. GPU 1/3 still occupied (31.2GB each) — unknown workload
-
-## Red Lines
-| Metric | Red Line | Last Known | Status |
-|--------|----------|------------|--------|
-| truck_recall | < 0.08 | 0.35 (post BUG-12) | SAFE |
-| bg_false_alarm | > 0.25 | 0.157 | SAFE |
+## Metrics (last known, post BUG-12 fix)
+| Metric | Value | Status |
+|--------|-------|--------|
+| truck_recall | 0.35 | SAFE (red line 0.08) |
+| bg_false_alarm | 0.157 | SAFE (red line 0.25) |
+| avg_precision | ~0.11 | BELOW TARGET (0.20) |
