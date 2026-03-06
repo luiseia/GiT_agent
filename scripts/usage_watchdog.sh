@@ -30,7 +30,7 @@ is_idle() {
     fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
-    if echo "$last_lines" | grep -qE '❯|^\$'; then
+    if echo "$last_lines" | grep -qE 'bypass permissions|❯|^$'; then
         return 0
     fi
     return 1

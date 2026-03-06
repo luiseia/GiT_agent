@@ -34,7 +34,7 @@ is_idle() {
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
     # 检测 ❯ 提示符 或 "bypass permissions" 提示行
-    if echo "$last_lines" | grep -qE '❯|^\$'; then
+    if echo "$last_lines" | grep -qE 'bypass permissions|❯|^$'; then
         return 0  # 空闲
     fi
     return 1  # 忙碌
