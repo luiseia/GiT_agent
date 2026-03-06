@@ -1,32 +1,38 @@
 # Supervisor Status Report
-> Generated: 2026-03-06 03:37
-> Cycle: #11 (Deep Check)
-> System stalled since ~03:06 (~30 min)
+> Generated: 2026-03-06 13:49
+> Cycle: #70 (Status — System Resumed!)
 
-## System State: STALLED — Awaiting Human Intervention
+## SYSTEM RESUMED after 10.5 hour stall
 
-### What happened
-- P1 training completed (GPU 0/2 released at ~03:00)
-- Admin completed ORCH_001 (BUG-12 fix) at 01:30
-- No new ORCH instructions issued since
-- Admin context critically low, cannot self-advance
-- Conductor stuck on Usage settings screen
+### ORCH_002 COMPLETED — BUG-9 Diagnosis
+Key findings:
+- grad_norm range: 1.49 — 87.91, mean 14.5, median 8.9
+- Current max_norm=0.5 clips 100% of iterations (Sign-SGD)
+- **Recommendation: max_norm=10.0** (55.7% natural, outliers still clipped)
+- Regression sub-losses (8 terms) dominate gradient magnitude
+- Plan E config exists but has max_norm=5.0; recommend changing to 10.0
 
-### What needs to happen
-1. **Conductor**: Press Esc to exit Usage screen, then trigger cycle #3 to issue new instructions (Plan E?)
-2. **Admin**: `/clear` to free context, then collect P1 final results (iter 6000 checkpoint)
-3. **Admin**: Commit BUG-12 fix to GiT repo
+### Agent Status
+| Agent | tmux | Activity | Context |
+|-------|------|----------|---------|
+| conductor | UP | Completed cycle, summary done | **12% left** |
+| admin | UP | ORCH_001+002 done, awaiting new instructions | low |
+| critic | UP | idle | healthy |
+| ops | UP | idle | healthy |
+| supervisor | UP | cycle #70 | active |
 
-## Agent Status
-| Agent | tmux | Status | Alert |
-|-------|------|--------|-------|
-| conductor | UP | STUCK (Usage screen) | Needs Esc |
-| admin | UP | Polling, no tasks | CONTEXT CRITICAL |
-| critic | UP | idle | - |
-| ops | UP | idle | - |
-| supervisor | UP | monitoring | - |
+### Instruction Pipeline
+| ID | Priority | Status | Result |
+|----|----------|--------|--------|
+| ORCH_001 | HIGH | COMPLETED | BUG-12 fixed, truck_R +72% |
+| ORCH_002 | CRITICAL | COMPLETED | BUG-9 diagnosed, recommend max_norm=10.0 |
 
-## GPU (unchanged since 03:06)
+### Alerts
+- **Conductor context 12%** — approaching auto-compact threshold
+- Admin context also low
+- Plan E awaiting Conductor approval of max_norm value (10.0 recommended)
+
+### GPU
 | GPU | Used | Free |
 |-----|------|------|
 | 0 | 15 MB | 48.6 GB |
@@ -34,13 +40,7 @@
 | 2 | 548 MB | 48.0 GB |
 | 3 | 31.2 GB | 17.4 GB |
 
-## Pipeline
-- PENDING: 0 | DELIVERED: 0 | COMPLETED: 1 (ORCH_001)
-- AUDIT backlog: 0
-
-## Metrics (last known, post BUG-12 fix)
-| Metric | Value | Status |
-|--------|-------|--------|
-| truck_recall | 0.35 | SAFE (red line 0.08) |
-| bg_false_alarm | 0.157 | SAFE (red line 0.25) |
-| avg_precision | ~0.11 | BELOW TARGET (0.20) |
+### Next
+- Conductor needs to approve Plan E with max_norm=10.0
+- Potential ORCH_003 to start Plan E training
+- Status #71: ~13:59
