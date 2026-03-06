@@ -197,3 +197,4 @@
 [15:12:41] P2 training stable, GPU 0/2 = 22-23GB
 [15:12:41] Conductor: P2@500 analyzed, P2@1000 ETA ~15:15 is decision point
 [15:12:41] Decision criteria: truck_R>=0.15→continue, truck_R<0.10→BUG-8 fix
+[15:23:05] STATUS #79: P2 training stable, conductor waiting for P2@1000
