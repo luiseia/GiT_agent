@@ -1,53 +1,51 @@
 # Supervisor Status Report
-> Generated: 2026-03-06 01:38
-> Cycle: #5 (Resume Deep Check)
-> Resumed from hibernation snapshot
-
-## ORCH_001 — COMPLETED
-Admin finished BUG-12 fix. Key results:
-| Metric | Old | New | Delta |
-|--------|-----|-----|-------|
-| truck_recall | 0.2032 | **0.3500** | **+72.2%** |
-| truck_precision | 0.1116 | **0.1922** | **+72.2%** |
-| bus_recall | 0.4794 | **0.6151** | **+28.3%** |
-| car_recall | 0.6173 | 0.6260 | +1.4% |
-| bg_false_alarm | 0.1568 | 0.1568 | 0% (within red line) |
-
-Report: `shared/logs/report_ORCH_001.md`
+> Generated: 2026-03-06 02:44
+> Cycle: #6 (Status + Hourly Summary)
 
 ## Agent Status
 | Agent | tmux | Activity | Alert |
 |-------|------|----------|-------|
-| conductor | UP | idle (23% weekly usage) | - |
-| admin | UP | P1 training iter 5700/6000, ETA ~15min | CONTEXT LOW (auto-compact warning visible) |
-| critic | UP | idle, no audit requests | - |
-| ops | UP | idle, 27% usage | - |
-| supervisor | UP | resumed, cycle #5 | - |
+| conductor | UP | idle (23% weekly) | - |
+| admin | UP | Waiting for P1 to finish (iter 5700/6000), planning Plan E | **CONTEXT LOW** |
+| critic | UP | idle | - |
+| ops | UP | idle | - |
+| supervisor | UP | cycle #6 | - |
+
+## Instruction Pipeline
+| ID | Status | Result |
+|----|--------|--------|
+| ORCH_001 | COMPLETED | BUG-12 fixed, truck_R +72%, bus_R +28% |
+
+No new PENDING. No AUDIT backlog.
 
 ## Alerts
-- **admin context running low** — tmux shows "Context left until auto-co..." truncated warning
-- ORCH_001 code fix applied locally in GiT/ but NOT yet committed to GiT repo
-- No new PENDING instructions
-- No AUDIT_REQUEST backlog
+- **admin context critically low** — "Context left until auto-compact" visible in tmux
+- Conductor appears stuck on Usage screen
 
-## GPU Status
-| GPU | Used | Free |
-|-----|------|------|
-| 0 | 22.4 GB | 26.1 GB |
-| 1 | 31.2 GB | 17.4 GB |
-| 2 | 23.0 GB | 25.6 GB |
-| 3 | 31.2 GB | 17.4 GB |
+## GPU Status (unchanged)
+GPU 0: 26GB free | GPU 1: 17GB | GPU 2: 26GB | GPU 3: 17GB
 
-## Red Line Tracking (post BUG-12 fix)
-| Metric | Red Line | Current | Status |
-|--------|----------|---------|--------|
-| truck_recall | < 0.08 | 0.35 | SAFE |
-| bg_false_alarm | > 0.25 | 0.157 | SAFE |
-| avg_precision | >= 0.20 | ~0.11 avg | BELOW TARGET |
+---
 
-## sync_loop.sh
-- 2 instances running (original + crontab flock). Functional.
+## Hourly Summary (00:54 — 02:44)
 
-## Next
-- Status report #6: ~01:48
-- Hourly summary: ~01:54
+### Accomplishments
+1. Supervisor started, sync_loop.sh launched as daemon
+2. ORCH_001 (BUG-12 slot ordering fix) delivered to admin at 00:59
+3. Admin completed ORCH_001 at 01:30 — major eval improvement:
+   - truck_recall: 0.20 → 0.35 (+72%)
+   - bus_recall: 0.48 → 0.62 (+28%)
+   - bg_false_alarm: 0.157 (safe)
+4. P1 training progressing: iter 5700/6000
+5. Ops configured crontab for tmux snapshots
+
+### Pending Issues
+- Admin context running critically low
+- BUG-12 code changes not yet committed to GiT repo
+- BUG-9 (gradient clipping) and BUG-10 (optimizer cold start) remain UNPATCHED
+- avg_precision ~0.11, still below 0.20 target
+
+### Training Trend
+- P1 approaching completion (iter 5700/6000)
+- Admin planning Plan E after P1 finishes
+- Post BUG-12 fix: metrics are significantly better than previously reported
