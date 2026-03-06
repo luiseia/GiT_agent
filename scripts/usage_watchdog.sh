@@ -3,12 +3,12 @@
 # usage_watchdog.sh — 用量监控 + context 监控 + 自动休眠/恢复
 # 由 crontab 运行: 0,10,20,30,40,50 * * * * (flock 防重入)
 #
-# 修复:
+# 功能:
 # 1. /usage 发给 critic（最空闲），不打断 conductor
 # 2. 发 /usage 前检测 agent 是否空闲
 # 3. 限流关键词收紧为完整短语
 # 4. 跳过 agent-ops 的限流扫描
-# 5. context 监控 + 自动 /compact
+# 5. context 监控 + 保存上下文 + /compact + 恢复上下文
 # 6. 恢复后检查 Claude Code 是否存活，自动重启
 # =============================================================
 
@@ -16,7 +16,6 @@ AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 LOG="${AGENT_DIR}/shared/logs/watchdog.log"
 LOCKFILE="/tmp/usage_watchdog.lock"
 HIBERNATE_FLAG="/tmp/usage_watchdog_hibernating"
-# 不包含 agent-ops，避免扫描自身误报
 SESSIONS=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin")
 
 log() {
@@ -100,7 +99,6 @@ fi
 # =============================================================
 # 检测方式 2: 限流关键词扫描（收紧匹配，跳过 agent-ops）
 # =============================================================
-# 只匹配 Claude Code 系统级限流消息，不匹配对话中的普通文字
 RATE_LIMIT_PATTERN="usage limit reached|rate limit exceeded|too many requests|Error 429|you've hit your"
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
@@ -115,20 +113,21 @@ for session in "${SESSIONS[@]}"; do
 done
 
 # =============================================================
-# 检测方式 3: Context 剩余监控 + 自动 /compact
+# 检测方式 3: Context 剩余监控 + 保存上下文 + /compact + 恢复
 # =============================================================
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
         PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -20)
-        # 匹配 "Context left until auto-compact: 12%" 格式
         CTX_LEFT=$(echo "$PANE_OUTPUT" | grep -oiP 'Context left[^:]*:\s*\d+' | grep -oP '\d+' | tail -1)
         if [ -n "$CTX_LEFT" ] && [ "$CTX_LEFT" -lt 15 ]; then
+            agent_name=$(echo "$session" | sed 's/agent-//')
             log "⚠️ ${session} context 剩余 ${CTX_LEFT}%"
             if is_idle "$session"; then
-                tmux send-keys -t "$session" "/compact" Enter
-                log "→ ${session}: 已发送 /compact（空闲状态）"
+                tmux send-keys -t "$session" \
+                    "请先将当前工作上下文（正在做什么、进度、待办、关键数据）保存到 shared/logs/compact_${agent_name}.md 并 git push，然后执行 /compact，compact 完成后读取 shared/logs/compact_${agent_name}.md 恢复上下文" Enter
+                log "→ ${session}: 已发送 保存+compact+恢复 指令（空闲状态）"
             else
-                log "→ ${session}: 需要 /compact 但正在忙碌，下轮再试"
+                log "→ ${session}: 需要 compact 但正在忙碌，下轮再试"
             fi
         fi
     fi
@@ -174,10 +173,9 @@ if echo "$RESET_INFO" | grep -qiP 'Resets\s+\d+\s*(am|pm)'; then
     TODAY_RESET=$(date -d "today ${RESET_HOUR}:00" +%s 2>/dev/null)
     if [ -n "$TODAY_RESET" ]; then
         if [ "$TODAY_RESET" -le "$NOW_EPOCH" ]; then
-            # 已经过了今天的重置时间，算明天的
             TODAY_RESET=$((TODAY_RESET + 86400))
         fi
-        CALC=$((TODAY_RESET - NOW_EPOCH + 300))  # +5 分钟缓冲
+        CALC=$((TODAY_RESET - NOW_EPOCH + 300))
         if [ "$CALC" -gt 300 ]; then
             SLEEP_SECONDS=$CALC
         fi
