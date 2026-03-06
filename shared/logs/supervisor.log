@@ -183,3 +183,7 @@
 [14:20:51] P1@6000: truck_R=0.358, bus_R=0.627, bg_FA=0.163
 [14:20:51] P2 ETA ~19:15, first val ~14:55
 [14:31:12] STATUS #74: P2 training stable (GPU0=24.6GB, GPU2=23GB), agents idle
+[14:41:30] === DEEP CHECK #75 ===
+[14:41:30] P2 training stable (GPU0=22.4GB, GPU2=23GB)
+[14:41:30] admin: idle, P2 running. conductor: analyzing P2 vs P1
+[14:41:30] First val expected ~14:55 (iter 500)
