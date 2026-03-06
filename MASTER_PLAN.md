@@ -1,11 +1,11 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-06 00:57 (循环 #1)
+> 最后更新: 2026-03-06 01:07 (循环 #2)
 
 ## 当前阶段: P1 训练监控 + BUG 热修复
 
 ### P1 (Center/Around) 训练状态
-- **进度**: iter 4210/6000, ETA ~02:27
+- **进度**: iter ~4380/6000, ETA ~02:27
 - **GPU**: 0,2 (RTX A6000 x2, 各 ~22GB)
 - **工作目录**: `GiT/ssd_workspace/Train/Train_20260305/plan_d_center_around/`
 - **配置**: `configs/GiT/plan_d_reg_w1.py`, seed=2025
@@ -27,12 +27,12 @@
 ## 活跃任务
 | ORCH ID | 目标 | 状态 | 优先级 | 备注 |
 |---------|------|------|--------|------|
-| 001 | BUG-12 修复 (评估 slot 排序) | PENDING | HIGH | ~15 行代码，影响精度指标真实性 |
+| 001 | BUG-12 修复 (评估 slot 排序) | DELIVERED → Admin 执行中 | HIGH | Admin 正在工作 |
 
-## 下一步计划 (循环 #2, ~01:27)
-1. 确认 BUG-12 修复完成
-2. 用修正后的 eval 重新评估 P1@4000 检查点
-3. P1 训练完成后(6000 iter)全面评估
+## 下一步计划 (循环 #3, ~01:37)
+1. 确认 ORCH_001 (BUG-12) 完成，读取 Admin 报告
+2. 查看 iter 4500 验证结果（如已出）
+3. 若 BUG-12 已修复：用修正后 eval 重新评估 P1@4000
 4. 评估 BUG-9 修复方案 (clip_grad max_norm 调整或 loss scaling)
 
 ## 历史决策
