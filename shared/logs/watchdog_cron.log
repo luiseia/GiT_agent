@@ -1,3 +1,64 @@
 [2026-03-06 01:22:11] watchdog: === 用量检查开始 ===
 [2026-03-06 01:22:16] watchdog: 用量: 27%  |  无刷新信息
 [2026-03-06 01:22:16] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 01:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 01:30:06] watchdog: 用量: 27%  |  无刷新信息
+[2026-03-06 01:30:06] watchdog: 🚨 agent-ops 检测到限流:   │ 限流扫描 │ 扫描所有 agent 最后 50 行，匹配 rate limit/429 等关键词 │
+[2026-03-06 01:30:06] watchdog: 🚨🚨🚨 触发休眠: agent-ops 触发限流关键词
+[2026-03-06 01:30:06] watchdog: 预计恢复时间: 2026-03-06 02:30:06 (休眠 3600 秒)
+[2026-03-06 01:30:06] watchdog: → conductor: 休眠保存指令已发送
+[2026-03-06 01:30:06] watchdog: → admin: 休眠保存指令已发送
+[2026-03-06 01:30:06] watchdog: → critic: 休眠保存指令已发送
+[2026-03-06 01:30:06] watchdog: → supervisor: 休眠保存指令已发送
+[2026-03-06 01:30:06] watchdog: → ops: hibernate_ops.md 已写入
+[2026-03-06 01:30:06] watchdog: 等待 180 秒让所有 Agent 完成保存...
+[master 9035f2f] ops: hibernate — agent-ops 触发限流关键词
+ 2 files changed, 142 insertions(+)
+ create mode 100644 shared/logs/hibernate_ops.md
+To https://github.com/luiseia/GiT_agent.git
+   f88e8e2..9035f2f  master -> master
+[2026-03-06 01:33:07] watchdog: 休眠数据已 push
+[2026-03-06 01:33:07] watchdog: 已停止 all_loops.sh (PID 3240598)
+[2026-03-06 01:33:07] watchdog: 💤 开始休眠 3600 秒，预计 2026-03-06 02:30:06 恢复
+[2026-03-06 02:33:07] watchdog: ⏰ 休眠结束，开始恢复
+[2026-03-06 02:33:07] watchdog: ✅ all_loops.sh 已重启 (PID 3284076)
+[2026-03-06 02:33:07] watchdog: → conductor: 恢复指令已发送
+[2026-03-06 02:33:07] watchdog: → admin: 恢复指令已发送
+[2026-03-06 02:33:07] watchdog: → critic: 恢复指令已发送
+[2026-03-06 02:33:07] watchdog: → supervisor: 恢复指令已发送
+[2026-03-06 02:33:07] watchdog: ops 休眠快照内容:
+[master 43e728a] ops: resume from hibernate
+ 1 file changed, 141 insertions(+)
+To https://github.com/luiseia/GiT_agent.git
+   f1c3a88..43e728a  master -> master
+[2026-03-06 02:33:08] watchdog: ✅ 恢复完成，系统恢复运行
+[2026-03-06 14:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 14:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 14:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 14:50:02] watchdog: === 用量检查开始 ===
+[2026-03-06 14:50:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 14:50:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:00:02] watchdog: === 用量检查开始 ===
+[2026-03-06 15:00:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:00:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 15:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 15:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 15:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 15:40:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:40:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 15:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 15:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 15:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:10:01] watchdog: ✅ 用量正常，无需休眠

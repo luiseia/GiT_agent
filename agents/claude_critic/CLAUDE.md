@@ -49,7 +49,7 @@ done
 ```
 1. PULL:     两个仓库都 git pull
 2. READ:     读取 AUDIT_REQUEST 中的审计对象和关注点
-3. ANALYZE:  深度审查 GiT/ 中的实际代码
+3. ANALYZE:  深度审查 GiT/ 中的实际代码（不限于特定文件，应追踪完整调用链）
 4. VERDICT:  在 GiT_agent/ 中写入判决
 5. PUSH:     git commit + push（仅 GiT_agent）
 ```
@@ -62,7 +62,7 @@ cd /home/UNT/yz0370/projects/GiT_agent
 cat > shared/audit/VERDICT_<ID>.md << 'EOF'
 # 审计判决 — <ID>
 
-## 结论: PROCEED / STOP
+## 结论: PROCEED / STOP / CONDITIONAL
 
 ## 发现的问题
 1. **BUG-XX**: <描述>
@@ -123,35 +123,33 @@ git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
 ## 项目上下文（GiT Occupancy Prediction）
 
 ### 研究方向
-- **任务**: 单帧多视图图像 → BEV grid occupancy 预测
-- **模型**: ViT-Base encoder + Transformer 自回归 decoder
+- **任务**: 基于 DinoV3 特征的 BEV grid occupancy 预测
+- **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
 - **数据集**: nuScenes-mini (323 图, ~3500 3D 框)
 - **BEV Grid**: 20×20, 100m×100m, 每 cell 3 slot
 
-### 审计关注的核心代码文件
-| 文件 | 内容 |
-|------|------|
-| `GiT/git_occ_head.py` | Occupancy head: loss 计算、per-class balance、center/around 权重 |
-| `GiT/occ_2d_box_eval.py` | 评估: recall/precision/bg_FA 计算、slot 排序 |
-| `GiT/generate_occ_flow_labels.py` | 标签生成: 3D→BEV 投影、depth 排序、IBW 权重 |
+### 审计范围
+**不设限制。** 审计时应主动探索 `GiT/` 仓库中的所有相关代码，追踪完整调用链，不局限于特定文件。包括但不限于：
+- 模型结构、前向传播、loss 计算
+- 数据加载、标签生成、预处理
+- 评估逻辑、指标计算
+- 训练配置、优化器设置、学习率策略
+- DinoV3 特征提取与 grid 切分的衔接
+- 任何你认为可疑的代码
+
+**原则：审计请求定方向，但你可以且应该超出请求范围去挖掘潜在问题。Conductor 要求你审查 A 文件，如果你发现 B 文件也有问题，必须一并报告。**
 
 ### 历史审计发现的关键 BUG
 | BUG | 严重性 | 状态 | 描述 |
 |-----|--------|------|------|
-| BUG-1 | 中 | FIXED | theta_fine 周期性损失错误 (git_occ_head.py:694) |
-| BUG-2 | 致命 | FIXED | Per-class 背景梯度压制 (git_occ_head.py:907-922) |
-| BUG-3 | 高 | FIXED | Score 传播链断裂 (git_occ_head.py:1466 + occ_2d_box_eval.py:73) |
-| BUG-8 | 高 | UNPATCHED | cls loss 缺 bg_balance_weight (git_occ_head.py:871-881) |
+| BUG-1 | 中 | FIXED | theta_fine 周期性损失错误 |
+| BUG-2 | 致命 | FIXED | Per-class 背景梯度压制 |
+| BUG-3 | 高 | FIXED | Score 传播链断裂 |
+| BUG-8 | 高 | UNPATCHED | cls loss 缺 bg_balance_weight |
 | **BUG-9** | **致命** | **UNPATCHED** | **100% 梯度裁剪** (clip_grad max_norm=0.5, 梯度实测 3.85-59.55) |
 | **BUG-10** | 高 | UNPATCHED | 优化器冷启动 (resume=False) |
-| BUG-11 | 中 | UNPATCHED | 默认类别顺序地雷 (generate_occ_flow_labels.py:77) |
-| BUG-12 | 高 | URGENT | 评估 slot 排序不一致 (occ_2d_box_eval.py) |
-
-### 核心技术瓶颈（审计时重点关注）
-1. **truck 类梯度仅占 ~2.1%**——被 car/bus 吸收，架构根本问题
-2. **BUG-9 限制所有优化上界**——只能改梯度方向，无法改幅度
-3. **avg_precision ~0.09**（目标 0.20）——持续最大瓶颈
-4. **自回归误差级联**——30-token 序列中 slot 2 的 bg_recall 比 slot 0 低 ~19%
+| BUG-11 | 中 | UNPATCHED | 默认类别顺序地雷 |
+| BUG-12 | 高 | URGENT | 评估 slot 排序不一致 |
 
 ## 宪法保护
 agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。
