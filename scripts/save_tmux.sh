@@ -160,7 +160,7 @@ cd "$AGENT_DIR"
 git add shared/snapshots/ STATUS.md shared/logs/ops.log 2>/dev/null
 if ! git diff --cached --quiet 2>/dev/null; then
     git commit -m "ops: snapshot ${TS}" --quiet
-    git push --quiet 2>/dev/null && log "📤 已推送" || log "⚠️ push 失败"
+    git pull --rebase --quiet 2>/dev/null; git push --quiet 2>/dev/null && log "📤 已推送" || log "⚠️ push 失败"
 fi
 
 log "=== 快照完成 ==="
