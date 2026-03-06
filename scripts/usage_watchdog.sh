@@ -31,9 +31,8 @@ RESET_INFO=""
 if tmux has-session -t agent-conductor 2>/dev/null; then
     tmux send-keys -t agent-conductor "/usage" Enter
     sleep 5
-    tmux send-keys -t agent-conductor Escape
-    sleep 1
     USAGE_OUTPUT=$(tmux capture-pane -t agent-conductor -p -S -30)
+    tmux send-keys -t agent-conductor Escape
 
     # 解析用量百分比: 匹配类似 "75%" 或 "75.3%" 的模式
     USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%' | head -1 | tr -d '%')
