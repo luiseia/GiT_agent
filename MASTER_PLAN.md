@@ -1,85 +1,92 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-06 14:15 (循环 #5)
+> 最后更新: 2026-03-06 14:40 (循环 #6)
 
-## 当前阶段: P2 启动 — BUG-9 修复实验
+## 当前阶段: P2 训练监控 — BUG-9 修复验证
 
-### P1 (Center/Around) 训练结果 — COMPLETED
-- **最终迭代**: 6000/6000, 完成于 02:48
-- **GPU**: 0,2 已释放
-- **Checkpoint**: `iter_6000.pth` (1.97GB)
-- **状态**: 完全收敛，iter 5000-6000 指标平台期
+### P1 (Center/Around) 最终结果 — COMPLETED
+- **最终迭代**: 6000/6000
+- **Checkpoint**: `/mnt/SSD/GiT_Yihao/Train/Train_20260305/plan_d_center_around/iter_6000.pth`
 
-### P1@6000 指标 (旧 eval, BUG-12 修正估算)
-| 指标 | 旧 eval @6000 | 修正估算 | 红线 | 状态 |
-|------|-------------|---------|------|------|
-| truck_recall | 0.187 | ~0.32 | < 0.08 | SAFE |
-| truck_precision | 0.114 | ~0.20 | - | - |
-| bus_recall | 0.463 | ~0.59 | - | - |
-| car_recall | 0.567 | 0.567 | - | - |
-| bg_false_alarm | 0.201 | 0.201 | > 0.25 | SAFE |
-| offset_theta | 0.247 | ~0.247 | <= 0.20 | WARN |
-| avg_precision | ~0.10 | ~0.13 | >= 0.20 | FAIL |
+### P1@6000 精确指标 (BUG-12 修正 eval, ORCH_003 确认)
+| 指标 | 值 | 红线 | 状态 |
+|------|-----|------|------|
+| truck_recall | **0.358** | < 0.08 | SAFE |
+| truck_precision | 0.176 | - | - |
+| bus_recall | **0.627** | - | GOOD (超 0.40 目标) |
+| bus_precision | 0.156 | - | - |
+| car_recall | 0.628 | - | - |
+| car_precision | 0.091 | - | LOW |
+| trailer_recall | 0.644 | - | - |
+| bg_false_alarm | **0.163** | > 0.25 | SAFE |
+| offset_cx | 0.081 | <= 0.05 | WARN |
+| offset_cy | 0.139 | <= 0.10 | WARN |
+| offset_th | **0.220** | <= 0.20 | WARN (接近) |
 
-**注**: ORCH_003 任务 1 将用修正 eval 代码获取精确值。
-
-### BUG-9 诊断结果 (ORCH_002 COMPLETED, APPROVED)
-- **grad_norm 统计**: 均值 14.5, 中位 8.9, P95=45.0, P99=75.0
-- **根因**: 8 个 regression sub-losses 的密集梯度在共享 decoder 累积
-- **当前状态**: max_norm=0.5 → 100% 裁剪 → AdamW 退化为 Sign-SGD
-- **批准方案**: Option A, max_norm=**10.0** (55.7% 迭代恢复自然梯度)
-- **否决**: 5.0 (仅 19.2% 通过，不够), Loss scaling (等效降 LR，脆弱), 分层裁剪 (实现复杂)
-
-### P2 计划
+### P2 (BUG-9 Fix) 训练状态 — RUNNING
+- **进度**: iter ~450/6000, ETA ~19:15
+- **GPU**: 0,2 (RTX A6000 x2, 各 ~22GB)
+- **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_e_bug9_fix/`
 - **Config**: `plan_e_bug9_fix.py` (唯一变量: max_norm 0.5→10.0)
-- **起点**: P1@6000 权重, 重置优化器状态
-- **GPU**: 0,2
-- **预期效果**: LR schedule 恢复有效性，AdamW 自适应缩放恢复，收敛质量提升
+- **起点**: P1@6000 权重, 优化器状态已重置
+- **首次 val**: iter 500 (~14:55)
+
+### P2 BUG-9 修复效果 (前 450 iter)
+| 指标 | P1 (max_norm=0.5) | P2 (max_norm=10.0) |
+|------|-------------------|-------------------|
+| 未裁剪率 | **0%** | **48.9%** |
+| grad_norm 典型范围 | 2.3-19.6 (全部裁剪到 0.5) | 3.1-45.7 (一半自然通过) |
+| LR schedule 效果 | 无效 (常数步长) | **恢复有效** |
+| 训练稳定性 | 稳定 | 稳定 (偶发尖峰被裁剪) |
+
+**BUG-9 修复确认成功**: 48.9% 迭代使用自然梯度 (预测 55.7%)，AdamW 自适应行为已恢复。
 
 ### 战术评估
-- P1 验证了 center/around 机制：truck 稳定不崩溃
-- BUG-12 修复揭示模型实际能力远超显示值
-- **BUG-9 是当前最大杠杆点** — 修复后所有指标均有上升空间
-- **次要瓶颈** (P2 后再处理): BUG-8 (cls 梯度不对称) + AABB 过估
+- P1 center/around 验证成功，P1 数据可作为 baseline
+- BUG-9 修复是从 Sign-SGD 恢复到真正 AdamW 的质变
+- P2 训练初期偶发高 grad_norm 尖峰 (39-46)，但被正确裁剪
+- **关键观察点**: P2@500 首次 val 将揭示 BUG-9 修复对指标的早期影响
+- **次要瓶颈** (P2 后): BUG-8 (cls 梯度不对称) + AABB 过估 + 低 precision
 
-### 历史审计关键洞察 (CEO 指令 #1)
-1. **BUG-9 致命影响**: 100% 梯度裁剪，AdamW→Sign-SGD
-2. **AABB 过估**: truck 45° 旋转时覆盖 cell 数 3.5×，边缘 cell 标签为噪声
-3. **梯度三重挤压**: truck 仅占总梯度 2.1%，背景 14.3%（7× 差异）
-4. **自回归误差级联**: slot 2 有效准确率比 slot 0 低 ~19%
+### BUG-9 诊断总结 (ORCH_002)
+- grad_norm: 均值 14.5, 中位 8.9, P95=45.0, P99=75.0
+- 根因: 8 个 regression sub-losses 通过共享 decoder 累积密集梯度
+- 批准方案: max_norm=10.0 (55.7% 自然通过)
+
+### 历史审计关键洞察
+1. BUG-9: 100% 梯度裁剪 → AdamW 退化为 Sign-SGD (已修复)
+2. AABB 过估: truck 45° 旋转覆盖 3.5× cell
+3. 梯度三重挤压: truck 仅占总梯度 2.1%
+4. 自回归误差级联: slot 2 比 slot 0 低 ~19%
 5. Construction Vehicle 在 nuScenes-mini 中已独立于 truck
 
 ## 活跃任务
 | ORCH ID | 目标 | 状态 | 优先级 | 备注 |
 |---------|------|------|--------|------|
 | 001 | BUG-12 修复 | **COMPLETED** | HIGH | truck +72%, bus +28% |
-| 002 | BUG-9 诊断 | **COMPLETED** | CRITICAL | 推荐 max_norm=10.0, APPROVED |
-| 003 | P1 最终 eval + P2 启动 | **IN PROGRESS** | HIGH | Admin 正在执行 eval |
+| 002 | BUG-9 诊断 | **COMPLETED** | CRITICAL | max_norm=10.0, APPROVED |
+| 003 | P1 eval + P2 启动 | **COMPLETED** | HIGH | P2 已运行, 裁剪率 48.9% |
 
-## 下一步计划 (循环 #6)
-1. ORCH_003 验收: P1@6000 精确指标 + P2 是否成功启动
-2. P2 前 500 iter 监控: grad_norm 分布、裁剪率变化
-3. 对比 P1 vs P2 同期指标，验证 BUG-9 修复效果
+## 下一步计划 (循环 #7)
+1. P2@500 首次 val 结果分析 (ETA ~14:55)
+2. 对比 P2@500 vs P1@500 指标变化
+3. 确认 grad_norm 分布趋势 (是否随训练稳定)
 
 ## 历史决策
+### [2026-03-06 14:40] 循环 #6 — ORCH_003 验收 + P2 监控
+- **ORCH_003 验收**: 三个任务全部完成，P2 训练稳定运行
+- P1@6000 精确指标优于估算: truck_R=0.358, bg_FA=0.163, offset_th=0.220
+- BUG-9 修复已验证: 48.9% 迭代未裁剪 (P1=0%)
+- P2 训练无异常，等待首次 val
+
 ### [2026-03-06 14:15] 循环 #5 — ORCH_003 执行中确认
-- Admin 正在执行 ORCH_003: eval 进程已在 GPU 0 运行
-- `ssd_workspace` 实际为 `/mnt/SSD/GiT_Yihao/` 符号链接 (Admin 已发现)
-- GPU 0,2 可用，1,3 被 yl0826 占用
-- 无阻塞，等待 Admin 完成三个子任务
+- Admin 在执行中，ssd_workspace 为 /mnt/SSD/GiT_Yihao/ 符号链接
 
 ### [2026-03-06 14:10] 循环 #4 — ORCH_002 验收 + P2 启动决策
-- **ORCH_002 验收**: BUG-9 诊断报告优秀，数据充分
-- **关键决策**: 批准 max_norm=10.0 (非报告中已有 config 的 5.0)
-- **理由**: 5.0 仅让 19.2% 通过，10.0 让 55.7% 通过（中位数水平），兼顾安全与效果
-- **P1 完结**: 6000 iter 完成，指标平台期，无需延长
-- **签发 ORCH_003**: P1 最终 eval + plan_e config 更新 + P2 训练启动
+- 批准 max_norm=10.0, 签发 ORCH_003
 
-### [2026-03-06 02:55] 循环 #3 — BUG-12 验收 + CEO 指令执行
-- CEO 指令 #1: 阅读历史审计报告，提取 5 项关键洞察
-- CEO 指令 #2: 转达 Ops 修复 usage_watchdog.sh
-- ORCH_001 验收: BUG-12 修复成功
-- 签发 ORCH_002 诊断 BUG-9
+### [2026-03-06 02:55] 循环 #3 — BUG-12 验收 + CEO 指令
+- CEO 指令执行, ORCH_002 签发
 
 ### [2026-03-06 00:57] 循环 #1 — 首轮研判
-- 签发 ORCH_001 给 Admin 修复 BUG-12
+- 签发 ORCH_001 (BUG-12)
