@@ -1,17 +1,54 @@
 #!/bin/bash
 # =============================================================
-# usage_watchdog.sh — 用量监控 + 自动休眠/恢复
-# 每 10 分钟由 crontab 运行（flock 防重入）
+# usage_watchdog.sh — 用量监控 + context 监控 + 自动休眠/恢复
+# 由 crontab 运行: 0,10,20,30,40,50 * * * * (flock 防重入)
+#
+# 修复:
+# 1. /usage 发给 critic（最空闲），不打断 conductor
+# 2. 发 /usage 前检测 agent 是否空闲
+# 3. 限流关键词收紧为完整短语
+# 4. 跳过 agent-ops 的限流扫描
+# 5. context 监控 + 自动 /compact
+# 6. 恢复后检查 Claude Code 是否存活，自动重启
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 LOG="${AGENT_DIR}/shared/logs/watchdog.log"
 LOCKFILE="/tmp/usage_watchdog.lock"
 HIBERNATE_FLAG="/tmp/usage_watchdog_hibernating"
+# 不包含 agent-ops，避免扫描自身误报
 SESSIONS=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin")
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] watchdog: $1" | tee -a "$LOG"
+}
+
+# ─── 检测 Agent 是否空闲 ─────────────────────────────────
+is_idle() {
+    local session="$1"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        return 1
+    fi
+    local last_lines
+    last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
+    if echo "$last_lines" | grep -qE '❯|^\$'; then
+        return 0
+    fi
+    return 1
+}
+
+# ─── 检测 Claude Code 是否还在运行 ────────────────────────
+is_claude_alive() {
+    local session="$1"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        return 1
+    fi
+    local last_lines
+    last_lines=$(tmux capture-pane -t "$session" -p | tail -10)
+    if echo "$last_lines" | grep -qE 'bypass permissions|❯|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked'; then
+        return 0
+    fi
+    return 1
 }
 
 # ─── 如果正在休眠中，跳过 ─────────────────────────────────
@@ -27,17 +64,22 @@ TRIGGER_REASON=""
 USAGE_PCT=""
 RESET_INFO=""
 
-# ─── 检测方式 1: /usage 命令（发送后 Escape 关闭面板）────
-if tmux has-session -t agent-conductor 2>/dev/null; then
-    tmux send-keys -t agent-conductor "/usage" Enter
+# =============================================================
+# 检测方式 1: /usage 命令
+# 发给 critic（最空闲的 Agent），避免打断 conductor
+# =============================================================
+USAGE_TARGET="agent-critic"
+if tmux has-session -t "$USAGE_TARGET" 2>/dev/null && is_idle "$USAGE_TARGET"; then
+    tmux send-keys -t "$USAGE_TARGET" "/usage" Enter
     sleep 5
-    USAGE_OUTPUT=$(tmux capture-pane -t agent-conductor -p -S -30)
-    tmux send-keys -t agent-conductor Escape
+    USAGE_OUTPUT=$(tmux capture-pane -t "$USAGE_TARGET" -p -S -30)
+    tmux send-keys -t "$USAGE_TARGET" Escape
+    sleep 1
 
-    # 解析用量百分比: 匹配类似 "75%" 或 "75.3%" 的模式
-    USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%' | head -1 | tr -d '%')
-    # 解析刷新倒计时: "Resets in X hr Y min" 或类似格式
-    RESET_INFO=$(echo "$USAGE_OUTPUT" | grep -oiP '[Rr]esets?\s+in\s+.*' | head -1)
+    # 解析用量百分比
+    USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%\s+used' | head -1 | grep -oP '\d+\.?\d*')
+    # 解析刷新信息
+    RESET_INFO=$(echo "$USAGE_OUTPUT" | grep -oiP 'Resets\s+.*' | head -1)
 
     if [ -n "$USAGE_PCT" ]; then
         log "用量: ${USAGE_PCT}%  |  ${RESET_INFO:-无刷新信息}"
@@ -47,12 +89,19 @@ if tmux has-session -t agent-conductor 2>/dev/null; then
             TRIGGER_REASON="用量超过 80% (${USAGE_PCT}%)"
         fi
     else
-        log "⚠️ 无法解析 /usage 输出"
+        log "⚠️ 无法解析 /usage 输出（target: ${USAGE_TARGET}）"
     fi
+elif tmux has-session -t "$USAGE_TARGET" 2>/dev/null; then
+    log "→ ${USAGE_TARGET} 正在忙碌，跳过用量检查"
+else
+    log "⚠️ ${USAGE_TARGET} 会话不存在，跳过用量检查"
 fi
 
-# ─── 检测方式 2: 限流关键词扫描 ──────────────────────────
-RATE_LIMIT_PATTERN="rate limit|usage limit|too many requests|429|try again"
+# =============================================================
+# 检测方式 2: 限流关键词扫描（收紧匹配，跳过 agent-ops）
+# =============================================================
+# 只匹配 Claude Code 系统级限流消息，不匹配对话中的普通文字
+RATE_LIMIT_PATTERN="usage limit reached|rate limit exceeded|too many requests|Error 429|you've hit your"
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
         PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -50)
@@ -60,12 +109,34 @@ for session in "${SESSIONS[@]}"; do
         if [ -n "$MATCH" ]; then
             log "🚨 ${session} 检测到限流: $(echo "$MATCH" | head -1)"
             TRIGGER=1
-            TRIGGER_REASON="${TRIGGER_REASON:+${TRIGGER_REASON} | }${session} 触发限流关键词"
+            TRIGGER_REASON="${TRIGGER_REASON:+${TRIGGER_REASON} | }${session} 触发限流"
         fi
     fi
 done
 
-# ─── 未触发：正常退出 ────────────────────────────────────
+# =============================================================
+# 检测方式 3: Context 剩余监控 + 自动 /compact
+# =============================================================
+for session in "${SESSIONS[@]}"; do
+    if tmux has-session -t "$session" 2>/dev/null; then
+        PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -20)
+        # 匹配 "Context left until auto-compact: 12%" 格式
+        CTX_LEFT=$(echo "$PANE_OUTPUT" | grep -oiP 'Context left[^:]*:\s*\d+' | grep -oP '\d+' | tail -1)
+        if [ -n "$CTX_LEFT" ] && [ "$CTX_LEFT" -lt 15 ]; then
+            log "⚠️ ${session} context 剩余 ${CTX_LEFT}%"
+            if is_idle "$session"; then
+                tmux send-keys -t "$session" "/compact" Enter
+                log "→ ${session}: 已发送 /compact（空闲状态）"
+            else
+                log "→ ${session}: 需要 /compact 但正在忙碌，下轮再试"
+            fi
+        fi
+    fi
+done
+
+# =============================================================
+# 未触发：正常退出
+# =============================================================
 if [ "$TRIGGER" -eq 0 ]; then
     log "✅ 用量正常，无需休眠"
     exit 0
@@ -85,10 +156,34 @@ if [ -n "$RESET_INFO" ]; then
     [ -z "$HOURS" ] && HOURS=0
     [ -z "$MINUTES" ] && MINUTES=0
     CALC=$((HOURS * 3600 + MINUTES * 60 + 300))  # +5 分钟缓冲
-    if [ "$CALC" -gt 0 ]; then
+    if [ "$CALC" -gt 300 ]; then
         SLEEP_SECONDS=$CALC
     fi
 fi
+
+# 也尝试解析 "Resets 5am" 格式
+if echo "$RESET_INFO" | grep -qiP 'Resets\s+\d+\s*(am|pm)'; then
+    RESET_HOUR=$(echo "$RESET_INFO" | grep -oiP '\d+(?=\s*(am|pm))' | head -1)
+    AMPM=$(echo "$RESET_INFO" | grep -oiP '(am|pm)' | head -1 | tr 'A-Z' 'a-z')
+    if [ "$AMPM" = "pm" ] && [ "$RESET_HOUR" -ne 12 ]; then
+        RESET_HOUR=$((RESET_HOUR + 12))
+    elif [ "$AMPM" = "am" ] && [ "$RESET_HOUR" -eq 12 ]; then
+        RESET_HOUR=0
+    fi
+    NOW_EPOCH=$(date +%s)
+    TODAY_RESET=$(date -d "today ${RESET_HOUR}:00" +%s 2>/dev/null)
+    if [ -n "$TODAY_RESET" ]; then
+        if [ "$TODAY_RESET" -le "$NOW_EPOCH" ]; then
+            # 已经过了今天的重置时间，算明天的
+            TODAY_RESET=$((TODAY_RESET + 86400))
+        fi
+        CALC=$((TODAY_RESET - NOW_EPOCH + 300))  # +5 分钟缓冲
+        if [ "$CALC" -gt 300 ]; then
+            SLEEP_SECONDS=$CALC
+        fi
+    fi
+fi
+
 RESUME_TIME=$(date -d "+${SLEEP_SECONDS} seconds" '+%Y-%m-%d %H:%M:%S')
 log "预计恢复时间: ${RESUME_TIME} (休眠 ${SLEEP_SECONDS} 秒)"
 
@@ -174,35 +269,36 @@ sleep "$SLEEP_SECONDS"
 log "⏰ 休眠结束，开始恢复"
 rm -f "$HIBERNATE_FLAG"
 
-# ─── 重启 all_loops.sh ──────────────────────────────────
+# ─── 重启 all_loops.sh（flock 会防重复）─────────────────
 nohup bash "${AGENT_DIR}/scripts/all_loops.sh" >> "${AGENT_DIR}/shared/logs/all_loops.log" 2>&1 &
 NEW_PID=$!
 log "✅ all_loops.sh 已重启 (PID ${NEW_PID})"
 
-# ─── 给每个 Agent 发送恢复指令 ────────────────────────────
-if tmux has-session -t agent-conductor 2>/dev/null; then
-    tmux send-keys -t agent-conductor \
-        "用量已刷新，请读取 shared/logs/hibernate_conductor.md 恢复工作" Enter
-    log "→ conductor: 恢复指令已发送"
-fi
-
-if tmux has-session -t agent-admin 2>/dev/null; then
-    tmux send-keys -t agent-admin \
-        "用量已刷新，请读取 shared/logs/hibernate_admin.md 恢复工作" Enter
-    log "→ admin: 恢复指令已发送"
-fi
-
-if tmux has-session -t agent-critic 2>/dev/null; then
-    tmux send-keys -t agent-critic \
-        "用量已刷新，请读取 shared/logs/hibernate_critic.md 恢复工作" Enter
-    log "→ critic: 恢复指令已发送"
-fi
-
-if tmux has-session -t agent-supervisor 2>/dev/null; then
-    tmux send-keys -t agent-supervisor \
-        "用量已刷新，请读取 shared/logs/hibernate_supervisor.md 恢复工作" Enter
-    log "→ supervisor: 恢复指令已发送"
-fi
+# ─── 检查每个 Agent 是否存活，死了就重启 ──────────────────
+for session in "${SESSIONS[@]}"; do
+    if tmux has-session -t "$session" 2>/dev/null; then
+        if ! is_claude_alive "$session"; then
+            agent_name=$(echo "$session" | sed 's/agent-//')
+            if [ "$agent_name" = "admin" ]; then
+                WORK_DIR="/home/UNT/yz0370/projects/GiT"
+            else
+                WORK_DIR="$AGENT_DIR"
+            fi
+            log "⚠️ ${session}: Claude Code 已退出，正在重启..."
+            tmux send-keys -t "$session" "cd ${WORK_DIR} && claude --dangerously-skip-permissions" Enter
+            sleep 15
+            tmux send-keys -t "$session" "请阅读 ${AGENT_DIR}/agents/claude_${agent_name}/CLAUDE.md，然后读取 shared/logs/hibernate_${agent_name}.md 恢复工作" Enter
+            log "→ ${session}: 已重启并发送恢复指令"
+        else
+            agent_name=$(echo "$session" | sed 's/agent-//')
+            tmux send-keys -t "$session" \
+                "用量已刷新，请读取 shared/logs/hibernate_${agent_name}.md 恢复工作" Enter
+            log "→ ${session}: 恢复指令已发送"
+        fi
+    else
+        log "⚠️ ${session}: 会话不存在，无法恢复"
+    fi
+done
 
 # ─── ops 自行读取休眠快照 ────────────────────────────────
 if [ -f "${AGENT_DIR}/shared/logs/hibernate_ops.md" ]; then
