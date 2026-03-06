@@ -199,3 +199,7 @@
 [15:12:41] Decision criteria: truck_R>=0.15→continue, truck_R<0.10→BUG-8 fix
 [15:23:05] STATUS #79: P2 training stable, conductor waiting for P2@1000
 [15:33:21] STATUS #80: P2 stable, conductor waiting
+[15:43:38] === DEEP CHECK #81 ===
+[15:43:38] P2 training stable (GPU0=22.4GB, GPU2=23GB)
+[15:43:38] Conductor analyzed P2@1000: monitoring truck_R stability, offset_th=0.262 (退化)
+[15:43:38] No new ORCH. P2 continuing.
