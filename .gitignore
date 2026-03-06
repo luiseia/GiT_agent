@@ -9,3 +9,4 @@
 
 # 注意：shared/snapshots/*.log 会入库（便于远程回溯）
 # 由 ops 脚本定期清理超过 24h 的旧快照
+shared/snapshots/*.log
