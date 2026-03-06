@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-06 14:10 (循环 #4)
+> 最后更新: 2026-03-06 14:15 (循环 #5)
 
 ## 当前阶段: P2 启动 — BUG-9 修复实验
 
@@ -54,14 +54,20 @@
 |---------|------|------|--------|------|
 | 001 | BUG-12 修复 | **COMPLETED** | HIGH | truck +72%, bus +28% |
 | 002 | BUG-9 诊断 | **COMPLETED** | CRITICAL | 推荐 max_norm=10.0, APPROVED |
-| 003 | P1 最终 eval + P2 启动 | **PENDING** | HIGH | 三个子任务 |
+| 003 | P1 最终 eval + P2 启动 | **IN PROGRESS** | HIGH | Admin 正在执行 eval |
 
-## 下一步计划 (循环 #5)
-1. 确认 ORCH_003 进展 (P2 是否成功启动)
-2. P2 前 500 iter 监控: grad_norm 分布、裁剪率、loss 趋势
+## 下一步计划 (循环 #6)
+1. ORCH_003 验收: P1@6000 精确指标 + P2 是否成功启动
+2. P2 前 500 iter 监控: grad_norm 分布、裁剪率变化
 3. 对比 P1 vs P2 同期指标，验证 BUG-9 修复效果
 
 ## 历史决策
+### [2026-03-06 14:15] 循环 #5 — ORCH_003 执行中确认
+- Admin 正在执行 ORCH_003: eval 进程已在 GPU 0 运行
+- `ssd_workspace` 实际为 `/mnt/SSD/GiT_Yihao/` 符号链接 (Admin 已发现)
+- GPU 0,2 可用，1,3 被 yl0826 占用
+- 无阻塞，等待 Admin 完成三个子任务
+
 ### [2026-03-06 14:10] 循环 #4 — ORCH_002 验收 + P2 启动决策
 - **ORCH_002 验收**: BUG-9 诊断报告优秀，数据充分
 - **关键决策**: 批准 max_norm=10.0 (非报告中已有 config 的 5.0)
