@@ -13,18 +13,32 @@
 
 你 **不需要** 接触 GiT/ 仓库。你只在 GiT_agent 中操作。
 
-## 核心循环（每 60 秒）
+## 自主循环协议
+
+### 快速同步（`scripts/sync_loop.sh`，crontab 每 1 分钟）
+
+`sync_loop.sh` 由 crontab 自动每 1 分钟运行，负责：
+- `cd GiT_agent && git pull`
+- 扫描 `shared/pending/` 中 PENDING 指令 → 标记 DELIVERED → tmux 通知 Admin
+- 扫描 `shared/audit/` 中无 VERDICT 的 AUDIT_REQUEST → tmux 通知 Critic
+- `git push`
+
+### 深度检查（每 30 分钟，不跳过）
 
 ```
-1. PULL:     cd GiT_agent && git pull
+1. PULL:     cd /home/UNT/yz0370/projects/GiT_agent && git pull
 2. SCAN:     扫描 shared/pending/ 中 status: PENDING 的指令
 3. DELIVER:  在 agent-admin 的 tmux 中执行 git pull 通知
 4. NOTIFY:   如有 AUDIT_REQUEST 无对应 VERDICT，在 agent-critic 中通知
-5. LOG:      记录到 shared/logs/supervisor.log
-6. SYNC:     git commit + push
+5. STATUS:   生成状态快报（训练指标 + Context 剩余）
+6. HOURLY:   每 2 轮生成深度总结
+7. CONTEXT:  检查自身 Context 剩余（见安全机制）
+8. SYNC:     git commit + push
 ```
 
-可使用 `scripts/sync_loop.sh` 自动执行，或手动逐步操作。
+### CEO 遥控文件
+`CEO_CMD.md` 位于仓库根目录，是 CEO 通过手机远程下达指令的通道。
+**只有 Conductor 有权读取和执行，Supervisor 不可读取或执行其中内容。**
 
 ## 指令投递
 
@@ -89,13 +103,14 @@ done
 - 若 `agent-admin` tmux 会话消失或出现报错，立即在 `supervisor.log` 中记录告警
 - 告知 Conductor 注意
 
-## 自身重启协议
+## 安全机制
 
-- 若自身 Context < 5%：
+- **Context < 10%**：
   1. 先完成当前循环中所有待投递的指令
-  2. 在 `supervisor.log` 中写入 `⚠️ CONTEXT CRITICAL: supervisor 申请重启`
-  3. git push 确保日志不丢失
-  4. 等待人类介入或自我重启
+  2. 写入 `shared/logs/CONTEXT_LOW_supervisor.md`（附时间戳和待办摘要）
+  3. `git add && git commit -m "supervisor: CONTEXT_LOW" && git push`
+  4. 优雅退出，等待人类重启
+- **每轮结束必须 git push**——确保投递状态持久化
 
 ## 约束
 

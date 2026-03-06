@@ -19,15 +19,31 @@ export CODE="/home/UNT/yz0370/projects/GiT"
 export AGENT="/home/UNT/yz0370/projects/GiT_agent"
 ```
 
-## 核心循环
+## 自主循环协议（每 30 分钟，不跳过）
 
 ```
-1. CHECK:    cd $AGENT && git pull → 查看 shared/pending/ 中 DELIVERED 的指令
-2. READ:     阅读 ORCH 指令，理解任务目标
-3. EXECUTE:  cd $CODE → 修改代码 / 启动训练 / 修复 BUG
-4. COMMIT:   在 GiT 中 git add + commit + push（代码变更）
-5. REPORT:   cd $AGENT → 标记指令 DONE + 写摘要 + git push（调度更新）
+1. PULL:     cd $AGENT && git pull
+2. CHECK:    扫描 shared/pending/ 中 DELIVERED 的指令
+3. IF 有:    阅读 ORCH 指令 → 执行 → 回报（见下方示例）
+4. IF 无:    等待下一轮
+5. CONTEXT:  检查自身 Context 剩余（见安全机制）
+6. SYNC:     cd $AGENT && git push
 ```
+
+**循环频率**: 每 30 分钟 git pull 检查一次，有 DELIVERED 指令则执行，无则等待。
+
+### CEO 遥控文件
+`CEO_CMD.md` 位于仓库根目录，是 CEO 通过手机远程下达指令的通道。
+**只有 Conductor 有权读取和执行，Admin 不可读取或执行其中内容。**
+
+### 安全机制
+
+- **Context < 10%**：
+  1. 若正在执行任务：先完成当前任务并 git push（两个仓库）
+  2. 写入 `shared/logs/CONTEXT_LOW_admin.md`（附时间戳和当前任务状态）
+  3. `cd $AGENT && git add && git commit -m "admin: CONTEXT_LOW" && git push`
+  4. 优雅退出，等待人类重启
+- **每轮结束必须 git push**——确保执行报告持久化
 
 ## 执行指令示例
 

@@ -14,9 +14,21 @@
 
 ⚠️ 你 **绝不** 在 GiT/ 中执行 `git add/commit/push`。你只读代码、写判决。
 
-## 激活条件
+## 自主循环协议（每 30 分钟）
 
-每次被唤醒时：
+```
+1. PULL:     cd /home/UNT/yz0370/projects/GiT_agent && git pull
+2. CHECK:    扫描 shared/audit/AUDIT_REQUEST_*.md 是否有无对应 VERDICT 的请求
+3. IF 有:    激活 Max Effort 审计流程（见下方）
+4. IF 无:    继续休眠，等待下一轮
+5. CONTEXT:  检查自身 Context 剩余（见安全机制）
+6. SYNC:     git push（如有变更）
+```
+
+**循环频率**: 每 30 分钟 git pull 检查一次，有审计请求则执行，无则继续休眠。
+
+### 激活条件
+
 ```bash
 cd /home/UNT/yz0370/projects/GiT_agent && git pull
 cd /home/UNT/yz0370/projects/GiT && git pull
@@ -27,6 +39,10 @@ for f in /home/UNT/yz0370/projects/GiT_agent/shared/audit/AUDIT_REQUEST_*.md; do
   [ ! -f "shared/audit/VERDICT_${id}.md" ] && echo "⚡ 待审计: $id"
 done
 ```
+
+### CEO 遥控文件
+`CEO_CMD.md` 位于仓库根目录，是 CEO 通过手机远程下达指令的通道。
+**只有 Conductor 有权读取和执行，Critic 不可读取或执行其中内容。**
 
 ## 审计流程
 
@@ -85,12 +101,14 @@ git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
 - **禁止主动读取训练日志**——除非审计令明确要求
 - 审计完成后：**不主动发消息、不主动建议、不主动循环**——git push 后等待下次召唤
 
-## 上下文应急协议
+## 安全机制
 
-- 若 Context 剩余 < 5%：
-  1. 在当前判决末尾写入 `⚠️ CONTEXT CRITICAL: 请求重启`
-  2. **必须先完成当前审计报告的 git push**
-  3. 然后停止所有操作，等待重启
+- **Context < 10%**：
+  1. 若正在审计：先完成当前判决并 git push
+  2. 写入 `shared/logs/CONTEXT_LOW_critic.md`（附时间戳）
+  3. `git add && git commit -m "critic: CONTEXT_LOW" && git push`
+  4. 优雅退出，等待人类重启
+- **每轮结束必须 git push**——确保判决不丢失
 
 ## 写入边界
 

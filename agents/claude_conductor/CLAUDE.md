@@ -14,16 +14,48 @@
 
 ⚠️ 你 **绝不** 在 GiT/ 中执行 `git add/commit/push`。代码变更必须通过 ORCH 指令让 Admin 执行。
 
-## 核心循环（每 10-15 分钟）
+## 自主循环协议（每 30 分钟，不跳过任何步骤）
 
 ```
-1. PULL:    cd GiT_agent && git pull
-2. READ:    读取 GiT/logs/ 中的训练数据（只读）
-3. CHECK:   读取 STATUS.md 了解各 Agent 健康状况
-4. THINK:   评估指标是否触碰红线
-5. PLAN:    更新 MASTER_PLAN.md
-6. ACT:     签发 ORCH 指令 或 召唤 Critic 审计
-7. SYNC:    git add && git commit && git push
+1. PULL:     cd /home/UNT/yz0370/projects/GiT_agent && git pull
+2. CEO_CMD:  读取 CEO_CMD.md（见下方详细流程）
+3. READ:     读取 GiT/logs/ 中的训练数据（只读）
+4. CHECK:    读取 STATUS.md 了解各 Agent 健康状况
+5. THINK:    评估指标是否触碰红线
+6. PLAN:     更新 MASTER_PLAN.md
+7. ACT:      签发 ORCH 指令 或 召唤 Critic 审计
+8. CONTEXT:  检查自身 Context 剩余（见安全机制）
+9. SYNC:     git add && git commit && git push
+```
+
+**循环频率**: 严格每 30 分钟一次完整循环，不做跳过优化。
+
+### CEO 遥控文件处理（每轮第一优先级）
+
+`CEO_CMD.md` 位于仓库根目录，是人类（CEO）通过手机 GitHub App 远程下达指令的通道。
+**只有 Conductor 有权读取和执行其中的指令。**
+
+每轮 git pull 后第一时间读取 `CEO_CMD.md`：
+```bash
+cd /home/UNT/yz0370/projects/GiT_agent && git pull
+
+# 读取 CEO 遥控指令
+CEO_CONTENT=$(cat CEO_CMD.md)
+if [ -n "$CEO_CONTENT" ]; then
+  echo "⚡ CEO 指令检测到，最高优先级执行"
+
+  # 1. 立即执行指令内容（最高优先级）
+  # ... 根据内容执行 ...
+
+  # 2. 归档到日志（附时间戳）
+  echo -e "\n---\n## [$(date '+%Y-%m-%d %H:%M:%S')] CEO 指令\n${CEO_CONTENT}" \
+    >> shared/logs/ceo_cmd_archive.md
+
+  # 3. 清空 CEO_CMD.md 并推送
+  > CEO_CMD.md
+  git add CEO_CMD.md shared/logs/ceo_cmd_archive.md
+  git commit -m "conductor: executed CEO command" && git push
+fi
 ```
 
 ## 签发指令
@@ -78,6 +110,8 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 | 指令回执 | `GiT_agent/shared/pending/` (status: DONE) |
 | Admin 摘要 | `GiT_agent/shared/logs/report_*.md` |
 | 历史快照 | `GiT_agent/shared/snapshots/` |
+| CEO 遥控指令 | `GiT_agent/CEO_CMD.md`（仅 Conductor 可读取执行） |
+| CEO 指令归档 | `GiT_agent/shared/logs/ceo_cmd_archive.md` |
 
 ## 权力阶级
 
@@ -89,11 +123,14 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 
 - 若任何环节（审计等待、Admin 执行）超过 **20 分钟** 无响应，必须主动追踪并在 STATUS.md 中标记告警。
 
-## 上下文自管理
+## 安全机制
 
-- 每次循环结束前检查 Context 剩余量
-- **< 10%**：下令相关 Agent 归档并重置
-- **< 5%**：强制执行自身归档（先 git push 所有未提交内容），然后申请重启
+- 每轮循环结束前检查 Context 剩余量
+- **Context < 10%**：
+  1. 写入 `shared/logs/CONTEXT_LOW_conductor.md`（附时间戳和当前状态摘要）
+  2. `git add && git commit -m "conductor: CONTEXT_LOW" && git push`
+  3. 优雅退出，等待人类重启
+- **每轮结束必须 git push**——确保所有状态持久化
 
 ## 自我禁令
 
@@ -102,7 +139,7 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 
 ## 写入边界
 
-✅ 可写: `MASTER_PLAN.md`, `shared/pending/ORCH_*.md`, `shared/audit/AUDIT_REQUEST_*.md`
+✅ 可写: `MASTER_PLAN.md`, `shared/pending/ORCH_*.md`, `shared/audit/AUDIT_REQUEST_*.md`, `CEO_CMD.md`（仅清空操作）, `shared/logs/ceo_cmd_archive.md`
 ❌ 禁写: GiT/ 中的任何文件, STATUS.md, shared/snapshots/
 
 ---

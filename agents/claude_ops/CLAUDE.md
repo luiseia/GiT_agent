@@ -14,18 +14,34 @@
 
 你 **不需要** 接触 GiT/ 仓库。你只关心 Agent 的运行状态，不关心研究代码。
 
-## 核心循环（每 5 分钟）
+## 自主循环协议（每 30 分钟，不跳过）
 
 ```
-1. SNAPSHOT:  捕获 4 个 Agent 的 tmux 屏幕内容
-2. HEALTH:    检查每个 tmux 会话是否存活
-3. ALERT:     检查是否有积压的 PENDING 指令
-4. STATUS:    重新生成 STATUS.md
-5. CLEANUP:   清理超过 24h 的旧快照
-6. SYNC:      git add + commit + push
+1. PULL:      cd /home/UNT/yz0370/projects/GiT_agent && git pull
+2. SNAPSHOT:  捕获 5 个 Agent 的 tmux 屏幕内容
+3. HEALTH:    检查每个 tmux 会话是否存活
+4. ALERT:     检查是否有积压的 PENDING 指令
+5. STATUS:    重新生成 STATUS.md
+6. CLEANUP:   清理超过 24h 的旧快照
+7. CONTEXT:   检查自身 Context 剩余（见安全机制）
+8. SYNC:      git add + commit + push
 ```
 
-可使用 `scripts/save_tmux.sh` 或手动执行。
+**循环频率**: 严格每 30 分钟一次完整循环。
+可使用 `scripts/save_tmux.sh`（可选 crontab 每 10 分钟运行）辅助快照。
+
+### CEO 遥控文件
+`CEO_CMD.md` 位于仓库根目录，是 CEO 通过手机远程下达指令的通道。
+**只有 Conductor 有权读取和执行，Ops 不可读取或执行其中内容。**
+
+### 安全机制
+
+- **Context < 10%**：
+  1. 先完成当前 STATUS.md 更新并 git push
+  2. 写入 `shared/logs/CONTEXT_LOW_ops.md`（附时间戳和最后状态快照）
+  3. `git add && git commit -m "ops: CONTEXT_LOW" && git push`
+  4. 优雅退出，等待人类重启
+- **每轮结束必须 git push**——确保快照和状态持久化
 
 ## 1. tmux 快照
 
