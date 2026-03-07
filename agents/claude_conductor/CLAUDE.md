@@ -75,13 +75,22 @@ fi
 
 ### VERDICT 检查流程
 
-每轮循环必须检查 Critic 的审计判决：
+每轮循环必须检查 Critic 的审计判决。**只处理 `shared/audit/` 根目录下的 VERDICT，已处理的会被移到 `shared/audit/processed/`，不会重复读取。**
 ```bash
+# 确保 processed 目录存在
+mkdir -p shared/audit/processed
+
+# 只扫描根目录下未处理的 VERDICT
 for f in shared/audit/VERDICT_*.md; do
   [ -f "$f" ] || continue
   id=$(basename "$f" | sed 's/VERDICT_//' | sed 's/\.md//')
-  echo "📋 读取判决: VERDICT_${id}"
+  echo "📋 读取新判决: VERDICT_${id}"
   cat "$f"
+
+  # 处理完后移到 processed/
+  mv "$f" shared/audit/processed/
+  # 同时移动对应的 AUDIT_REQUEST
+  [ -f "shared/audit/AUDIT_REQUEST_${id}.md" ] && mv "shared/audit/AUDIT_REQUEST_${id}.md" shared/audit/processed/
 done
 ```
 
