@@ -1,17 +1,17 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 03:10 (循环 #33)
+> 最后更新: 2026-03-07 03:40 (循环 #34)
 
-## 当前阶段: P4 训练已启动! ORCH_005 验收通过, AABB+BUG-11 修复完成
+## 当前阶段: P4 训练中 (warmup), ORCH_006 Phase 2 准备就绪
 
-### P4 训练状态 — RUNNING
+### P4 训练状态 — RUNNING (warmup)
 - **PID**: 3929983
 - **GPU**: 0,2 (RTX A6000) | CEO 限制只用 0,2
 - **Config**: `plan_g_aabb_fix.py`
 - **起点**: P3@3000
-- **进度**: 前 50+ iter (warmup 阶段)
+- **进度**: iter ~120 / 4000 (~3%, warmup 阶段)
 - **ETA 完成**: ~06:20 (3月7日)
-- **首次 val**: P4@500
+- **首次 val**: P4@500 (~03:45)
 - **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_g_aabb_fix/`
 
 ### P4 Config 变化 (vs P3)
@@ -25,29 +25,34 @@
 | warmup | 500 linear | 500 linear | — |
 | milestones | [2500, 3500] | [2500, 3500] | — |
 
-### P4 早期信号 (前 50 iter)
-- Warmup 正常: LR 从 ~1e-6 爬升
-- loss_reg 偏高: 预期 (reg_loss_weight 1.5x 放大)
-- **梯度裁剪率 60%** (3/5 iter clipped) — 比 P3 的 0% 高, 原因:
-  - reg_loss_weight 提升放大 reg 梯度
-  - 旋转多边形标签分布变化
-  - 应在 warmup 完成后稳定
+### P4 早期信号
+- Warmup 正常: LR 从 ~1e-6 爬升至 1.2e-05
+- 前 50 iter: 60% clipping → **iter 80-120 已稳定** (grad_norm 3.4-7.9, 全部 unclipped)
+- loss_reg 偏高 (预期: reg_loss_weight 1.5x 放大)
 - 无 NaN/OOM, 显存 21.5GB/49.1GB per GPU
-
-### ORCH_005 验收: PASS
-| 任务 | 执行结果 | 判定 |
-|------|---------|------|
-| AABB→旋转多边形 | ConvexHull + cross-product, use_rotated_polygon 参数化 | **PASS** |
-| BUG-11 | classes=None + ValueError guard | **PASS** |
-| P4 训练 | PID 3929983, GPU 0,2, 前 50 iter 稳定 | **PASS** |
-
-**标签变化验证**: 45° 旋转车辆 AABB 分配 ~2x 多余 cell → 旋转多边形消除约 30-50% 假阳性标签
 
 ---
 
-### ORCH_006 — Phase 2: DINOv3 预提取 [DELIVERED, Admin 执行中]
-- 与 Phase 1 并行准备
-- **触发条件**: Phase 1 avg_P > 0.15 → 低优先级; avg_P < 0.12 → 立即集成
+### ORCH_006 — Phase 2: DINOv3 预提取 [PARTIAL — 脚本就绪, 等待触发]
+
+**Admin 报告摘要** (03:20):
+- **DINOv3 权重**: 已下载 (26 GB), `/mnt/SSD/yz0370/dinov3_weights/`
+- **模型架构**: ViT-7B, embed_dim=4096, depth=40, RoPE, `get_intermediate_layers()` API
+- **提取脚本**: `scripts/extract_dinov3_features.py` (已写好, 支持断点续传)
+- **存储**: Layer 16+20 = 24.2 GB (323 images), SSD 有 609 GB 空余
+- **预计时间**: ~16 分钟 (323 images × 3 sec/image)
+- **BLOCKER**: Python 3.8 不兼容 → 需新建 conda env (Python 3.10, ~30 min)
+- **GPU 约束**: DINOv3 需 ~14 GB, 无法与 P4 共存于 GPU 0,2; 需 GPU 1/3 或等 P4 结束
+
+**集成方案** (触发后执行):
+1. `vit_git.py`: `PreextractedFeatureEmbed` 类, `Linear(4096, 768)` 投影
+2. Dataset: image token → feature path 映射
+3. Config: `preextracted_feature_dir` 参数
+
+**触发条件** (CEO 指令 #6):
+- P4 首批 val 后 avg_P > 0.15 → Phase 2 低优先级
+- P4 首批 val 后 avg_P < 0.12 → 立即集成 DINOv3 特征
+- 0.12 ≤ avg_P ≤ 0.15 → Conductor 决策
 
 ---
 
@@ -75,18 +80,18 @@
 - [x] BUG-2 → FIXED
 - [x] BUG-8 修复 → ORCH_004 完成
 - [x] BUG-10 修复 → ORCH_004 完成
-- [x] BUG-11 修复 → **ORCH_005 完成!**
+- [x] BUG-11 修复 → ORCH_005 完成
 
 ### 架构/标签优化 (P4)
-- [x] **AABB → 旋转多边形** → **ORCH_005 完成!**
-- [ ] **DINOv3 离线预提取** → ORCH_006 进行中
+- [x] **AABB → 旋转多边形** → ORCH_005 完成
+- [~] **DINOv3 离线预提取** → ORCH_006 脚本就绪, Python blocker 有解, 等待触发
 - [ ] Score 区分度改进 (待评估)
 - [ ] BUG-14: Grid token 冗余
 - [ ] BUG-15: DINOv3 利用率
 - [ ] 新增层 12-17 加 global attention
 
 ### 未实现历史分析
-- [x] 分析 1: AABB → 旋转多边形 → **ORCH_005 实现!**
+- [x] 分析 1: AABB → 旋转多边形 → ORCH_005 实现
 - [ ] 分析 2: 2D-3D 视觉对齐
 - [ ] 分析 4: Token 合并
 - [x] 分析 3: Center/Around
@@ -110,25 +115,26 @@
 | ID | 目标 | 状态 |
 |----|------|------|
 | **ORCH_005** | P4 Phase 1 | **COMPLETED — 验收通过** |
-| **ORCH_006** | P4 Phase 2: DINOv3 预提取 | **DELIVERED (进行中)** |
+| **ORCH_006** | P4 Phase 2: DINOv3 预提取 | **PARTIAL — 脚本就绪, 等待触发** |
 
-## 下一步计划 (循环 #34+)
-1. **P4@500 (~04:00?)**: 首次 val — 关键! AABB 修复效果验证
+## 下一步计划 (循环 #35+)
+1. **P4@500 (~03:45)**: 首次 val — 关键! AABB 修复效果验证
    - avg_P 是否显著提升? (P3@3000 基线 0.147)
    - car_P 是否改善? (AABB 修复最直接影响)
-   - 梯度裁剪率是否稳定?
-2. **ORCH_006 执行进度**: DINOv3 预提取是否完成
-3. **Phase 2 触发判断**: P4 首批 val 后根据 avg_P 决定
+   - Phase 2 触发判断 (avg_P vs 0.12/0.15 阈值)
+2. **ORCH_006 blocker**: 如触发 Phase 2, 需 CEO 批准 GPU 1/3 或等 P4 结束
+3. **P4 全程监控**: @500→@1000→...→@4000
 
 ## 历史决策
-### [2026-03-07 03:10] 循环 #33 — ORCH_005 验收通过, P4 训练已启动
-- ORCH_005 全部 3 项任务 PASS: AABB 修复 + BUG-11 + P4 训练
-- P4 PID 3929983, GPU 0,2, 前 50 iter 稳定
-- 梯度裁剪率 60% (高于 P3), 预计 warmup 后稳定
-- BUG-11 正式 FIXED
-- ORCH_006 DELIVERED, Admin 并行执行中
-- 决策: 继续监控, 等待 P4@500
+### [2026-03-07 03:40] 循环 #34 — ORCH_006 报告处理
+- ORCH_006 PARTIAL: 提取脚本就绪, Python 3.8 blocker 有清晰解决方案 (新 conda env)
+- GPU 约束: DINOv3 14GB 无法与 P4 共存, 需 GPU 1/3 或等 P4 完成
+- 存储: 2 层 24.2 GB, SSD 609 GB 充足
+- 预计提取仅需 ~16 分钟
+- P4 仍在 warmup (~120 iter), 无新 val 数据
+- 决策: 继续等待 P4@500, ORCH_006 准备充分
 
+### [2026-03-07 03:10] 循环 #33 — ORCH_005 验收通过, P4 训练已启动
 ### [2026-03-07 02:55] 循环 #32 — P4 批准, ORCH_005/006 签发
 ### [2026-03-07 02:40] 循环 #32 — VERDICT_P3_FINAL 处理
 ### [2026-03-07 01:50] 循环 #31 — P3 完成
