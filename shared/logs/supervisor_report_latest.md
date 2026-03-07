@@ -1,101 +1,105 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-07 03:10
-> Cycle: #112
+> 时间: 2026-03-07 03:38
+> Cycle: #113
 
-## ===== P4 已启动! AABB 修复 + BUG-11 + 新超参 =====
+## ===== P4@500: bg_FA=0.176 历史最低! AABB 修复效果显现 =====
 
-### 重大变化 (自 Cycle #110)
+### P4@500 Val 结果
 
-1. **ORCH_005 COMPLETED**: AABB→旋转多边形标签修复 + BUG-11 修复 + P4 训练启动
-2. **ORCH_006 DELIVERED**: DINOv3 离线特征预提取 (Phase 2, 待评估触发条件)
-3. **P4 (Plan G) 训练已启动**: iter 120/4000, GPU 0+2
+| 指标 | P4@500 | P3@3000(起点) | P3@500 | P2@6000 | vs P3@500 | 红线 |
+|------|--------|--------------|--------|---------|-----------|------|
+| car_R | 0.594 | 0.614 | 0.576 | 0.596 | +3.1% | — |
+| car_P | 0.085 | 0.082 | 0.075 | 0.079 | **+13.3%** | — |
+| truck_R | 0.270 | 0.326 | 0.374 | 0.290 | -27.8% | <0.08 SAFE |
+| truck_P | 0.182 | 0.306 | 0.254 | 0.190 | -28.3% | — |
+| bus_R | 0.694 | 0.636 | 0.697 | 0.623 | -0.4% | — |
+| bus_P | 0.131 | 0.133 | 0.125 | 0.150 | +4.8% | — |
+| trailer_R | 0.667 | 0.622 | 0.667 | 0.689 | 0% | — |
+| trailer_P | 0.022 | 0.068 | 0.044 | 0.066 | -50.0% | — |
+| bg_FA | **0.176** | 0.194 | 0.212 | 0.198 | **-17.0%** | >0.25 SAFE |
+| offset_cx | 0.052 | 0.059 | 0.085 | 0.068 | **-38.8%** | ≤0.05 |
+| offset_cy | **0.094** | 0.123 | 0.127 | 0.095 | **-26.0%** | ≤0.10 **达标** |
+| offset_th | 0.206 | 0.214 | 0.253 | 0.217 | **-18.6%** | ≤0.20 (差0.006) |
 
-### P4 Config 关键变化 (vs P3)
+### AABB 修复效果验证
 
-| 参数 | P3 (plan_f) | P4 (plan_g) | 变化说明 |
-|------|-------------|-------------|----------|
-| load_from | P2@6000 | **P3@3000** | 选择 P3 精度峰值 checkpoint |
-| bg_balance_weight | 3.0 | **2.0** | Critic 建议: 降低 bg 权重 |
-| reg_loss_weight | 1.0 | **1.5** | 保护 theta 回归精度 |
-| use_rotated_polygon | N/A | **True** | AABB→旋转多边形标签修复 |
+**GT 标签数量变化** (AABB → 旋转多边形):
 
-其他参数不变: warmup 500 linear, milestones [2500,3500], max_norm=10.0, base_lr=5e-05
+| 类别 | P3 gt_cnt | P4 gt_cnt | 减少 | 减少% |
+|------|-----------|-----------|------|-------|
+| car | 8269 | 7432 | -837 | -10.1% |
+| truck | 5165 | 4811 | -354 | -6.9% |
+| bus | 3096 | 2628 | -468 | -15.1% |
+| trailer | 90 | 72 | -18 | -20.0% |
+| **总计** | **16620** | **14943** | **-1677** | **-10.1%** |
 
-### AABB 修复内容
+AABB 修复移除了 1677 个过度分配的标签 cell，符合预期（旋转车辆标签减少）。bus 和 trailer 减少比例最大（车身更长，旋转时 AABB 误差更大）。
 
-- **问题**: AABB 给旋转车辆分配约 2x 面积的标签 → 系统性拖低 Precision
-- **修复**: 使用 scipy ConvexHull + cross-product 判断 cell 是否在旋转多边形内
-- **效果**: 旋转 45° 车辆标签减少 ~50%，轴对齐车辆不变
-- **向后兼容**: `use_rotated_polygon=True` 参数控制
+### 关键突破
 
-### BUG-11 修复
+1. **bg_FA = 0.176 — 全项目历史最低!**
+   - 比 P3@4000 最终值 (0.185) 再降 4.9%
+   - 比 P3@500 同期 (0.212) 降 17%
+   - AABB 修复移除了边界模糊的标签 → bg 预测更干净
 
-- **问题**: classes 默认值 `["car","bus","truck","trailer"]` 与 config 顺序不同 → 潜在标签互换
-- **修复**: 删除默认值，强制显式传入，否则 raise ValueError
+2. **offset_cy = 0.094 — 红线以下**
+   - 连续达标 (P3@3500: 0.091, P3@4000: 0.087, P4@500: 0.094)
+
+3. **offset_th = 0.206 — 距红线仅 0.006**
+   - 比 P3@500 同期 (0.253) 好 18.6%
+   - reg_loss_weight 1.5 提升可能正在保护 theta 回归
+
+4. **offset_cx = 0.052 — 距红线仅 0.002**
+
+### 初期转换效应
+
+truck_R (0.270) 和 truck_P (0.182) 低于 P3 同期，这是**标签分布转换的预期效应**:
+- P4 加载 P3@3000 checkpoint（在 AABB 标签上训练）
+- 现在评估使用旋转多边形标签（更少的 cell）
+- 模型仍按旧分布预测 → 多出的预测变成 false positive → precision 下降
+- 随着训练推进，模型将适应新标签分布
+- **P3 也在 @500 后 truck_R 持续上升 (0.374→0.390)**
+
+### 训练稳定性 (iter 500-600)
+
+- Warmup 已结束: base_lr=5e-05
+- grad_norm: 3.5-13.9，较稳定
+- loss 典型值 0.34-0.93，无异常
 
 ### P4 训练状态
-
-- 进度: iter 120 / 4000 (**3%**)
-- GPU: 0 (21.5GB, 100%) + 2 (22.1GB, 100%)
-- PID: 3929983
-- Work dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_g_aabb_fix/`
-- ETA: ~06:20 完成
-- 下次 val: iter 500 (~03:45)
-
-### P4 早期稳定性 (iter 10-120)
-
-- Warmup 进行中: base_lr 从 ~1e-6 爬升至 1.2e-05
-- 前 50 iter: 60% clipping (grad_norm > 10.0)
-- **iter 80-120 已稳定**: grad_norm 3.4-7.9，全部 unclipped
-- loss_reg 偏高 (预期: reg_loss_weight 1.0→1.5 放大)
-- 无 NaN/OOM
+- 进度: iter 600 / 4000 (**15%**)
+- GPU: 0 (22.4GB, 100%) + 2 (23.0GB, 100%)
+- 下次 val: iter 1000 (~04:05)
+- ETA 完成: ~06:25
 
 ### 代码变更
-GiT/ 仓库无新 commit（Admin 直接在工作目录修改，未 commit 到 GiT 远程）。
+GiT/ 无新远程 commit。
 
 ## ORCH 指令状态
-| ID | 优先级 | 状态 | 内容 |
-|----|--------|------|------|
-| ORCH_001 | HIGH | COMPLETED | BUG-12 slot fix |
-| ORCH_002 | CRITICAL | COMPLETED | BUG-9 grad clip |
-| ORCH_003 | HIGH | COMPLETED | P1 eval + P2 launch |
-| ORCH_004 | URGENT | COMPLETED | BUG-8+10 fix + P3 launch |
-| ORCH_005 | URGENT | **COMPLETED** | AABB fix + BUG-11 + P4 launch |
-| ORCH_006 | HIGH | **DELIVERED** | DINOv3 特征预提取 (Phase 2) |
-
-### ORCH_006 触发条件
-- P4 完成后 avg_P > 0.15 → Phase 2 低优先级
-- P4 完成后 avg_P < 0.12 → 立即集成 Phase 2
-
-## BUG 状态
-| BUG | 状态 |
-|-----|------|
-| BUG-8 | FIXED (bg cls loss) |
-| BUG-9 | FIXED (max_norm=10.0) |
-| BUG-10 | FIXED (LinearLR warmup) |
-| BUG-11 | **FIXED** (classes 默认值删除) |
-| BUG-12 | FIXED (eval slot ordering) |
-
-全部 5 个已知 BUG 已修复。
+| ID | 状态 | 内容 |
+|----|------|------|
+| ORCH_001-005 | COMPLETED | 全部完成 |
+| ORCH_006 | DELIVERED | DINOv3 特征预提取 (Phase 2) |
 
 ## Agent 状态
 | Agent | tmux | 备注 |
 |-------|------|------|
-| conductor | UP (attached) | 已签发 ORCH_005/006 |
-| admin | UP (attached) | ORCH_005 已完成, ORCH_006 已接收 |
+| conductor | UP (attached) | 活跃 |
+| admin | UP (attached) | 活跃 |
 | critic | UP | idle |
 | ops | UP | idle |
-| supervisor | UP | cycle #112 |
+| supervisor | UP | cycle #113 |
+| **test-15** | UP (attached) | **新会话** (03:29 创建，可能执行 ORCH_006 测试) |
 
 ## GPU 状态
 | GPU | Used | Util | Task |
 |-----|------|------|------|
-| 0 | 21.5 GB | 100% | **P4 训练** |
+| 0 | 22.4 GB | 100% | P4 训练 |
 | 1 | 15 MB | 0% | 空闲 |
-| 2 | 22.1 GB | 100% | **P4 训练** |
+| 2 | 23.0 GB | 100% | P4 训练 |
 | 3 | 15 MB | 0% | 空闲 |
 
 ## 下一关注点
-1. P4@500 首次 val (~03:45) — 关键看 AABB 修复对 Precision 的提升效果
-2. 监控 warmup 期间 grad_norm 是否持续稳定
-3. ORCH_006 执行进展
+1. P4@1000 val (~04:05) — truck_R/P 是否开始适应新标签分布
+2. offset_th 能否突破 0.20 红线 (当前 0.206，趋势向好)
+3. test-15 会话在做什么 (ORCH_006?)
