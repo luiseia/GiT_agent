@@ -1,46 +1,46 @@
 # Ops 休眠快照
-> 时间: 2026-03-07 00:10:08
+> 时间: 2026-03-07 05:40:01
 
 ## 触发原因
-- 用量超过 80% (91%)
-- 用量: 91%
-- 刷新信息: Resets 1am (America/Chicago)
-- 预计恢复: 2026-03-07 01:05:00
-- 休眠秒数: 3292
+- agent-conductor 触发限流 | agent-supervisor 触发限流 | agent-admin 触发限流
+- 用量: 未知%
+- 刷新信息: 未知
+- 预计恢复: 2026-03-07 06:40:01
+- 休眠秒数: 3600
 
 ## 各 Agent tmux 最后状态
 
 ### agent-conductor
 ```
-  利用率极低)
-  - BUG-8/10 在 Critic 审计时标为 UNPATCHED, 但实际已通过 ORCH_004 修复验证 —
-  已对照校正
-  - 架构优化方案 A (多层 DINOv3) 投入产出比最高, 纳入 P4 规划
-  - BUG-11 (默认类别顺序) 待 P3 后修复
 
-  3. CEO 指令 #5
+✻ Churned for 3m 8s
 
-  - 已建立持久 "架构审计待办" 追踪区域, 不随循环删除
-  - 已归档并清空 CEO_CMD.md
+❯ 请执行下一轮自主循环：git pull → CEO_CMD.md → 读
+  shared/logs/supervisor_report_latest.md → STATUS.md → 检查 VERDICT → 检查
+  ORCH 回执 → 决策 → 更新 MASTER_PLAN.md → git push
+  ⎿  You've hit your limit · resets 6am (America/Chicago)
 
-  决策: HOLD — LR decay @2500 仅剩 500 iter, 将是关键转折点.
+❯ /rate-limit-options
 
-✻ Worked for 2m 35s
+───────────────────────────────────────────────────────────────────────────────────
+  What do you want to do?
 
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ 
-──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle)
+  ❯ 1. Stop and wait for limit to reset
+    2. Switch to extra usage
+    3. Upgrade your plan
+
+  Enter to confirm · Esc to cancel
+
 
 ```
 
 ### agent-critic
 ```
-
-──────────────────────────────────────────────────────────────── ▪▪▪ High /model ─
+──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
 ❯ 
 ──────────────────────────────────────────────────────────────────────────────────
   ⏵⏵ bypass permissions on (shift+tab to cycle)
+
 
 
 
@@ -60,54 +60,55 @@
 
 ### agent-supervisor
 ```
-  │ bg_FA     │ 0.216        │ 0.199 │ -8% 回到安全  │
-  ├───────────┼──────────────┼───────┼───────────────┤
-  │ offset_cx │ 0.071        │ 0.052 │ -27% 逼近红线 │
-  ├───────────┼──────────────┼───────┼───────────────┤
-  │ offset_th │ 0.191 (突破) │ 0.215 │ 丢失突破      │
-  └───────────┴──────────────┴───────┴───────────────┘
 
-  核心判断: LR decay 消除了高 LR 振荡，truck/bus 混淆解除，精度全面提升。offset_th
-   的 @2000 突破值 (0.191) 可能是振荡期的偶然低点，第二次 LR decay (@3500)
-  有望再次逼近。
+✻ Churned for 1m 43s
 
-  下一关键节点: iter 3000 val (~00:25)，第二次 LR decay 在 iter 3500。
+❯ 请执行下一轮自主循环：git pull 两个仓库 → 读 GiT/logs/ 训练日志和 eval 结果
+   → 写 shared/logs/supervisor_report_latest.md 精简摘要 → 检查指令投递状态 →
+   深度监控 → git push
+  ⎿  You've hit your limit · resets 6am (America/Chicago)
 
-✻ Baked for 4m 36s
+❯ /rate-limit-options
 
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ 
 ──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle)
+  What do you want to do?
+
+  ❯ 1. Stop and wait for limit to reset
+    2. Switch to extra usage
+    3. Upgrade your plan
+
+  Enter to confirm · Esc to cancel
+
 
 ```
 
 ### agent-admin
 ```
-● 无待执行的 ORCH 指令。
+  └───────────┴──────────────────────────────────────────────┘
+
+✻ Sautéed for 11m 29s
 
 ❯ 请执行下一轮检查：git pull → 检查 shared/pending/ 是否有 DELIVERED 状态的
   ORCH 指令，有则执行，无则回复无待执行
+  ⎿  You've hit your limit · resets 6am (America/Chicago)
 
-● Bash(cd /home/UNT/yz0370/projects/GiT_agent && git pull 2>&1)
-  ⎿  Already up to date.
-  ⎿  Shell cwd was reset to /home/UNT/yz0370/projects/GiT
+❯ /rate-limit-options
 
-● Searched for 1 pattern (ctrl+o to expand)
+───────────────────────────────────────────────────────────────────────────────────
+  What do you want to do?
 
-● 无待执行的 ORCH 指令。
+  ❯ 1. Stop and wait for limit to reset
+    2. Switch to extra usage
+    3. Upgrade your plan
 
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ 
-──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle)
-
+  Enter to confirm · Esc to cancel
 
 
 ```
 
 ### agent-ops
 ```
+      137 +        echo "| sync_loop | ❌ 未运行 | - |"
       138      fi
       139
       140      # usage_watchdog crontab
@@ -119,13 +120,12 @@
      To https://github.com/luiseia/GiT_agent.git
         20cab1d..f2b9bb2  master -> master
 
-● 已修复，push f2b9bb2。sync_loop 现在用 pgrep -f sync_loop.sh
-  检测进程存活，显示 PID + 运行时长，与 all_loops.sh 格式一致。
+● 已修复，push f2b9bb2。sync_loop 现在用 pgrep -f sync_loop.sh 检测进程存活，显示
+  PID + 运行时长，与 all_loops.sh 格式一致。
 
-───────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
 ❯ 
-───────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────
   ⏵⏵ bypass permissions on (shift+tab to cycle)
-
 
 ```
