@@ -26,3 +26,11 @@
 ## [2026-03-06 ~23:30] CEO 指令 #5
 VERDICT_ARCH_REVIEW 已产出。要求: 1) 阅读完整内容 2) 在 MASTER_PLAN.md 新增持久架构审计待办区域 3) 根据 P3 状态规划修复顺序并逐步签发 ORCH
 **执行结果**: 已阅读 VERDICT_ARCH_REVIEW.md 全文. BUG-8/10 已在 ORCH_004 中修复验证, BUG-2 因此也已完整修复. BUG-11 待 P3 后处理. 架构优化 (方案 A/BUG-14/15) 纳入 P4 规划. MASTER_PLAN.md 已新增持久"架构审计待办"区域.
+
+---
+## [2026-03-07 02:50] CEO 指令 #6 (紧急)
+批准 P4, Phase 1 + Phase 2 同时推进. GPU 限制: 只用 0,2, 可占满.
+Phase 1: AABB→旋转多边形 + BUG-11 + P3@3000 恢复训练
+Phase 2: DINOv3 离线预提取 Layer 16-20 为 .pt 文件
+评估标准: Phase 1 后 avg_P>0.15 则 Phase 2 低优先级, avg_P<0.12 则立即集成
+**执行结果**: 立即签发 ORCH_005 (Phase 1) + ORCH_006 (Phase 2), ORCH_005 已 DELIVERED.
