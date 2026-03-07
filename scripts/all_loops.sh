@@ -6,10 +6,12 @@
 #
 # 功能:
 # - flock 防多实例
-# - 发送前检测 Agent 是否空闲（bypass permissions 匹配）
+# - 发送前检测 Agent 是否空闲（esc to interrupt / bypass permissions）
 # - 不空闲则跳过本轮，避免打断正在工作的 Agent
 # - 自动重启退出的 Claude Code
 # - 自动重启挂掉的 sync_loop.sh
+# - 自动关闭 rate limit 弹窗
+# - 正确的启动顺序：Supervisor → 等待完成 → Conductor
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
@@ -46,6 +48,18 @@ is_idle() {
     return 1  # 无法判断，视为忙碌
 }
 
+# ─── 检测并关闭 rate limit 弹窗 ──────────────────────────
+dismiss_rate_limit() {
+    local session="$1"
+    local screen
+    screen=$(tmux capture-pane -t "$session" -p | tail -10)
+    if echo "$screen" | grep -q "Stop and wait for limit to reset"; then
+        tmux send-keys -t "$session" Escape
+        sleep 2
+        log "⚠️ ${session}: 检测到 rate limit 弹窗，已发送 Escape 关闭"
+    fi
+}
+
 # ─── 检测 Claude Code 是否还在运行 ────────────────────────
 is_claude_alive() {
     local session="$1"
@@ -54,7 +68,7 @@ is_claude_alive() {
     fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -10)
-    if echo "$last_lines" | grep -qE 'bypass permissions|❯|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked|Baked|Moonwalking|Flummoxing'; then
+    if echo "$last_lines" | grep -qE 'bypass permissions|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked|Baked|Moonwalking|Flummoxing|esc to interrupt'; then
         return 0
     fi
     return 1
@@ -65,7 +79,14 @@ log "all_loops.sh 启动 (PID $$)"
 while true; do
     log "=== 发送 30 分钟循环指令 ==="
 
-    # ─── 检查 sync_loop.sh 是否存活 ──────────────
+    # ─── 1. 检查并关闭所有 rate limit 弹窗 ───────
+    for s in agent-conductor agent-supervisor agent-admin agent-critic agent-ops; do
+        if tmux has-session -t "$s" 2>/dev/null; then
+            dismiss_rate_limit "$s"
+        fi
+    done
+
+    # ─── 2. 检查 sync_loop.sh 是否存活 ──────────
     if ! pgrep -f "sync_loop.sh" > /dev/null; then
         log "⚠️ sync_loop 已挂，正在重启..."
         rm -f /tmp/sync_loop.lock
@@ -73,7 +94,50 @@ while true; do
         log "✅ sync_loop 已重启 (PID $!)"
     fi
 
-    # ─── agent-conductor ──────────────────────────
+    # ─── 3. agent-supervisor（最先启动，产出摘要）──
+    SUPERVISOR_SENT=0
+    if tmux has-session -t agent-supervisor 2>/dev/null; then
+        if ! is_claude_alive agent-supervisor; then
+            log "⚠️ supervisor: Claude Code 已退出，正在重启..."
+            tmux send-keys -t agent-supervisor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+            sleep 15
+            tmux send-keys -t agent-supervisor "请阅读 agents/claude_supervisor/CLAUDE.md 并开始自主循环" Enter
+            log "→ supervisor: 已重启"
+            SUPERVISOR_SENT=1
+        elif is_idle agent-supervisor; then
+            tmux send-keys -t agent-supervisor \
+                "请执行下一轮自主循环：git pull 两个仓库 → 读 GiT/logs/ 训练日志和 eval 结果 → 写 shared/logs/supervisor_report_latest.md 精简摘要 → 检查指令投递状态 → 深度监控 → git push" Enter
+            log "→ supervisor: 指令已发送"
+            SUPERVISOR_SENT=1
+        else
+            log "→ supervisor: 正在忙碌，跳过本轮"
+        fi
+    else
+        log "⚠️ supervisor: 会话不存在"
+    fi
+
+    # ─── 4. 等待 Supervisor 完成（最多 10 分钟）──
+    if [ "$SUPERVISOR_SENT" = "1" ]; then
+        log "→ supervisor: 等待完成..."
+        for wait in $(seq 1 10); do
+            sleep 60
+            if is_idle agent-supervisor; then
+                log "→ supervisor: 已完成（等待 ${wait} 分钟）"
+                break
+            fi
+            if [ "$wait" = "10" ]; then
+                log "⚠️ supervisor: 等待超时（10 分钟），继续执行"
+            else
+                log "→ supervisor: 仍在工作... ${wait}/10 分钟"
+            fi
+        done
+    fi
+
+    # ─── 5. agent-ops: 执行快照 ──────────────────
+    log "→ ops: 执行 save_tmux.sh"
+    bash "${AGENT_DIR}/scripts/save_tmux.sh"
+
+    # ─── 6. agent-conductor（读到最新 Supervisor 摘要后再决策）
     if tmux has-session -t agent-conductor 2>/dev/null; then
         if ! is_claude_alive agent-conductor; then
             log "⚠️ conductor: Claude Code 已退出，正在重启..."
@@ -92,33 +156,9 @@ while true; do
         log "⚠️ conductor: 会话不存在"
     fi
 
-    # ─── agent-ops: 不给自己发消息，直接执行快照 ──
-    log "→ ops: 执行 save_tmux.sh"
-    bash "${AGENT_DIR}/scripts/save_tmux.sh"
-
-    # ─── agent-supervisor ─────────────────────────
-    if tmux has-session -t agent-supervisor 2>/dev/null; then
-        if ! is_claude_alive agent-supervisor; then
-            log "⚠️ supervisor: Claude Code 已退出，正在重启..."
-            tmux send-keys -t agent-supervisor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
-            sleep 15
-            tmux send-keys -t agent-supervisor "请阅读 agents/claude_supervisor/CLAUDE.md 并开始自主循环" Enter
-            log "→ supervisor: 已重启"
-        elif is_idle agent-supervisor; then
-            tmux send-keys -t agent-supervisor \
-                "请执行下一轮自主循环：git pull 两个仓库 → 读 GiT/logs/ 训练日志和 eval 结果 → 写 shared/logs/supervisor_report_latest.md 精简摘要 → 检查指令投递状态 → 深度监控 → git push" Enter
-            log "→ supervisor: 指令已发送"
-        else
-            log "→ supervisor: 正在忙碌，跳过本轮"
-        fi
-    else
-        log "⚠️ supervisor: 会话不存在"
-    fi
-
-    # ─── agent-critic ─────────────────────────────
+    # ─── 7. agent-critic ─────────────────────────
     if tmux has-session -t agent-critic 2>/dev/null; then
         if ! is_claude_alive agent-critic; then
-            # 只在有待处理的 AUDIT_REQUEST 时才重启 Critic
             PENDING_AUDITS=$(ls ${AGENT_DIR}/shared/audit/AUDIT_REQUEST_*.md 2>/dev/null | while read f; do
                 id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
                 [ ! -f "${AGENT_DIR}/shared/audit/VERDICT_${id}.md" ] && echo "$f"
@@ -143,7 +183,7 @@ while true; do
         log "⚠️ critic: 会话不存在"
     fi
 
-    # ─── agent-admin ──────────────────────────────
+    # ─── 8. agent-admin ──────────────────────────
     if tmux has-session -t agent-admin 2>/dev/null; then
         if ! is_claude_alive agent-admin; then
             log "⚠️ admin: Claude Code 已退出，正在重启..."
