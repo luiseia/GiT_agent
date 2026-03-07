@@ -2003,3 +2003,4 @@ baseline comparison" completed (exit code 0)
 [2026-03-07 16:13:02] watchdog: 休眠数据已 push
 [2026-03-07 16:13:02] watchdog: 已停止 all_loops.sh (PID 4153596)
 [2026-03-07 16:13:02] watchdog: 💤 开始休眠 3600 秒，预计 2026-03-07 17:10:01 恢复
+[2026-03-07 17:20:01] watchdog: 休眠中，跳过本轮检查
