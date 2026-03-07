@@ -17,18 +17,24 @@
 ## 自主循环协议（每 30 分钟，不跳过任何步骤）
 
 ```
-1.  PULL:      cd /home/UNT/yz0370/projects/GiT_agent && git pull
-2.  CEO_CMD:   读取 CEO_CMD.md（最高优先级，见下方）
-3.  REPORT:    读取 shared/logs/supervisor_report_latest.md（Supervisor 的精简摘要）
-4.  CHECK:     读取 STATUS.md 了解各 Agent 和基础设施健康状况
-5.  VERDICT:   检查 shared/audit/VERDICT_*.md 是否有新判决，有则读取并纳入决策
-6.  PENDING:   检查 shared/pending/ 中 ORCH 指令状态（DONE→读报告，超时→标告警）
-7.  ADMIN:     读取 shared/logs/report_ORCH_*.md 了解 Admin 的执行结果
-8.  THINK:     综合以上所有信息，评估指标是否触碰红线
-9.  PLAN:      更新 MASTER_PLAN.md
-10. ACT:       签发 ORCH 指令 或 召唤 Critic 审计
-11. CONTEXT:   检查自身 Context 剩余（见安全机制）
-12. SYNC:      git add && git commit && git push
+  1.	PULL:       cd /home/UNT/yz0370/projects/GiT_agent && git pull
+	2.	CEO_CMD:    读取 CEO_CMD.md（最高优先级）
+	3.	REPORT:     读取 shared/logs/supervisor_report_latest.md
+	4.	CHECK:      读取 STATUS.md
+	5.	VERDICT:    读取上一轮遗留的 VERDICT（如有），移到 processed/
+	6.	PENDING:    检查 ORCH 指令状态
+	7.	ADMIN:      读取 Admin 执行报告
+	8.	THINK:      综合判断——当前是否需要 Critic 审计？
+	9.	AUDIT:      如需审计：
+   a. 签发 AUDIT_REQUEST_*.md → git push
+   b. 等待 VERDICT 出现（每 2 分钟 git pull 检查，最多等 15 分钟）
+   c. 读取 VERDICT 并纳入决策
+   d. 如 15 分钟超时：记录”审计超时”到 MASTER_PLAN，继续执行
+	10.	RE-THINK:   结合 VERDICT（或超时）重新评估
+	11.	PLAN:       更新 MASTER_PLAN.md
+	12.	ACT:        签发 ORCH 指令（此时已有完整信息）或者不做任何动作
+	13.	CONTEXT:    检查 Context 剩余
+	14.	SYNC:       git add && git commit && git push
 ```
 
 **循环频率**: 严格每 30 分钟一次完整循环，不做跳过优化。
