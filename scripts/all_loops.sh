@@ -1,17 +1,18 @@
 #!/bin/bash
 # =============================================================
 # all_loops.sh — 所有 Agent 的 30 分钟闹钟
-# 每 1800 秒给每个 Agent 的 tmux 会话发送一条循环指令
 # 用法: nohup bash scripts/all_loops.sh &
 #
-# 功能:
-# - flock 防多实例
-# - 发送前检测 Agent 是否空闲（esc to interrupt / bypass permissions）
-# - 不空闲则跳过本轮，避免打断正在工作的 Agent
-# - 自动重启退出的 Claude Code
-# - 自动重启挂掉的 sync_loop.sh
-# - 自动关闭 rate limit 弹窗
-# - 正确的启动顺序：Supervisor → 等待完成 → Conductor
+# 执行顺序:
+# 1. rate limit 弹窗检查
+# 2. sync_loop 存活检查
+# 3. Supervisor → 等待完成
+# 4. Ops (save_tmux)
+# 5. Conductor Phase 1（信息收集 + 审计决策）→ 等待完成
+# 6. 检查是否有 pending audit → 启动 Critic → 等待 VERDICT
+# 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）→ 等待完成
+# 8. Admin
+# 9. 动态等待补够 30 分钟
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
@@ -37,15 +38,13 @@ is_idle() {
     fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
-    # 有 "esc to interrupt" → 忙碌
     if echo "$last_lines" | grep -q 'esc to interrupt'; then
         return 1
     fi
-    # 有 "bypass permissions" → 空闲
     if echo "$last_lines" | grep -q 'bypass permissions'; then
         return 0
     fi
-    return 1  # 无法判断，视为忙碌
+    return 1
 }
 
 # ─── 检测并关闭 rate limit 弹窗 ──────────────────────────
@@ -74,10 +73,31 @@ is_claude_alive() {
     return 1
 }
 
+# ─── 等待 Agent 完成（通用函数）─────────────────────────
+wait_for_idle() {
+    local session="$1"
+    local max_minutes="$2"
+    local label="$3"
+    for wait in $(seq 1 "$max_minutes"); do
+        sleep 60
+        if is_idle "$session"; then
+            log "→ ${label}: 已完成（等待 ${wait} 分钟）"
+            return 0
+        fi
+        if [ "$wait" = "$max_minutes" ]; then
+            log "⚠️ ${label}: 等待超时（${max_minutes} 分钟），继续执行"
+            return 1
+        else
+            log "→ ${label}: 仍在工作... ${wait}/${max_minutes} 分钟"
+        fi
+    done
+}
+
 log "all_loops.sh 启动 (PID $$)"
 
 while true; do
-    log "=== 发送 30 分钟循环指令 ==="
+    LOOP_START=$(date +%s)
+    log "=== 新一轮循环开始 ==="
 
     # ─── 1. 检查并关闭所有 rate limit 弹窗 ───────
     for s in agent-conductor agent-supervisor agent-admin agent-critic agent-ops; do
@@ -94,7 +114,7 @@ while true; do
         log "✅ sync_loop 已重启 (PID $!)"
     fi
 
-    # ─── 3. agent-supervisor（最先启动，产出摘要）──
+    # ─── 3. Supervisor（最先启动，产出摘要）───────
     SUPERVISOR_SENT=0
     if tmux has-session -t agent-supervisor 2>/dev/null; then
         if ! is_claude_alive agent-supervisor; then
@@ -116,39 +136,31 @@ while true; do
         log "⚠️ supervisor: 会话不存在"
     fi
 
-    # ─── 4. 等待 Supervisor 完成（最多 10 分钟）──
+    # 等待 Supervisor 完成（最多 10 分钟）
     if [ "$SUPERVISOR_SENT" = "1" ]; then
-        log "→ supervisor: 等待完成..."
-        for wait in $(seq 1 10); do
-            sleep 60
-            if is_idle agent-supervisor; then
-                log "→ supervisor: 已完成（等待 ${wait} 分钟）"
-                break
-            fi
-            if [ "$wait" = "10" ]; then
-                log "⚠️ supervisor: 等待超时（10 分钟），继续执行"
-            else
-                log "→ supervisor: 仍在工作... ${wait}/10 分钟"
-            fi
-        done
+        wait_for_idle agent-supervisor 10 "supervisor"
     fi
 
-    # ─── 5. agent-ops: 执行快照 ──────────────────
+    # ─── 4. Ops: 执行快照 ────────────────────────
     log "→ ops: 执行 save_tmux.sh"
     bash "${AGENT_DIR}/scripts/save_tmux.sh"
 
-    # ─── 6. agent-conductor（读到最新 Supervisor 摘要后再决策）
+    # ─── 5. Conductor Phase 1（信息收集 + 审计决策）
+    CONDUCTOR_P1_SENT=0
     if tmux has-session -t agent-conductor 2>/dev/null; then
         if ! is_claude_alive agent-conductor; then
             log "⚠️ conductor: Claude Code 已退出，正在重启..."
             tmux send-keys -t agent-conductor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
             sleep 15
-            tmux send-keys -t agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并开始自主循环" Enter
+            tmux send-keys -t agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待 Phase 1 指令" Enter
             log "→ conductor: 已重启"
-        elif is_idle agent-conductor; then
+            sleep 10
+        fi
+        if is_idle agent-conductor || is_claude_alive agent-conductor; then
             tmux send-keys -t agent-conductor \
-                "请执行下一轮自主循环：git pull → CEO_CMD.md → 读 shared/logs/supervisor_report_latest.md → STATUS.md → 检查 VERDICT → 检查 ORCH 回执 → 决策 → 更新 MASTER_PLAN.md → git push" Enter
-            log "→ conductor: 指令已发送"
+                "执行 Phase 1：git pull → CEO_CMD.md → 读 shared/logs/supervisor_report_latest.md → STATUS.md → 检查 ORCH 状态 → 读 Admin 报告 → 综合判断是否需要审计 → 如需审计则签发 AUDIT_REQUEST 到 shared/audit/requests/ → git push" Enter
+            log "→ conductor Phase 1: 指令已发送"
+            CONDUCTOR_P1_SENT=1
         else
             log "→ conductor: 正在忙碌，跳过本轮"
         fi
@@ -156,34 +168,78 @@ while true; do
         log "⚠️ conductor: 会话不存在"
     fi
 
-    # ─── 7. agent-critic ─────────────────────────
-    if tmux has-session -t agent-critic 2>/dev/null; then
-        if ! is_claude_alive agent-critic; then
-            PENDING_AUDITS=$(ls ${AGENT_DIR}/shared/audit/AUDIT_REQUEST_*.md 2>/dev/null | while read f; do
-                id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
-                [ ! -f "${AGENT_DIR}/shared/audit/VERDICT_${id}.md" ] && echo "$f"
-            done)
-            if [ -n "$PENDING_AUDITS" ]; then
-                log "⚠️ critic: 已退出但有待审计，正在重启..."
-                tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
-                sleep 15
-                tmux send-keys -t agent-critic "请阅读 agents/claude_critic/CLAUDE.md 并开始自主循环" Enter
-                log "→ critic: 已重启"
-            else
-                log "→ critic: 已退出，无待审计，不重启"
-            fi
-        elif is_idle agent-critic; then
-            tmux send-keys -t agent-critic \
-                "请执行下一轮检查：git pull → 检查 shared/audit/ 是否有未处理的 AUDIT_REQUEST，有则审计，无则回复无待审计" Enter
-            log "→ critic: 指令已发送"
-        else
-            log "→ critic: 正在忙碌，跳过本轮"
-        fi
-    else
-        log "⚠️ critic: 会话不存在"
+    # 等待 Conductor Phase 1 完成（最多 10 分钟）
+    if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
+        wait_for_idle agent-conductor 10 "conductor Phase 1"
     fi
 
-    # ─── 8. agent-admin ──────────────────────────
+    # ─── 6. 检查是否有 pending audit → 启动 Critic ─
+    AUDIT_NEEDED=0
+    for f in "${AGENT_DIR}"/shared/audit/requests/AUDIT_REQUEST_*.md; do
+        [ -f "$f" ] || continue
+        id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
+        if [ ! -f "${AGENT_DIR}/shared/audit/pending/VERDICT_${id}.md" ]; then
+            AUDIT_NEEDED=1
+            log "🔔 发现待审计: ${id}"
+
+            if tmux has-session -t agent-critic 2>/dev/null; then
+                if ! is_claude_alive agent-critic; then
+                    log "⚠️ critic: Claude Code 已退出，正在重启..."
+                    tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+                    sleep 15
+                fi
+                tmux send-keys -t agent-critic \
+                    "请阅读 agents/claude_critic/CLAUDE.md，然后执行 shared/audit/requests/AUDIT_REQUEST_${id}.md 中的审计请求，将判决写入 shared/audit/pending/VERDICT_${id}.md 并 git push" Enter
+                log "→ critic: 审计指令已发送 (${id})"
+            else
+                log "⚠️ critic: 会话不存在，无法执行审计"
+            fi
+            break  # 一次只处理一个审计请求
+        fi
+    done
+
+    # 等待 Critic 完成审计（最多 15 分钟）
+    if [ "$AUDIT_NEEDED" = "1" ]; then
+        log "→ critic: 等待审计完成..."
+        VERDICT_FOUND=0
+        for wait in $(seq 1 15); do
+            sleep 60
+            # 检查 pending/ 里是否出现了 VERDICT
+            cd "$AGENT_DIR" && git pull --quiet 2>/dev/null
+            for f in "${AGENT_DIR}"/shared/audit/requests/AUDIT_REQUEST_*.md; do
+                [ -f "$f" ] || continue
+                id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
+                if [ -f "${AGENT_DIR}/shared/audit/pending/VERDICT_${id}.md" ]; then
+                    VERDICT_FOUND=1
+                    log "→ critic: VERDICT_${id} 已产出（等待 ${wait} 分钟）"
+                    break 2
+                fi
+            done
+            if [ "$wait" = "15" ]; then
+                log "⚠️ critic: 审计超时（15 分钟），继续执行"
+            else
+                log "→ critic: 仍在审计... ${wait}/15 分钟"
+            fi
+        done
+    fi
+
+    # ─── 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）
+    if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
+        if tmux has-session -t agent-conductor 2>/dev/null; then
+            # 等待 Conductor 空闲（可能还在处理 Phase 1 的尾巴）
+            if ! is_idle agent-conductor; then
+                wait_for_idle agent-conductor 5 "conductor 等待空闲"
+            fi
+            tmux send-keys -t agent-conductor \
+                "执行 Phase 2：git pull → 读取 shared/audit/pending/ 下所有 VERDICT 并纳入决策 → 将 VERDICT 和对应 AUDIT_REQUEST 移到 shared/audit/processed/ → 更新 MASTER_PLAN.md → 决定是否签发 ORCH → 检查 Context 剩余 → git push" Enter
+            log "→ conductor Phase 2: 指令已发送"
+
+            # 等待 Phase 2 完成（最多 10 分钟）
+            wait_for_idle agent-conductor 10 "conductor Phase 2"
+        fi
+    fi
+
+    # ─── 8. Admin ────────────────────────────────
     if tmux has-session -t agent-admin 2>/dev/null; then
         if ! is_claude_alive agent-admin; then
             log "⚠️ admin: Claude Code 已退出，正在重启..."
@@ -202,9 +258,18 @@ while true; do
         log "⚠️ admin: 会话不存在"
     fi
 
-    log "=== 循环指令发送完毕，等待 30 分钟 ==="
-    for i in $(seq 1 30); do
-        sleep 60
-        log "⏳ 等待中... ${i}/30 分钟"
-    done
+    # ─── 9. 动态等待补够 30 分钟 ─────────────────
+    LOOP_END=$(date +%s)
+    ELAPSED=$(( LOOP_END - LOOP_START ))
+    REMAINING=$(( 1800 - ELAPSED ))
+    if [ "$REMAINING" -gt 60 ]; then
+        REMAINING_MIN=$(( REMAINING / 60 ))
+        log "=== 循环耗时 $((ELAPSED/60)) 分钟，等待 ${REMAINING_MIN} 分钟补够 30 分钟 ==="
+        for i in $(seq 1 "$REMAINING_MIN"); do
+            sleep 60
+            log "⏳ 等待中... ${i}/${REMAINING_MIN} 分钟"
+        done
+    else
+        log "=== 循环耗时 $((ELAPSED/60)) 分钟，已超过 30 分钟，立即开始下一轮 ==="
+    fi
 done

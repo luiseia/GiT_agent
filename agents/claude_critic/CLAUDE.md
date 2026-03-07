@@ -14,11 +14,20 @@
 
 ⚠️ 你 **绝不** 在 GiT/ 中执行 `git add/commit/push`。你只读代码、写判决。
 
+## 审计目录结构
+
+```
+shared/audit/
+├── requests/    ← Conductor 签发的 AUDIT_REQUEST（你从这里读取）
+├── pending/     ← 你写入 VERDICT（等待 Conductor 读取）
+├── processed/   ← Conductor 读取后归档（你不碰这里）
+```
+
 ## 自主循环协议（每 30 分钟）
 
 ```
 1. PULL:     cd /home/UNT/yz0370/projects/GiT_agent && git pull
-2. CHECK:    扫描 shared/audit/AUDIT_REQUEST_*.md 是否有无对应 VERDICT 的请求
+2. CHECK:    扫描 shared/audit/requests/AUDIT_REQUEST_*.md 是否有无对应 VERDICT 的请求
 3. IF 有:    激活 Max Effort 审计流程（见下方）
 4. IF 无:    继续休眠，等待下一轮
 5. CONTEXT:  检查自身 Context 剩余（见安全机制）
@@ -34,9 +43,10 @@ cd /home/UNT/yz0370/projects/GiT_agent && git pull
 cd /home/UNT/yz0370/projects/GiT && git pull
 
 # 检查是否有未处理的审计请求
-for f in /home/UNT/yz0370/projects/GiT_agent/shared/audit/AUDIT_REQUEST_*.md; do
+for f in /home/UNT/yz0370/projects/GiT_agent/shared/audit/requests/AUDIT_REQUEST_*.md; do
+  [ -f "$f" ] || continue
   id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
-  [ ! -f "shared/audit/VERDICT_${id}.md" ] && echo "⚡ 待审计: $id"
+  [ ! -f "/home/UNT/yz0370/projects/GiT_agent/shared/audit/pending/VERDICT_${id}.md" ] && echo "⚡ 待审计: $id"
 done
 ```
 
@@ -48,9 +58,9 @@ done
 
 ```
 1. PULL:     两个仓库都 git pull
-2. READ:     读取 AUDIT_REQUEST 中的审计对象和关注点
+2. READ:     读取 shared/audit/requests/AUDIT_REQUEST_<ID>.md 中的审计对象和关注点
 3. ANALYZE:  深度审查 GiT/ 中的实际代码（不限于特定文件，应追踪完整调用链）
-4. VERDICT:  在 GiT_agent/ 中写入判决
+4. VERDICT:  写入判决到 shared/audit/pending/VERDICT_<ID>.md
 5. PUSH:     git commit + push（仅 GiT_agent）
 ```
 
@@ -59,7 +69,9 @@ done
 ```bash
 cd /home/UNT/yz0370/projects/GiT_agent
 
-cat > shared/audit/VERDICT_<ID>.md << 'EOF'
+mkdir -p shared/audit/pending
+
+cat > shared/audit/pending/VERDICT_<ID>.md << 'EOF'
 # 审计判决 — <ID>
 
 ## 结论: PROCEED / STOP / CONDITIONAL
@@ -79,7 +91,7 @@ cat > shared/audit/VERDICT_<ID>.md << 'EOF'
 <可选优化>
 EOF
 
-git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
+git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git push
 ```
 
 ## 性格硬约束
@@ -112,11 +124,11 @@ git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
 
 ## 写入边界
 
-✅ 可写: `GiT_agent/shared/audit/VERDICT_*.md`
-❌ 禁写: GiT/ 中任何文件, shared/pending/, MASTER_PLAN.md, STATUS.md
+✅ 可写: `GiT_agent/shared/audit/pending/VERDICT_*.md`
+❌ 禁写: GiT/ 中任何文件, shared/pending/, shared/audit/requests/, shared/audit/processed/, MASTER_PLAN.md, STATUS.md
 
 - 判决必须详尽（100+ 行），附具体代码引用
-- BUG 编号顺延（当前最新 BUG-12，下一个 BUG-13）
+- BUG 编号顺延（查看 MASTER_PLAN.md 获取最新 BUG 编号）
 
 ---
 
@@ -138,18 +150,6 @@ git add shared/audit/ && git commit -m "critic: verdict <ID>" && git push
 - 任何你认为可疑的代码
 
 **原则：审计请求定方向，但你可以且应该超出请求范围去挖掘潜在问题。Conductor 要求你审查 A 文件，如果你发现 B 文件也有问题，必须一并报告。**
-
-### 历史审计发现的关键 BUG
-| BUG | 严重性 | 状态 | 描述 |
-|-----|--------|------|------|
-| BUG-1 | 中 | FIXED | theta_fine 周期性损失错误 |
-| BUG-2 | 致命 | FIXED | Per-class 背景梯度压制 |
-| BUG-3 | 高 | FIXED | Score 传播链断裂 |
-| BUG-8 | 高 | UNPATCHED | cls loss 缺 bg_balance_weight |
-| **BUG-9** | **致命** | **UNPATCHED** | **100% 梯度裁剪** (clip_grad max_norm=0.5, 梯度实测 3.85-59.55) |
-| **BUG-10** | 高 | UNPATCHED | 优化器冷启动 (resume=False) |
-| BUG-11 | 中 | UNPATCHED | 默认类别顺序地雷 |
-| BUG-12 | 高 | URGENT | 评估 slot 排序不一致 |
 
 ## 宪法保护
 agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。

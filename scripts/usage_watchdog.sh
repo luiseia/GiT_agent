@@ -107,7 +107,7 @@ fi
 RATE_LIMIT_PATTERN="usage limit reached|rate limit exceeded|too many requests|Error 429|you've hit your"
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
-        PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -50)
+        PANE_OUTPUT=$(tmux capture-pane -t "$session" -p | tail -5)
         MATCH=$(echo "$PANE_OUTPUT" | grep -iE "$RATE_LIMIT_PATTERN" | head -3)
         if [ -n "$MATCH" ]; then
             log "🚨 ${session} 检测到限流: $(echo "$MATCH" | head -1)"
