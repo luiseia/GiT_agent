@@ -2000,3 +2000,6 @@ baseline comparison" completed (exit code 0)
 [2026-03-07 16:10:01] watchdog: → supervisor: 休眠保存指令已发送
 [2026-03-07 16:10:01] watchdog: → ops: hibernate_ops.md 已写入
 [2026-03-07 16:10:01] watchdog: 等待 180 秒让所有 Agent 完成保存...
+[2026-03-07 16:13:02] watchdog: 休眠数据已 push
+[2026-03-07 16:13:02] watchdog: 已停止 all_loops.sh (PID 4153596)
+[2026-03-07 16:13:02] watchdog: 💤 开始休眠 3600 秒，预计 2026-03-07 17:10:01 恢复
