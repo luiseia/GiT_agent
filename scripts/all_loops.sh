@@ -113,11 +113,20 @@ while true; do
     # ─── agent-critic ─────────────────────────────
     if tmux has-session -t agent-critic 2>/dev/null; then
         if ! is_claude_alive agent-critic; then
-            log "⚠️ critic: Claude Code 已退出，正在重启..."
-            tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
-            sleep 15
-            tmux send-keys -t agent-critic "请阅读 agents/claude_critic/CLAUDE.md 并开始自主循环" Enter
-            log "→ critic: 已重启"
+            # 只在有待处理的 AUDIT_REQUEST 时才重启 Critic
+            PENDING_AUDITS=$(ls ${AGENT_DIR}/shared/audit/AUDIT_REQUEST_*.md 2>/dev/null | while read f; do
+                id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
+                [ ! -f "${AGENT_DIR}/shared/audit/VERDICT_${id}.md" ] && echo "$f"
+            done)
+            if [ -n "$PENDING_AUDITS" ]; then
+                log "⚠️ critic: 已退出但有待审计，正在重启..."
+                tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+                sleep 15
+                tmux send-keys -t agent-critic "请阅读 agents/claude_critic/CLAUDE.md 并开始自主循环" Enter
+                log "→ critic: 已重启"
+            else
+                log "→ critic: 已退出，无待审计，不重启"
+            fi
         elif is_idle agent-critic; then
             tmux send-keys -t agent-critic \
                 "请执行下一轮检查：git pull → 检查 shared/audit/ 是否有未处理的 AUDIT_REQUEST，有则审计，无则回复无待审计" Enter
