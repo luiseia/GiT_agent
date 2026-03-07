@@ -37,15 +37,29 @@ while true; do
         fi
     done
 
-    # ─── 通知 Critic 有新审计请求 ──────────────────
+    # ─── 通知 Critic 有新审计请求（含自动重启）──────
     for f in "${AGENT_DIR}"/shared/audit/AUDIT_REQUEST_*.md; do
         [ -f "$f" ] || continue
         id=$(basename "$f" | sed 's/AUDIT_REQUEST_//' | sed 's/\.md//')
         if [ ! -f "${AGENT_DIR}/shared/audit/VERDICT_${id}.md" ]; then
             if tmux has-session -t agent-critic 2>/dev/null; then
-                tmux send-keys -t agent-critic \
-                    "cd ${AGENT_DIR} && git pull && echo '🔔 审计请求: ${id}'" Enter
-                log "🔔 通知 Critic: REQUEST_${id}"
+                # 检测 Critic 的 Claude Code 是否在运行
+                CRITIC_SCREEN=$(tmux capture-pane -t agent-critic -p | tail -10)
+                if echo "$CRITIC_SCREEN" | grep -qE 'bypass permissions|❯|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked|Baked|Moonwalking|Flummoxing'; then
+                    # Claude Code 在运行，发通知
+                    tmux send-keys -t agent-critic \
+                        "cd ${AGENT_DIR} && git pull && echo '🔔 审计请求: ${id}'" Enter
+                    log "🔔 通知 Critic: REQUEST_${id}"
+                else
+                    # Claude Code 已退出，重启并发送审计指令
+                    log "⚠️ Critic Claude Code 已退出，重启并发送审计指令: ${id}"
+                    tmux send-keys -t agent-critic \
+                        "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+                    sleep 15
+                    tmux send-keys -t agent-critic \
+                        "请阅读 agents/claude_critic/CLAUDE.md，然后执行 shared/audit/AUDIT_REQUEST_${id}.md 中的审计请求，将判决写入 shared/audit/VERDICT_${id}.md 并 git push" Enter
+                    log "→ Critic 已重启并发送审计指令: ${id}"
+                fi
             fi
         fi
     done

@@ -30,10 +30,15 @@ is_idle() {
     fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
-    if echo "$last_lines" | grep -qE 'bypass permissions|❯|^$'; then
+    # 有 "esc to interrupt" → 忙碌
+    if echo "$last_lines" | grep -q 'esc to interrupt'; then
+        return 1
+    fi
+    # 有 "bypass permissions" → 空闲
+    if echo "$last_lines" | grep -q 'bypass permissions'; then
         return 0
     fi
-    return 1
+    return 1  # 无法判断，视为忙碌
 }
 
 # ─── 检测 Claude Code 是否还在运行 ────────────────────────
