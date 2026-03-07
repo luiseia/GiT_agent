@@ -1,53 +1,49 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-07 17:24
-> Cycle: #119
+> 时间: 2026-03-07 17:27
+> Cycle: #120
 
-## ===== Critic 审计完成: P4 CONDITIONAL, Precision 需 DINOv3 突破 =====
+## ===== ORCH_008 已下达: P5 DINOv3 Layer 16 特征集成! =====
 
-### Critic 审计结果
+### 新指令
 
-**VERDICT_P4_FINAL: CONDITIONAL**
+**ORCH_008 — P5: DINOv3 中间层特征集成 + 训练**
+- 状态: **DELIVERED** (等待 Admin 执行)
+- 优先级: URGENT
+- 触发条件: avg_P=0.107 < 0.12 + Critic CONDITIONAL 判决
 
-核心判断: P4 的 AABB 修复正确有效 (Recall 全面提升)，但 avg_P=0.107 不升反降 (P3=0.122)。Precision 瓶颈已从"标签污染"转移为"模型分辨力不足"。**P5 必须集成 DINOv3 中间层特征。**
+### ORCH_008 核心内容
 
-### Critic 关键分析
+1. **PreextractedFeatureEmbed 实现**: 加载 `.pt` 特征 + Linear(4096→768) 投影
+2. **使用 Layer 16** (Critic: 平衡细节和语义)
+3. **从 P4@500 恢复** (Critic: 对旧分布适应最浅)
+4. **6000 iter** (新特征需更多训练), warmup 1000 步
+5. **BUG-16 评估**: 预提取特征与数据增强不兼容问题
 
-1. **AABB 修复因果性拆解**:
-   - AABB 修复 ~50% (主因): 标签更精确 → 预测更聚焦
-   - bg_balance_weight 降低 ~30%: 减少背景对前景的压制
-   - 起点更优 ~20%: P3@3000 > P2@6000
+### P5 Config 关键变化 (vs P4)
 
-2. **Precision 瓶颈根因**:
-   - DINOv3 Conv2d 层 (Layer 0) 只编码纹理/边缘，缺乏类别语义
-   - 模型无法区分"有 truck 的 cell"和"truck 附近的 cell"
-   - score_thr=0.0 + score 均值 0.97 → 无法过滤低质量预测
-
-3. **Precision 改善方向排名**:
-   - **#1 DINOv3 深层特征 (Layer 16-20)**: 提供类别语义信息
-   - **#2 Score 区分度**: score_thr 或 calibration
-   - **#3 继续 loss/config 调优**: 已触及天花板
-
-### 审计体系活动
-
-| 审计 | 判决 | 时间 |
-|------|------|------|
-| ARCH_REVIEW | — | 03-06 23:45 |
-| P3_FINAL | — | 03-07 02:13 |
-| **P4_FINAL** | **CONDITIONAL** | 03-07 16:57 |
-
-审计文件已迁移至新目录结构: `shared/audit/pending/` (verdicts) + `shared/audit/requests/`
+| 参数 | P4 | P5 | 原因 |
+|------|----|----|------|
+| load_from | P3@3000 | **P4@500** | 对旧分布适应最浅 |
+| 特征输入 | Conv2d (Layer 0) | **预提取 Layer 16** | Precision 突破 |
+| max_iters | 4000 | **6000** | 新特征需更多训练 |
+| warmup | 500 | **1000** | 特征分布差异大 |
+| milestones | [2500, 3500] | **[4000, 5500]** | 适配 6000 iter |
+| bg_balance_weight | 2.0 | **2.5** | bg_FA 控制 |
 
 ### 系统状态
-
 - 无活跃训练，4 卡 GPU 全空
-- P4 已完成，DINOv3 特征已就绪 (24.15 GB, 323 images)
-- avg_P=0.107 < 0.12 → **Phase 2 触发条件已满足**
+- Admin attached，预计即将开始执行 ORCH_008
+- DINOv3 特征就绪: `/mnt/SSD/GiT_Yihao/dinov3_features/` (24.15 GB)
 
 ### 代码变更
-GiT/ 无新远程 commit。
+无变化。
 
 ## ORCH 指令状态
-ORCH_001-005,007 COMPLETED，ORCH_006 DELIVERED。无新指令。
+| ID | 状态 | 内容 |
+|----|------|------|
+| ORCH_001-005,007 | COMPLETED | BUG修复 + P1-P4 + DINOv3提取 |
+| ORCH_006 | DELIVERED | DINOv3 预提取方案 (已由 007 执行) |
+| **ORCH_008** | **DELIVERED** | **P5: DINOv3 Layer 16 集成 + 训练** |
 
 ## Agent 状态
 全 5 agent tmux UP (全部 attached)。
@@ -57,7 +53,7 @@ ORCH_001-005,007 COMPLETED，ORCH_006 DELIVERED。无新指令。
 |-----|------|------|
 | 0-3 | 15-548 MB | 0% |
 
-## 待 Conductor 决策 (Critic 已背书)
-1. **立即集成 DINOv3 Layer 16/20 特征** → P5
-2. 修改 `vit_git.py`: 加载 `.pt` 特征 + Linear(4096→768) 投影层
-3. 可选: 调整 score_thr 或添加 score calibration
+## 下一关注点
+1. Admin 开始执行 ORCH_008 (代码修改 + P5 训练启动)
+2. BUG-16 (特征与数据增强兼容性) 评估结果
+3. P5 首次 val @500 将是 DINOv3 深层特征效果的首次验证
