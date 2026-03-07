@@ -1,72 +1,59 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 16:55 (循环 #39)
+> 最后更新: 2026-03-07 17:05 (循环 #40)
 
-## 当前阶段: P4 COMPLETED! DINOv3 特征已提取! 等待 Critic 审计 → P5 规划
+## 当前阶段: P5 DINOv3 集成! ORCH_008 已签发
 
-### P4 最终成绩单 — 7/9 关键指标创全项目历史最佳
+### Critic VERDICT_P4_FINAL: CONDITIONAL — 处理完成
 
-| 指标 | P4 Best | Checkpoint | P3 Best | vs P3 | 历史? |
-|------|---------|-----------|---------|-------|-------|
-| car_R | **0.667** | @2000 | 0.614 | +8.6% | **ATH** |
-| car_P | **0.097** | @2500 | 0.087 | +11.5% | **ATH** |
-| truck_R | **0.463** | @1500 | 0.390 | +18.7% | **ATH** |
-| bus_R | **0.773** | @1500 | 0.737 | +4.9% | **ATH** |
-| trailer_R | **0.806** | @1500 | 0.756 | +6.6% | **ATH** |
-| bg_FA | **0.176** | @500 | 0.185 | -4.9% | **ATL** |
-| offset_cx | **0.047** | @2000 | 0.052 | -9.6% | **首破红线** |
+**核心判断**: P4 AABB 修复正确有效 (Recall 全面提升), 但 avg_P=0.107 不升反降。Precision 瓶颈已从"标签污染"转移为"模型分辨力不足"。P5 必须集成 DINOv3 中间层特征。
 
-### P4@4000 最终值
-| 指标 | P4@4000 | P3@4000 | P2@6000 | vs P3 | vs P2 |
-|------|---------|---------|---------|-------|-------|
-| car_R | 0.592 | 0.570 | 0.596 | +3.9% | -0.7% |
-| car_P | 0.081 | 0.084 | 0.079 | -3.6% | +2.5% |
-| truck_R | **0.410** | 0.302 | 0.290 | **+35.8%** | **+41.4%** |
-| truck_P | 0.175 | 0.211 | 0.190 | -17.1% | -7.9% |
-| bus_R | **0.752** | 0.712 | 0.623 | +5.6% | **+20.7%** |
-| bus_P | 0.129 | 0.153 | 0.150 | -15.7% | -14.0% |
-| trailer_R | **0.750** | 0.622 | 0.689 | **+20.6%** | +8.9% |
-| trailer_P | 0.044 | 0.041 | 0.066 | +7.3% | -33.3% |
-| bg_FA | 0.194 | **0.185** | 0.198 | +4.9% | -2.0% |
-| offset_th | **0.207** | 0.214 | 0.217 | -3.3% | -4.6% |
-| offset_cy | 0.103 | **0.087** | 0.095 | +18.4% | +8.4% |
-| avg_P | 0.107 | 0.122 | 0.121 | -12.3% | -11.6% |
+**Critic 关键分析**:
+1. AABB 修复因果性: ~50% AABB + ~30% bg_weight + ~20% 更优起点
+2. Precision 根因: Conv2d (Layer 0) 只编码纹理/边缘, 缺乏类别语义。模型无法区分"有 truck 的 cell"和"truck 附近的 cell"
+3. offset_th 回退是结构性的 (共享 decoder 参数), reg_loss_weight=2.0 不推荐
+4. BUG-16 NEW: 预提取特征与数据增强不兼容
 
-### P4 核心结论
-- **AABB 修复 = Recall 革命**: 4 个类别 Recall 全部超越 P3, truck_R +36% 是最强证据
-- **Precision 仍是系统性瓶颈**: avg_P=0.107 < 0.12, 未达标。AABB 修复解决了标签问题但不解决特征质量问题
-- **Config 调参效果验证**: bg_balance_weight↓ 保护 car_R, reg_loss_weight↑ 保护 offset_th (提前达标)
-- **LR decay 后 offset_th 回退未完全阻止**: 0.200→0.207, 比 P3 好 (0.191→0.214) 但未保持
-
-### LR Decay @2500 效果
-| 指标 | @2000 (峰值) | @2500 (LR decay) | 变化 |
-|------|-------------|-----------------|------|
-| bg_FA | 0.239 | 0.189 | -21% (危机解除!) |
-| truck_R | 0.458 | 0.330 | -28% (回落) |
-| offset_th | 0.235 | 0.211 | -10% (改善) |
+**Critic P5 建议** (已采纳):
+- 起点: **P4@500** (对旧分布适应最浅)
+- 特征层: **Layer 16 单层** (平衡细节和语义)
+- 投影: **Linear(4096, 768)** 随机初始化
+- Warmup: **1000 步**
+- bg_balance_weight: **2.5** (防止 bg_FA 偏高)
 
 ---
 
-## Phase 2 状态: 特征已就绪, 等待 Critic 审计
+### ORCH_008 — P5: DINOv3 集成 [PENDING → Admin]
 
-### DINOv3 特征 — ORCH_007 COMPLETED
-- 323/323 文件, Layer 16 + Layer 20
-- Shape: (4900, 4096) per layer, FP16
-- 总大小: 24.15 GB
+| 参数 | P4 | **P5** | 原因 |
+|------|----|----|------|
+| load_from | P3@3000 | **P4@500** | Critic: 最浅适应 |
+| 特征输入 | Conv2d PatchEmbed | **预提取 Layer 16** | Phase 2 |
+| max_iters | 4000 | **6000** | 新特征需更多训练 |
+| warmup | 500 | **1000** | 分布差异大 |
+| milestones | [2500,3500] | **[4000,5500]** | 适配 6000 |
+| bg_balance_weight | 2.0 | **2.5** | Critic 建议 |
+| reg_loss_weight | 1.5 | 1.5 | 保持 |
+| GPU | 0,2 | 0,2 | CEO 限制 |
+
+**预期**: avg_P 从 0.107 提升至 0.15-0.20 (语义特征直接提供类别信息)
+
+---
+
+### P4 最终成绩 (存档)
+
+**7/9 关键指标全项目历史最佳**:
+- car_R=0.667, car_P=0.097, truck_R=0.463, bus_R=0.773, trailer_R=0.806 (ATH)
+- bg_FA=0.176 (ATL), offset_cx=0.047 (首破红线)
+
+**P4@4000 最终**: truck_R=0.410 (+36% vs P3), bus_R=0.752 (+6%), trailer_R=0.750 (+21%), avg_P=0.107
+
+---
+
+### DINOv3 特征 — 已就绪
 - 路径: `/mnt/SSD/GiT_Yihao/dinov3_features/`
-
-### Phase 2 触发: **确认** (avg_P=0.107 < 0.12)
-
-### P5 草案 (待 Critic 审计)
-- **核心改动**: 用预提取 DINOv3 Layer 16+20 特征替代 Conv2d PatchEmbed
-- **预期**: 更丰富视觉特征 → 提升 Precision
-- **起点**: P4@4000 (或 Critic 推荐)
-- **需 Critic 评估**: 投影层设计、warmup 策略、风险
-
-### Critic 审计已请求
-- 文件: `shared/audit/AUDIT_REQUEST_P4_FINAL.md`
-- 请求内容: P4 结果审计 + P5 方向评估 + DINOv3 集成方案
-- 等待: `shared/audit/VERDICT_P4_FINAL.md`
+- 323/323 文件, Layer 16 + Layer 20, (4900, 4096) FP16
+- 24.15 GB
 
 ---
 
@@ -76,41 +63,46 @@
 - [x] BUG-2, BUG-8, BUG-10, BUG-11
 
 ### 架构/标签优化
-- [x] **AABB → 旋转多边形** → P4 验证: 7/9 指标历史最佳
-- [x] **DINOv3 离线预提取** → ORCH_007 COMPLETED (24.15 GB)
-- [ ] **DINOv3 集成到模型** → P5 规划中, 等 Critic 审计
-- [ ] Score 区分度改进
+- [x] AABB → 旋转多边形 → P4 验证
+- [x] DINOv3 离线预提取 → ORCH_007 完成
+- [~] **DINOv3 集成到模型** → **ORCH_008 签发, P5 规划中**
+- [ ] Score 区分度改进 (Critic #2 优先级, 可并行)
 - [ ] BUG-14: Grid token 冗余
-- [ ] BUG-15: DINOv3 利用率 (P5 将解决)
+- [ ] BUG-16: 预提取特征与数据增强不兼容 (NEW)
+
+## BUG 跟踪
+| BUG | 严重性 | 状态 |
+|-----|--------|------|
+| BUG-2~12 | — | 全部 FIXED |
+| BUG-13 | LOW | UNPATCHED |
+| BUG-14 | MEDIUM | 架构层面 |
+| BUG-15 | HIGH | P5 将解决 (DINOv3 集成) |
+| **BUG-16** | **MEDIUM** | **NEW — 预提取特征与增强不兼容** |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| ORCH_005 | P4 Phase 1 | COMPLETED |
-| ORCH_006 | Phase 2 准备 | COMPLETED |
-| ORCH_007 | DINOv3 提取执行 | **COMPLETED** |
-| — | Critic P4 审计 | **REQUESTED** |
-
-## GPU 状态 — 全部空闲
-4 × RTX A6000 全部空闲, 等待 P5。CEO 限制: 训练用 GPU 0,2。
+| ORCH_005-007 | P4 + DINOv3 提取 | COMPLETED |
+| **ORCH_008** | **P5: DINOv3 集成 + 训练** | **PENDING → Admin** |
 
 ## 下一步计划
-1. **等待 VERDICT_P4_FINAL** — Critic 评估 P5 方向
-2. **P5 ORCH 签发** — Critic 审计后签发 DINOv3 集成 + 训练
-3. **P5 关键目标**: 利用 DINOv3 Layer 16+20 突破 avg_P ≥ 0.20
+1. **ORCH_008 执行**: Admin 实现 PreextractedFeatureEmbed + 启动 P5
+2. **P5@500 首次 val**: DINOv3 语义特征对 Precision 的影响
+3. **P5 目标**: avg_P ≥ 0.15 (中期), ≥ 0.20 (终极)
 
 ## 历史决策
-### [2026-03-07 16:55] 循环 #39 — P4 COMPLETED, Critic 审计请求
-- P4 完成! 7/9 关键指标全项目历史最佳
-- Recall 全面碾压 P3 (truck_R +36%), Precision 仍是瓶颈 (avg_P=0.107)
-- Phase 2 触发确认 (avg_P < 0.12)
-- DINOv3 特征已就绪 (24.15 GB, 323 files)
-- 提交 AUDIT_REQUEST_P4_FINAL, 等待 Critic 审计 P5 方向
-- GPU 全空闲, 等待 P5
+### [2026-03-07 17:05] 循环 #40 — VERDICT_P4_FINAL 处理, ORCH_008 签发
+- Critic 审计 CONDITIONAL: AABB 修复有效但 Precision 需 DINOv3 突破
+- Critic 因果分析: AABB ~50%, bg_weight ~30%, 起点 ~20%
+- Precision 根因: Conv2d 缺乏语义 → 需 Layer 16 深层特征
+- 采纳 Critic 全部建议: P4@500 起点, Layer 16 单层, warmup 1000
+- 签发 ORCH_008 给 Admin
+- BUG-16 NEW: 预提取特征与增强不兼容
 
+### [2026-03-07 16:55] 循环 #39 — P4 COMPLETED, Critic 审计请求
 ### [2026-03-07 16:05] 循环 #38 — P4@2000 + ORCH_007 完成
-### [2026-03-07 05:10] 循环 #37 — CEO 指令 #7, P4@1500 三项记录, ORCH_007 签发
-### [2026-03-07 04:40] 循环 #36 — P4@1000 offset_th 红线达标
+### [2026-03-07 05:10] 循环 #37 — CEO 指令 #7, ORCH_007 签发
+### [2026-03-07 04:40] 循环 #36 — P4@1000 offset_th 达标
 ### [2026-03-07 04:10] 循环 #35 — P4@500 bg_FA 历史最低
 ### [2026-03-07 03:10] 循环 #33 — P4 启动
 ### [2026-03-07 01:50] 循环 #31 — P3 完成
