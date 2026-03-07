@@ -1828,3 +1828,18 @@ baseline comparison" completed (exit code 0)
   ⏵⏵ bypass permissions on (shift+tab to cycle)
 
 ```
+[2026-03-07 14:53:18] watchdog: ✅ 恢复完成，系统恢复运行
+[2026-03-07 15:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 15:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 15:00:01] watchdog: 🚨 agent-conductor 检测到限流:   ⎿  You've hit your limit · resets 6am (America/Chicago)
+[2026-03-07 15:00:01] watchdog: 🚨 agent-critic 检测到限流:   ⎿  You've hit your limit · resets 6am (America/Chicago)
+[2026-03-07 15:00:01] watchdog: 🚨 agent-supervisor 检测到限流:   ⎿  You've hit your limit · resets 6am (America/Chicago)
+[2026-03-07 15:00:01] watchdog: 🚨 agent-admin 检测到限流:   ⎿  You've hit your limit · resets 6am (America/Chicago)
+[2026-03-07 15:00:02] watchdog: 🚨🚨🚨 触发休眠: agent-conductor 触发限流 | agent-critic 触发限流 | agent-supervisor 触发限流 | agent-admin 触发限流
+[2026-03-07 15:00:02] watchdog: 预计恢复时间: 2026-03-07 16:00:02 (休眠 3600 秒)
+[2026-03-07 15:00:02] watchdog: → conductor: 休眠保存指令已发送
+[2026-03-07 15:00:02] watchdog: → admin: 休眠保存指令已发送
+[2026-03-07 15:00:02] watchdog: → critic: 休眠保存指令已发送
+[2026-03-07 15:00:02] watchdog: → supervisor: 休眠保存指令已发送
+[2026-03-07 15:00:02] watchdog: → ops: hibernate_ops.md 已写入
+[2026-03-07 15:00:02] watchdog: 等待 180 秒让所有 Agent 完成保存...
