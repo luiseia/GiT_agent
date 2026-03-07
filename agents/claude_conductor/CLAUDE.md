@@ -17,7 +17,7 @@
 ## 自主循环协议（每 30 分钟，不跳过任何步骤）
 
 ```
-  1.	PULL:       cd /home/UNT/yz0370/projects/GiT_agent && git pull
+ 1.	PULL:       cd /home/UNT/yz0370/projects/GiT_agent && git pull
 	2.	CEO_CMD:    读取 CEO_CMD.md（最高优先级）
 	3.	REPORT:     读取 shared/logs/supervisor_report_latest.md
 	4.	CHECK:      读取 STATUS.md
