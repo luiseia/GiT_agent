@@ -1,11 +1,11 @@
 # Ops 休眠快照
-> 时间: 2026-03-07 05:40:01
+> 时间: 2026-03-07 06:50:01
 
 ## 触发原因
-- agent-conductor 触发限流 | agent-supervisor 触发限流 | agent-admin 触发限流
+- agent-conductor 触发限流 | agent-critic 触发限流 | agent-supervisor 触发限流 | agent-admin 触发限流
 - 用量: 未知%
 - 刷新信息: 未知
-- 预计恢复: 2026-03-07 06:40:01
+- 预计恢复: 2026-03-07 07:50:01
 - 休眠秒数: 3600
 
 ## 各 Agent tmux 最后状态
@@ -36,20 +36,20 @@
 
 ### agent-critic
 ```
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ 
+❯ 紧急休眠：请将当前正在进行的审计状态、已发现但未写入的 BUG 保存到
+  shared/logs/hibernate_critic.md，然后 git push
+  ⎿  You've hit your limit · resets 6am (America/Chicago)
+
+❯ /rate-limit-options
+
 ──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle)
+  What do you want to do?
 
+  ❯ 1. Stop and wait for limit to reset
+    2. Switch to extra usage
+    3. Upgrade your plan
 
-
-
-
-
-
-
-
-
+  Enter to confirm · Esc to cancel
 
 
 
