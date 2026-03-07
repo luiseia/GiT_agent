@@ -1,131 +1,131 @@
 # Ops 休眠快照
-> 时间: 2026-03-06 01:30:06
+> 时间: 2026-03-07 00:10:08
 
 ## 触发原因
-- agent-ops 触发限流关键词
-- 用量: 27%
-- 刷新信息: 未知
-- 预计恢复: 2026-03-06 02:30:06
-- 休眠秒数: 3600
+- 用量超过 80% (91%)
+- 用量: 91%
+- 刷新信息: Resets 1am (America/Chicago)
+- 预计恢复: 2026-03-07 01:05:00
+- 休眠秒数: 3292
 
 ## 各 Agent tmux 最后状态
 
 ### agent-conductor
 ```
+  利用率极低)
+  - BUG-8/10 在 Critic 审计时标为 UNPATCHED, 但实际已通过 ORCH_004 修复验证 —
+  已对照校正
+  - 架构优化方案 A (多层 DINOv3) 投入产出比最高, 纳入 P4 规划
+  - BUG-11 (默认类别顺序) 待 P3 后修复
+
+  3. CEO 指令 #5
+
+  - 已建立持久 "架构审计待办" 追踪区域, 不随循环删除
+  - 已归档并清空 CEO_CMD.md
+
+  决策: HOLD — LR decay @2500 仅剩 500 iter, 将是关键转折点.
+
+✻ Worked for 2m 35s
+
+──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+❯ 
 ──────────────────────────────────────────────────────────────────────────────────
-  Settings:  Status   Config   Usage  (←/→ or tab to cycle)
-
-  Current session
-  █████████████▌                                     27% used
-  Resets 5am (America/Chicago)
-
-  Current week (all models)
-  ███████████▌                                       23% used
-  Resets Mar 11, 3am (America/Chicago)
-
-  Current week (Sonnet only)
-                                                     0% used
-  Resets Mar 11, 4pm (America/Chicago)
-
-  Extra usage
-  Extra usage not enabled • /extra-usage to enable
-
-  Esc to cancel
+  ⏵⏵ bypass permissions on (shift+tab to cycle)
 
 ```
 
 ### agent-critic
 ```
 
-  ┌───────────────────────┬────────────────────┐
-  │        检查项         │        结果        │
-  ├───────────────────────┼────────────────────┤
-  │ git pull              │ Already up to date │
-  ├───────────────────────┼────────────────────┤
-  │ AUDIT_REQUEST_*.md    │ 0 个               │
-  ├───────────────────────┼────────────────────┤
-  │ 未匹配 VERDICT 的请求 │ 0 个               │
-  └───────────────────────┴────────────────────┘
-
-  无事可做，继续休眠。等待下次召唤或新的 AUDIT_REQUEST 出现。
-
-✻ Flummoxing…
-
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+──────────────────────────────────────────────────────────────── ▪▪▪ High /model ─
 ❯ 
 ──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle) · esc to interrupt
+  ⏵⏵ bypass permissions on (shift+tab to cycle)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```
 
 ### agent-supervisor
 ```
-  - ORCH_001 截止 ~01:27，报告尚未生成，但代码修改已完成
-  - 其余 Agent 正常空闲
-  - Conductor context 27%，健康
+  │ bg_FA     │ 0.216        │ 0.199 │ -8% 回到安全  │
+  ├───────────┼──────────────┼───────┼───────────────┤
+  │ offset_cx │ 0.071        │ 0.052 │ -27% 逼近红线 │
+  ├───────────┼──────────────┼───────┼───────────────┤
+  │ offset_th │ 0.191 (突破) │ 0.215 │ 丢失突破      │
+  └───────────┴──────────────┴───────┴───────────────┘
 
-  继续监控。
+  核心判断: LR decay 消除了高 LR 振荡，truck/bus 混淆解除，精度全面提升。offset_th
+   的 @2000 突破值 (0.191) 可能是振荡期的偶然低点，第二次 LR decay (@3500)
+  有望再次逼近。
 
-  Bash(sleep 600 && date '+%H:%M:%S')
-  ⎿  Running… (2m 55s · timeout 11m)
-     ctrl+b ctrl+b (twice) to run in background
+  下一关键节点: iter 3000 val (~00:25)，第二次 LR decay 在 iter 3500。
 
-✽ Fluttering… (37m 6s · ↓ 4.4k tokens · thinking with high effort)
-
-
-  ❯ 紧急休眠：请将当前投递队列状态、未完成的投递记录保存到
-    shared/logs/hibernate_supervisor.md，然后 git push
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ Press up to edit queued messages
-──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle) · esc to interrupt
-
-```
-
-### agent-admin
-```
-● Background command "Run eval with BUG-12 fix on P1@4000" completed (exit code 0)
-
-● Background command "Run OLD eval (slot-aligned) on P1@4000 single GPU for
-baseline comparison" completed (exit code 0)
-
-● 两个后台 eval 任务已完成，结果已在之前获取并用于报告。ORCH_001 已完成交付。
-
-  当前状态：
-  - P1 训练：~iter 4700/6000，预计约 02:00 完成
-  - BUG-12 修复：已完成，报告已推送
-  - Plan E 配置：已就绪，等待 P1 完成后启动
-  - 无新的 ORCH 指令待执行
-
-✶ Channeling…
-
-──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
-❯ 
-──────────────────────────────────────────────────────────────────────────────────
-  ⏵⏵ bypass permissions on (shift+tab to cycle) · … Context left until auto-co…
-
-```
-
-### agent-ops
-```
-  ├──────────┼─────────────────────────────────────────────────────────┤
-  │ 恢复流程 │ 重启 all_loops → 发恢复指令 → git push                  │
-  ├──────────┼─────────────────────────────────────────────────────────┤
-  │ 防重入   │ flock + $HIBERNATE_FLAG 文件双重保护                    │
-  └──────────┴─────────────────────────────────────────────────────────┘
-
-  Crontab 当前状态：
-  * * * * *   sync_loop.sh (flock)
-  */10 * * *  save_tmux.sh
-  */10 * * *  usage_watchdog.sh (flock)
-
-  首次检查结果：用量 27%，正常运行，无需休眠。
-
-✻ Worked for 1m 24s
+✻ Baked for 4m 36s
 
 ──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
 ❯ 
 ──────────────────────────────────────────────────────────────────────────────────
   ⏵⏵ bypass permissions on (shift+tab to cycle)
+
+```
+
+### agent-admin
+```
+● 无待执行的 ORCH 指令。
+
+❯ 请执行下一轮检查：git pull → 检查 shared/pending/ 是否有 DELIVERED 状态的
+  ORCH 指令，有则执行，无则回复无待执行
+
+● Bash(cd /home/UNT/yz0370/projects/GiT_agent && git pull 2>&1)
+  ⎿  Already up to date.
+  ⎿  Shell cwd was reset to /home/UNT/yz0370/projects/GiT
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● 无待执行的 ORCH 指令。
+
+──────────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+❯ 
+──────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)
+
+
+
+```
+
+### agent-ops
+```
+      138      fi
+      139
+      140      # usage_watchdog crontab
+
+● Bash(git add scripts/save_tmux.sh && git commit -m "$(cat <<'EOF'
+      ops: detect sync_loop by process instead of crontab…)
+  ⎿  [master f2b9bb2] ops: detect sync_loop by process instead of crontab
+      1 file changed, 10 insertions(+), 9 deletions(-)
+     To https://github.com/luiseia/GiT_agent.git
+        20cab1d..f2b9bb2  master -> master
+
+● 已修复，push f2b9bb2。sync_loop 现在用 pgrep -f sync_loop.sh
+  检测进程存活，显示 PID + 运行时长，与 all_loops.sh 格式一致。
+
+───────────────────────────────────────────────────────────────────────── ▪▪▪ ─
+❯ 
+───────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)
+
 
 ```
