@@ -16,3 +16,8 @@
 2. `shared/logs/archive/old_conductor/reports/2026-03-05/1805_CEO质询_标签分配算法.md`
 勘误：Construction Vehicle 和 truck 在 nuScenes-mini 中本就独立。
 **执行结果**: 深度重读完成，提取 BUG-8 代码位置、BUG-10 冷启动影响、IBW 歧视量化、理论上界等新洞察。详见 MASTER_PLAN.md 循环 #8。
+
+---
+## [2026-03-06 ~21:30] CEO 指令 #4
+请避免使用1，3GPU，只使用0，2GPU
+**执行结果**: 已确认 P3 训练仅使用 GPU 0,2, 完全符合要求. GPU 1,3 为 yz0364 (UniAD) 占用. 无需额外动作.
