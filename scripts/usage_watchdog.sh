@@ -326,3 +326,4 @@ git diff --cached --quiet || {
 }
 
 log "✅ 恢复完成，系统恢复运行"
+rm -f /tmp/usage_watchdog.lock
