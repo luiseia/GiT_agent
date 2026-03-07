@@ -1,63 +1,69 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 02:55 (循环 #32, CEO 紧急指令)
+> 最后更新: 2026-03-07 03:10 (循环 #33)
 
-## 当前阶段: P4 已批准! Phase 1 + Phase 2 并行推进, ORCH_005/006 已签发
+## 当前阶段: P4 训练已启动! ORCH_005 验收通过, AABB+BUG-11 修复完成
 
-### CEO 紧急指令 #6 (2026-03-07 02:50)
-- **批准 P4**, Phase 1 + Phase 2 同时推进
-- **GPU 限制**: 只用 0,2, 可占满
-- **评估标准**: Phase 1 后 avg_P > 0.15 → Phase 2 低优先级; avg_P < 0.12 → 立即集成 Phase 2
+### P4 训练状态 — RUNNING
+- **PID**: 3929983
+- **GPU**: 0,2 (RTX A6000) | CEO 限制只用 0,2
+- **Config**: `plan_g_aabb_fix.py`
+- **起点**: P3@3000
+- **进度**: 前 50+ iter (warmup 阶段)
+- **ETA 完成**: ~06:20 (3月7日)
+- **首次 val**: P4@500
+- **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_g_aabb_fix/`
+
+### P4 Config 变化 (vs P3)
+| 参数 | P3 (plan_f) | P4 (plan_g) | 变化原因 |
+|------|-------------|-------------|---------|
+| load_from | P2@6000 | **P3@3000** | Critic: @3000 是 P3 最佳点 |
+| bg_balance_weight | 3.0 | **2.0** | Critic: 3.0 压制 car_R |
+| reg_loss_weight | 1.0 | **1.5** | Critic: 保护 theta 回归 |
+| use_rotated_polygon | N/A | **True** | AABB 标签污染修复 |
+| max_iters | 4000 | 4000 | — |
+| warmup | 500 linear | 500 linear | — |
+| milestones | [2500, 3500] | [2500, 3500] | — |
+
+### P4 早期信号 (前 50 iter)
+- Warmup 正常: LR 从 ~1e-6 爬升
+- loss_reg 偏高: 预期 (reg_loss_weight 1.5x 放大)
+- **梯度裁剪率 60%** (3/5 iter clipped) — 比 P3 的 0% 高, 原因:
+  - reg_loss_weight 提升放大 reg 梯度
+  - 旋转多边形标签分布变化
+  - 应在 warmup 完成后稳定
+- 无 NaN/OOM, 显存 21.5GB/49.1GB per GPU
+
+### ORCH_005 验收: PASS
+| 任务 | 执行结果 | 判定 |
+|------|---------|------|
+| AABB→旋转多边形 | ConvexHull + cross-product, use_rotated_polygon 参数化 | **PASS** |
+| BUG-11 | classes=None + ValueError guard | **PASS** |
+| P4 训练 | PID 3929983, GPU 0,2, 前 50 iter 稳定 | **PASS** |
+
+**标签变化验证**: 45° 旋转车辆 AABB 分配 ~2x 多余 cell → 旋转多边形消除约 30-50% 假阳性标签
 
 ---
 
-### ORCH_005 — Phase 1: AABB 修复 + BUG-11 + P4 训练 [DELIVERED]
-
-| 任务 | 内容 | 状态 |
-|------|------|------|
-| 任务 1 | AABB → 旋转多边形 (generate_occ_flow_labels.py) | PENDING |
-| 任务 2 | BUG-11 修复 (删除默认类别顺序) | PENDING |
-| 任务 3 | P4 训练: P3@3000 恢复, 4000 iter, GPU 0,2 | PENDING |
-
-**P4 Config (plan_g_aabb_fix.py):**
-- 起点: P3@3000
-- max_iters: 4000, val_interval: 500
-- bg_balance_weight: **2.0** (从 3.0 降)
-- reg_loss_weight: **1.5** (从 1.0 升)
-- warmup: 500 步 linear
-- lr: base_lr=5e-05, milestones [2500, 3500]
-- max_norm: 10.0
-- use_rotated_polygon: True
-
-### ORCH_006 — Phase 2: DINOv3 离线特征预提取 [PENDING]
-
-| 任务 | 内容 | 状态 |
-|------|------|------|
-| 预提取脚本 | DINOv3 Layer 16-20 → .pt 文件 (323 张图) | PENDING |
-| GiT 集成 | 修改 vit_git.py 加载 .pt 替代 Conv2d | 等待触发条件 |
-
-**触发条件**: Phase 1 avg_P < 0.12 → 立即集成
+### ORCH_006 — Phase 2: DINOv3 预提取 [DELIVERED, Admin 执行中]
+- 与 Phase 1 并行准备
+- **触发条件**: Phase 1 avg_P > 0.15 → 低优先级; avg_P < 0.12 → 立即集成
 
 ---
 
-### P3 训练 — COMPLETED (基线)
-
-| 指标 | P3@4000 | P3@3000 (P4起点) | P2@6000 |
-|------|---------|-----------------|---------|
-| car_R | 0.570 | **0.614** | 0.596 |
-| car_P | 0.084 | 0.082 | 0.079 |
-| truck_R | 0.302 | 0.326 | 0.290 |
-| truck_P | 0.211 | **0.306** | 0.190 |
-| bus_R | 0.712 | 0.636 | 0.623 |
-| bus_P | 0.153 | 0.133 | 0.150 |
-| trailer_R | 0.622 | 0.622 | 0.689 |
-| trailer_P | 0.041 | **0.068** | 0.066 |
-| bg_FA | **0.185** | 0.194 | 0.198 |
-| offset_cy | **0.087** | 0.123 | 0.095 |
-| offset_th | 0.214 | 0.214 | 0.217 |
-| avg_P | 0.122 | **0.147** | 0.121 |
-
-**P3@3000 选为 P4 起点**: avg_P=0.147 (P3最佳), truck_P=0.306 (历史最高)
+### P3@3000 基线 (P4 起点)
+| 指标 | P3@3000 | P2@6000 | vs P2 |
+|------|---------|---------|-------|
+| car_R | 0.614 | 0.596 | +3.0% |
+| car_P | 0.082 | 0.079 | +3.8% |
+| truck_R | 0.326 | 0.290 | +12.4% |
+| truck_P | 0.306 | 0.190 | +61.1% |
+| bus_R | 0.636 | 0.623 | +2.1% |
+| bus_P | 0.133 | 0.150 | -11.3% |
+| trailer_R | 0.622 | 0.689 | -9.7% |
+| trailer_P | 0.068 | 0.066 | +3.0% |
+| bg_FA | 0.194 | 0.198 | -2.0% |
+| avg_P | **0.147** | 0.121 | +21.5% |
 
 ---
 
@@ -69,18 +75,18 @@
 - [x] BUG-2 → FIXED
 - [x] BUG-8 修复 → ORCH_004 完成
 - [x] BUG-10 修复 → ORCH_004 完成
-- [ ] BUG-11 修复 → **ORCH_005 任务 2 (进行中)**
+- [x] BUG-11 修复 → **ORCH_005 完成!**
 
 ### 架构/标签优化 (P4)
-- [ ] **AABB → 旋转多边形** → **ORCH_005 任务 1 (进行中)**
-- [ ] **DINOv3 离线预提取** → **ORCH_006 (进行中)**
+- [x] **AABB → 旋转多边形** → **ORCH_005 完成!**
+- [ ] **DINOv3 离线预提取** → ORCH_006 进行中
 - [ ] Score 区分度改进 (待评估)
 - [ ] BUG-14: Grid token 冗余
 - [ ] BUG-15: DINOv3 利用率
 - [ ] 新增层 12-17 加 global attention
 
 ### 未实现历史分析
-- [x] 分析 1: AABB → 旋转多边形 → **升级为 ORCH_005 任务 1!**
+- [x] 分析 1: AABB → 旋转多边形 → **ORCH_005 实现!**
 - [ ] 分析 2: 2D-3D 视觉对齐
 - [ ] 分析 4: Token 合并
 - [x] 分析 3: Center/Around
@@ -94,7 +100,7 @@
 | BUG-8 | CRITICAL | **FIXED & VALIDATED** |
 | BUG-9 | 致命 | **FIXED (P2+P3 config)** |
 | BUG-10 | HIGH | **FIXED & VALIDATED** |
-| BUG-11 | LOW | **ORCH_005 修复中** |
+| BUG-11 | LOW | **FIXED (ORCH_005)** |
 | BUG-12 | HIGH | **FIXED** |
 | BUG-13 | LOW | UNPATCHED |
 | BUG-14 | MEDIUM | 架构层面 |
@@ -103,31 +109,32 @@
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_005** | **P4 Phase 1: AABB+BUG-11+P4训练** | **DELIVERED** |
-| **ORCH_006** | **P4 Phase 2: DINOv3 预提取** | **PENDING** |
-| AUDIT_P3_FINAL | P3 终审 | VERDICT: CONDITIONAL (已处理) |
+| **ORCH_005** | P4 Phase 1 | **COMPLETED — 验收通过** |
+| **ORCH_006** | P4 Phase 2: DINOv3 预提取 | **DELIVERED (进行中)** |
 
-## 下一步计划 (循环 #33+)
-1. **监控 ORCH_005 执行**: AABB 修复 → BUG-11 → 标签重生成 → P4 训练启动
-2. **监控 ORCH_006 执行**: DINOv3 预提取准备
-3. **P4 首次 val (~P4@500)**: 关注 avg_P 是否超过 Phase 2 触发阈值
-4. **Phase 2 触发判断**: avg_P > 0.15 → 低优先级; avg_P < 0.12 → 立即集成
+## 下一步计划 (循环 #34+)
+1. **P4@500 (~04:00?)**: 首次 val — 关键! AABB 修复效果验证
+   - avg_P 是否显著提升? (P3@3000 基线 0.147)
+   - car_P 是否改善? (AABB 修复最直接影响)
+   - 梯度裁剪率是否稳定?
+2. **ORCH_006 执行进度**: DINOv3 预提取是否完成
+3. **Phase 2 触发判断**: P4 首批 val 后根据 avg_P 决定
 
 ## 历史决策
-### [2026-03-07 02:55] 循环 #32 (CEO 紧急) — P4 批准, ORCH_005/006 签发
-- CEO 紧急指令: 批准 P4, Phase 1+2 并行, GPU 0,2 only
-- ORCH_005: AABB→旋转多边形 + BUG-11 + P4 训练 (P3@3000, 4000 iter)
-- ORCH_006: DINOv3 离线预提取 Layer 16-20
-- P4 config: bg_balance_weight=2.0, reg_loss_weight=1.5
-- 评估标准: avg_P>0.15→P2低优; avg_P<0.12→立即集成
+### [2026-03-07 03:10] 循环 #33 — ORCH_005 验收通过, P4 训练已启动
+- ORCH_005 全部 3 项任务 PASS: AABB 修复 + BUG-11 + P4 训练
+- P4 PID 3929983, GPU 0,2, 前 50 iter 稳定
+- 梯度裁剪率 60% (高于 P3), 预计 warmup 后稳定
+- BUG-11 正式 FIXED
+- ORCH_006 DELIVERED, Admin 并行执行中
+- 决策: 继续监控, 等待 P4@500
 
+### [2026-03-07 02:55] 循环 #32 — P4 批准, ORCH_005/006 签发
 ### [2026-03-07 02:40] 循环 #32 — VERDICT_P3_FINAL 处理
-### [2026-03-07 01:50] 循环 #31 — P3 完成, 签发 Critic 终审
-### [2026-03-07 01:40] 循环 #30 — P3@3000/@3500, offset_cy 首破红线
-### [2026-03-07 01:10] 循环 #29 — P3@2500 LR decay 验证成功
+### [2026-03-07 01:50] 循环 #31 — P3 完成
+### [2026-03-07 01:40] 循环 #30 — P3@3000/@3500
+### [2026-03-07 01:10] 循环 #29 — P3@2500 LR decay
 ### [2026-03-06 23:55] 循环 #28 — P3@2000 + VERDICT_ARCH_REVIEW
-### [2026-03-06 22:30] 循环 #25 — P3@500 首次评估
-### [2026-03-06 21:55] 循环 #24 — P3 启动成功
+### [2026-03-06 21:55] 循环 #24 — P3 启动
 ### [2026-03-06 21:00] 循环 #23 — ORCH_004 签发
-### [2026-03-06 20:55] 循环 #22 — P2@6000 终评
 ### [2026-03-06 00:57] 循环 #1 — 签发 ORCH_001
