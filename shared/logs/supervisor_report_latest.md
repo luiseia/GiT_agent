@@ -1,59 +1,73 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-07 17:27
-> Cycle: #120
+> 时间: 2026-03-07 17:56
+> Cycle: #121
 
-## ===== ORCH_008 已下达: P5 DINOv3 Layer 16 特征集成! =====
+## ===== P5 已启动! DINOv3 Layer 16 特征集成 — 项目质变时刻 =====
 
-### 新指令
+### ORCH_008 COMPLETED — P5 训练进行中
 
-**ORCH_008 — P5: DINOv3 中间层特征集成 + 训练**
-- 状态: **DELIVERED** (等待 Admin 执行)
-- 优先级: URGENT
-- 触发条件: avg_P=0.107 < 0.12 + Critic CONDITIONAL 判决
+Admin 高效执行: 从 DELIVERED 到 COMPLETED + 训练启动仅 ~35 分钟。
 
-### ORCH_008 核心内容
+### P5 实现要点
 
-1. **PreextractedFeatureEmbed 实现**: 加载 `.pt` 特征 + Linear(4096→768) 投影
-2. **使用 Layer 16** (Critic: 平衡细节和语义)
-3. **从 P4@500 恢复** (Critic: 对旧分布适应最浅)
-4. **6000 iter** (新特征需更多训练), warmup 1000 步
-5. **BUG-16 评估**: 预提取特征与数据增强不兼容问题
+1. **PreextractedFeatureEmbed**: 加载 `.pt` → 选 layer_16 → Linear(4096→768) → 输出 (B, 4900, 768)
+2. **Dataset 适配**: `sample_idx` (nuScenes token) 自动传播到 metainfo
+3. **BUG-16**: 不阻塞 (pipeline 无图像级数据增强)
+4. **显存更低**: 20.4 GB/GPU (vs P4 22 GB，无 DINOv3 模型加载)
 
-### P5 Config 关键变化 (vs P4)
+### P5 训练早期状态
 
-| 参数 | P4 | P5 | 原因 |
-|------|----|----|------|
-| load_from | P3@3000 | **P4@500** | 对旧分布适应最浅 |
-| 特征输入 | Conv2d (Layer 0) | **预提取 Layer 16** | Precision 突破 |
-| max_iters | 4000 | **6000** | 新特征需更多训练 |
-| warmup | 500 | **1000** | 特征分布差异大 |
-| milestones | [2500, 3500] | **[4000, 5500]** | 适配 6000 iter |
-| bg_balance_weight | 2.0 | **2.5** | bg_FA 控制 |
+- 进度: iter 480 / 6000 (**8%**)
+- **首次 val @500 即将到来** (~17:57)
+- Warmup 进行中 (480/1000)，base_lr=2.4e-05
+- GPU: 0 (20.4GB, 100%) + 2 (20.9GB, 100%)
+- ETA 完成: ~22:40
 
-### 系统状态
-- 无活跃训练，4 卡 GPU 全空
-- Admin attached，预计即将开始执行 ORCH_008
-- DINOv3 特征就绪: `/mnt/SSD/GiT_Yihao/dinov3_features/` (24.15 GB)
+### Loss 下降轨迹 (DINOv3 特征适应)
+
+| 阶段 | Loss | grad_norm | 说明 |
+|------|------|-----------|------|
+| iter 10-30 | 16-17 | 140-257 | 随机 proj 初始化 → 极高 loss |
+| iter 40 | 11.6 | 211 | 开始适应 |
+| iter 460-480 | **2.5-3.5** | 25-34 | 快速收敛中 |
+
+Loss 从 16.8 降至 2.6 (降 85%)，说明 Linear 投影层正在快速学习将 DINOv3 4096 维特征映射到模型 768 维空间。grad_norm 仍高但在下降。
+
+### P5 Config 摘要
+
+| 参数 | 值 |
+|------|-----|
+| 特征 | DINOv3 **Layer 16** 预提取 |
+| load_from | P4@500 |
+| max_iters | 6000 |
+| warmup | 1000 步 linear |
+| milestones | [4000, 5500] |
+| bg_balance_weight | 2.5 |
+| reg_loss_weight | 1.5 |
+| base_lr | 5e-05 |
 
 ### 代码变更
-无变化。
+GiT/ 无新远程 commit (Admin 直接在工作目录修改)。
 
 ## ORCH 指令状态
 | ID | 状态 | 内容 |
 |----|------|------|
 | ORCH_001-005,007 | COMPLETED | BUG修复 + P1-P4 + DINOv3提取 |
-| ORCH_006 | DELIVERED | DINOv3 预提取方案 (已由 007 执行) |
-| **ORCH_008** | **DELIVERED** | **P5: DINOv3 Layer 16 集成 + 训练** |
+| ORCH_006 | DELIVERED | 方案 (已由 007 执行) |
+| **ORCH_008** | **COMPLETED** | P5: DINOv3 Layer 16 集成 + 训练启动 |
 
 ## Agent 状态
 全 5 agent tmux UP (全部 attached)。
 
-## GPU 状态 — 全部空闲
-| GPU | Used | Util |
-|-----|------|------|
-| 0-3 | 15-548 MB | 0% |
+## GPU 状态
+| GPU | Used | Util | Task |
+|-----|------|------|------|
+| 0 | 20.4 GB | 100% | **P5 训练** |
+| 1 | 15 MB | 0% | 空闲 |
+| 2 | 20.9 GB | 100% | **P5 训练** |
+| 3 | 15 MB | 0% | 空闲 |
 
 ## 下一关注点
-1. Admin 开始执行 ORCH_008 (代码修改 + P5 训练启动)
-2. BUG-16 (特征与数据增强兼容性) 评估结果
-3. P5 首次 val @500 将是 DINOv3 深层特征效果的首次验证
+1. **P5@500 首次 val (~17:57)** — DINOv3 深层特征效果的首次验证!
+2. 关注 Precision 是否开始提升 (这是 DINOv3 集成的核心目标)
+3. Loss/grad_norm 在 warmup 结束 @1000 后的稳定性
