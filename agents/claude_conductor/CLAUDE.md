@@ -17,24 +17,26 @@
 ## 自主循环协议（每 30 分钟，不跳过任何步骤）
 
 ```
- 1.	PULL:       cd /home/UNT/yz0370/projects/GiT_agent && git pull
-	2.	CEO_CMD:    读取 CEO_CMD.md（最高优先级）
-	3.	REPORT:     读取 shared/logs/supervisor_report_latest.md
-	4.	CHECK:      读取 STATUS.md
-	5.	VERDICT:    读取上一轮遗留的 VERDICT（如有），移到 processed/
-	6.	PENDING:    检查 ORCH 指令状态
-	7.	ADMIN:      读取 Admin 执行报告
-	8.	THINK:      综合判断——当前是否需要 Critic 审计？
-	9.	AUDIT:      如需审计：
-   a. 签发 AUDIT_REQUEST_*.md → git push
-   b. 等待 VERDICT 出现（每 2 分钟 git pull 检查，最多等 15 分钟）
-   c. 读取 VERDICT 并纳入决策
-   d. 如 15 分钟超时：记录”审计超时”到 MASTER_PLAN，继续执行
-	10.	RE-THINK:   结合 VERDICT（或超时）重新评估
-	11.	PLAN:       更新 MASTER_PLAN.md
-	12.	ACT:        签发 ORCH 指令（此时已有完整信息）或者不做任何动作
-	13.	CONTEXT:    检查 Context 剩余
-	14.	SYNC:       git add && git commit && git push
+1.  PULL:       cd /home/UNT/yz0370/projects/GiT_agent && git pull
+2.  CEO_CMD:    读取 CEO_CMD.md（最高优先级）
+3.  REPORT:     读取 shared/logs/supervisor_report_latest.md
+4.  CHECK:      读取 STATUS.md
+5.  VERDICT:    扫描 shared/audit/ 根目录下的 VERDICT_*.md（不含 processed/ 子目录），
+                有则读取内容并纳入本轮决策，读取后将该 VERDICT 和对应的 AUDIT_REQUEST 
+                一起移到 shared/audit/processed/
+6.  PENDING:    检查 ORCH 指令状态
+7.  ADMIN:      读取 Admin 执行报告
+8.  THINK:      综合判断——当前是否需要 Critic 审计？
+9.  AUDIT:      如需审计：
+                a. 签发 AUDIT_REQUEST_*.md → git push
+                b. 等待 VERDICT 出现（每 2 分钟 git pull 检查，最多等 15 分钟）
+                c. 读取 VERDICT 并纳入决策
+                d. 如 15 分钟超时：记录"审计超时"到 MASTER_PLAN，继续执行
+10. RE-THINK:   结合 VERDICT（或超时）重新评估
+11. PLAN:       更新 MASTER_PLAN.md
+12. ACT:        决定签发 ORCH 指令（此时已有完整信息）或者不做任何动作
+13. CONTEXT:    检查 Context 剩余
+14. SYNC:       git add && git commit && git push
 ```
 
 **循环频率**: 严格每 30 分钟一次完整循环，不做跳过优化。
@@ -177,14 +179,9 @@ git add shared/audit/ && git commit -m "conductor: audit request <ID>" && git pu
 - **数据集**: nuScenes-mini，323 张图像，~3500 个 3D 框标注
 - **BEV Grid**: 20×20 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
 
-### 实验计划演化
-| 计划 | 状态 | 核心机制 | 结果 |
-|------|------|---------|------|
-| **Plan A** | 终止 | Baseline 调参 | 类别竞争震荡无法解决 |
-| **Plan B** | 完成(10k iter) | Per-class balanced loss | 最佳@iter5000, avg_R=0.675, avg_P=0.09(瓶颈) |
-| **Plan C** | 终止(2k iter) | +bg_w=3.0, reg_w=2.0 | reg 梯度压制 cls, truck_R=0.05, bg_FA=0.294 |
-| **Plan D** | 终止(2.5k iter) | reg_w→1.0, 加载C@1000 | truck_R 单调崩溃 0.148→0.019 |
-| **P1** | 进行中 | Center/Around 权重分化 (center_w=2.0, around_w=0.5) | 加载D@500 |
+### 实验计划与 BUG 跟踪
+实验计划演化、BUG 状态、红线指标等动态信息全部维护在 `MASTER_PLAN.md` 中。
+本文件不重复记录，避免滞后。每轮循环必须以 MASTER_PLAN.md 为准。
 
 ### 红线指标
 | 指标 | 红线 | 说明 |

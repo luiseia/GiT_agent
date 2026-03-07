@@ -62,3 +62,265 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-06 16:10:01] watchdog: === 用量检查开始 ===
 [2026-03-06 16:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-06 16:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 16:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 16:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 16:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 17:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-06 17:10:01] watchdog: ⚠️ agent-conductor context 剩余 10%
+[2026-03-06 17:10:01] watchdog: → agent-conductor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 17:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:20:07] watchdog: 用量: 47%  |  Resets 8pm (America/Chicago)
+[2026-03-06 17:20:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:30:07] watchdog: 用量: 59%  |  Resets 7:59pm (America/Chicago)
+[2026-03-06 17:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:40:08] watchdog: 用量: 59%  |  Resets 8pm (America/Chicago)
+[2026-03-06 17:40:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 17:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 17:50:07] watchdog: 用量: 62%  |  Resets 8pm (America/Chicago)
+[2026-03-06 17:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 18:00:07] watchdog: 用量: 62%  |  Resets 8pm (America/Chicago)
+[2026-03-06 18:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 18:10:07] watchdog: 用量: 62%  |  Resets 7:59pm (America/Chicago)
+[2026-03-06 18:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 18:20:07] watchdog: 用量: 64%  |  Resets 7:59pm (America/Chicago)
+[2026-03-06 18:20:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:30:02] watchdog: === 用量检查开始 ===
+[2026-03-06 18:30:08] watchdog: 用量: 64%  |  Resets 8pm (America/Chicago)
+[2026-03-06 18:30:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 18:40:07] watchdog: 用量: 64%  |  Resets 8pm (America/Chicago)
+[2026-03-06 18:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 18:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 18:50:07] watchdog: 用量: 67%  |  Resets 8pm (America/Chicago)
+[2026-03-06 18:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:00:07] watchdog: 用量: 68%  |  Resets 8pm (America/Chicago)
+[2026-03-06 19:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:10:07] watchdog: 用量: 68%  |  Resets 7:59pm (America/Chicago)
+[2026-03-06 19:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:20:07] watchdog: 用量: 68%  |  Resets 8pm (America/Chicago)
+[2026-03-06 19:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:30:07] watchdog: 用量: 70%  |  Resets 8pm (America/Chicago)
+[2026-03-06 19:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:40:07] watchdog: 用量: 70%  |  Resets 8pm (America/Chicago)
+[2026-03-06 19:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 19:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 19:50:07] watchdog: 用量: 70%  |  Resets 8pm (America/Chicago)
+[2026-03-06 19:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 20:00:07] watchdog: 用量: 0%  |  Resets Mar 11, 3am (America/Chicago)
+[2026-03-06 20:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 20:10:07] watchdog: 用量: 0%  |  Resets Mar 11, 3am (America/Chicago)
+[2026-03-06 20:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:20:02] watchdog: === 用量检查开始 ===
+[2026-03-06 20:20:08] watchdog: 用量: 0%  |  Resets Mar 11, 3am (America/Chicago)
+[2026-03-06 20:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 20:30:07] watchdog: 用量: 14%  |  Resets 1am (America/Chicago)
+[2026-03-06 20:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 20:40:07] watchdog: 用量: 14%  |  Resets 1am (America/Chicago)
+[2026-03-06 20:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 20:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 20:50:07] watchdog: 用量: 14%  |  Resets 1am (America/Chicago)
+[2026-03-06 20:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:00:08] watchdog: 用量: 19%  |  Resets 1am (America/Chicago)
+[2026-03-06 21:00:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:10:07] watchdog: 用量: 19%  |  Resets 1am (America/Chicago)
+[2026-03-06 21:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:20:07] watchdog: 用量: 19%  |  Resets 1am (America/Chicago)
+[2026-03-06 21:20:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:30:07] watchdog: 用量: 22%  |  Resets 1am (America/Chicago)
+[2026-03-06 21:30:07] watchdog: ⚠️ agent-supervisor context 剩余 11%
+[2026-03-06 21:30:07] watchdog: → agent-supervisor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 21:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:40:07] watchdog: 用量: 22%  |  Resets 1am (America/Chicago)
+[2026-03-06 21:40:07] watchdog: ⚠️ agent-supervisor context 剩余 8%
+[2026-03-06 21:40:07] watchdog: → agent-supervisor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 21:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 21:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 21:50:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-06 21:50:08] watchdog: ⚠️ agent-supervisor context 剩余 8%
+[2026-03-06 21:50:08] watchdog: → agent-supervisor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 21:50:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:00:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-06 22:00:07] watchdog: ⚠️ agent-conductor context 剩余 10%
+[2026-03-06 22:00:07] watchdog: → agent-conductor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 22:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:10:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-06 22:10:07] watchdog: ⚠️ agent-conductor context 剩余 8%
+[2026-03-06 22:10:07] watchdog: → agent-conductor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 22:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:20:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:20:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-06 22:20:08] watchdog: ⚠️ agent-conductor context 剩余 5%
+[2026-03-06 22:20:08] watchdog: → agent-conductor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 22:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:30:07] watchdog: 用量: 35%  |  Resets 1am (America/Chicago)
+[2026-03-06 22:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:40:07] watchdog: 用量: 35%  |  Resets 1am (America/Chicago)
+[2026-03-06 22:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 22:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 22:50:07] watchdog: 用量: 46%  |  Resets 1am (America/Chicago)
+[2026-03-06 22:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:00:01] watchdog: === 用量检查开始 ===
+[2026-03-06 23:00:07] watchdog: 用量: 50%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:10:01] watchdog: === 用量检查开始 ===
+[2026-03-06 23:10:07] watchdog: 用量: 50%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:20:02] watchdog: === 用量检查开始 ===
+[2026-03-06 23:20:08] watchdog: 用量: 51%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:30:01] watchdog: === 用量检查开始 ===
+[2026-03-06 23:30:07] watchdog: 用量: 57%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:30:07] watchdog: ⚠️ agent-supervisor context 剩余 3%
+[2026-03-06 23:30:07] watchdog: → agent-supervisor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 23:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:40:01] watchdog: === 用量检查开始 ===
+[2026-03-06 23:40:07] watchdog: 用量: 58%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:40:07] watchdog: ⚠️ agent-supervisor context 剩余 0%
+[2026-03-06 23:40:07] watchdog: → agent-supervisor: 已发送 保存+compact+恢复 指令（空闲状态）
+[2026-03-06 23:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-06 23:50:01] watchdog: === 用量检查开始 ===
+[2026-03-06 23:50:07] watchdog: 用量: 61%  |  Resets 1am (America/Chicago)
+[2026-03-06 23:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 00:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 00:00:07] watchdog: 用量: 77%  |  Resets 1am (America/Chicago)
+[2026-03-07 00:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 00:10:01] watchdog: === 用量检查开始 ===
+[2026-03-07 00:10:07] watchdog: 用量: 91%  |  Resets 1am (America/Chicago)
+[2026-03-07 00:10:07] watchdog: 🚨🚨🚨 触发休眠: 用量超过 80% (91%)
+[2026-03-07 00:10:08] watchdog: 预计恢复时间: 2026-03-07 01:05:00 (休眠 3292 秒)
+[2026-03-07 00:10:08] watchdog: → conductor: 休眠保存指令已发送
+[2026-03-07 00:10:08] watchdog: → admin: 休眠保存指令已发送
+[2026-03-07 00:10:08] watchdog: → critic: 休眠保存指令已发送
+[2026-03-07 00:10:08] watchdog: → supervisor: 休眠保存指令已发送
+[2026-03-07 00:10:08] watchdog: → ops: hibernate_ops.md 已写入
+[2026-03-07 00:10:08] watchdog: 等待 180 秒让所有 Agent 完成保存...
+[master 237db3f] ops: hibernate — 用量超过 80% (91%)
+ 2 files changed, 300 insertions(+), 131 deletions(-)
+ rewrite shared/logs/hibernate_ops.md (61%)
+To https://github.com/luiseia/GiT_agent.git
+   33e2f1d..237db3f  master -> master
+[2026-03-07 00:13:08] watchdog: 休眠数据已 push
+[2026-03-07 00:13:08] watchdog: 已停止 all_loops.sh (PID 3721476)
+[2026-03-07 00:13:08] watchdog: 💤 开始休眠 3292 秒，预计 2026-03-07 01:05:00 恢复
+[2026-03-07 01:08:00] watchdog: ⏰ 休眠结束，开始恢复
+[2026-03-07 01:08:01] watchdog: ✅ all_loops.sh 已重启 (PID 3891707)
+[2026-03-07 01:08:01] watchdog: → agent-conductor: 恢复指令已发送
+[2026-03-07 01:08:01] watchdog: → agent-critic: 恢复指令已发送
+[2026-03-07 01:08:01] watchdog: → agent-supervisor: 恢复指令已发送
+[2026-03-07 01:08:01] watchdog: → agent-admin: 恢复指令已发送
+[2026-03-07 01:08:01] watchdog: ops 休眠快照内容:
+[master 2f08525] ops: resume from hibernate
+ 1 file changed, 141 insertions(+)
+To https://github.com/luiseia/GiT_agent.git
+   237db3f..2f08525  master -> master
+[2026-03-07 01:08:02] watchdog: ✅ 恢复完成，系统恢复运行
+[2026-03-07 01:40:01] watchdog: === 用量检查开始 ===
+[2026-03-07 01:40:07] watchdog: 用量: 31%  |  Resets 6am (America/Chicago)
+[2026-03-07 01:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 01:50:01] watchdog: === 用量检查开始 ===
+[2026-03-07 01:50:07] watchdog: 用量: 32%  |  Resets 6am (America/Chicago)
+[2026-03-07 01:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 02:00:07] watchdog: 用量: 32%  |  Resets 5:59am (America/Chicago)
+[2026-03-07 02:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:10:02] watchdog: === 用量检查开始 ===
+[2026-03-07 02:10:08] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-07 02:10:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:20:01] watchdog: === 用量检查开始 ===
+[2026-03-07 02:20:07] watchdog: 用量: 37%  |  Resets 5:59am (America/Chicago)
+[2026-03-07 02:20:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:30:01] watchdog: === 用量检查开始 ===
+[2026-03-07 02:30:07] watchdog: 用量: 38%  |  Resets 6am (America/Chicago)
+[2026-03-07 02:30:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:40:01] watchdog: === 用量检查开始 ===
+[2026-03-07 02:40:07] watchdog: 用量: 39%  |  Resets 6am (America/Chicago)
+[2026-03-07 02:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 02:50:01] watchdog: === 用量检查开始 ===
+[2026-03-07 02:50:07] watchdog: 用量: 40%  |  Resets 6am (America/Chicago)
+[2026-03-07 02:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:00:07] watchdog: 用量: 44%  |  Resets 6am (America/Chicago)
+[2026-03-07 03:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:10:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:10:07] watchdog: 用量: 50%  |  Resets 5:59am (America/Chicago)
+[2026-03-07 03:10:07] watchdog: ⚠️ agent-conductor context 剩余 7%
+[2026-03-07 03:10:07] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-07 03:11:07] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-07 03:11:37] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-07 03:11:37] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:20:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:20:08] watchdog: 用量: 52%  |  Resets 6am (America/Chicago)
+[2026-03-07 03:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:30:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:30:07] watchdog: 用量: 53%  |  Resets 6am (America/Chicago)
+[2026-03-07 03:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:40:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 03:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 03:50:01] watchdog: === 用量检查开始 ===
+[2026-03-07 03:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 03:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:10:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:20:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:20:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:30:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:40:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 04:50:01] watchdog: === 用量检查开始 ===
+[2026-03-07 04:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 04:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 05:00:01] watchdog: === 用量检查开始 ===
+[2026-03-07 05:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 05:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 05:10:01] watchdog: === 用量检查开始 ===
+[2026-03-07 05:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 05:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-07 05:20:01] watchdog: === 用量检查开始 ===
+[2026-03-07 05:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-07 05:20:02] watchdog: ✅ 用量正常，无需休眠
