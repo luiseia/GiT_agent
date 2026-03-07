@@ -1,56 +1,57 @@
-# Supervisor Hibernation Snapshot
-> Timestamp: 2026-03-06 01:37
-> Reason: CEO emergency hibernate command
-> Cycles completed: 4
+# Supervisor 紧急休眠快照
+> 时间: 2026-03-07 00:10
+> 最后完成 Cycle: #107
+> 原因: CEO 紧急休眠指令
 
-## Delivery Queue State
+## 投递队列状态
 
-### Delivered (completed)
-| File | Priority | Subject | Delivered At |
-|------|----------|---------|-------------|
-| ORCH_0306_0057_001.md | HIGH | BUG-12 slot ordering fix | 00:59 |
+全部 ORCH 指令已完成，无 PENDING 投递:
 
-### Pending (undelivered)
-NONE — delivery queue is clear.
+| ID | 文件 | 状态 |
+|----|------|------|
+| ORCH_001 | ORCH_0306_0057_001.md | COMPLETED |
+| ORCH_002 | ORCH_0306_0255_002.md | COMPLETED |
+| ORCH_003 | ORCH_0306_1410_003.md | COMPLETED |
+| ORCH_004 | ORCH_0306_2100_004.md | COMPLETED |
 
-### Unmatched Audit Requests
-NONE — no AUDIT_REQUEST without VERDICT.
+无未投递指令，无审计请求待处理。
 
-## Unfinished Work by Admin
-- ORCH_001 (BUG-12): Code patched, 2nd eval was running at 01:27. Report (report_ORCH_001.md) NOT yet written.
-- Admin was actively working in GiT/ on `occ_2d_box_eval.py` slot ordering fix.
+## P3 训练快照
 
-## Agent Status at Hibernation
-| Agent | tmux | Last Known Activity |
-|-------|------|---------------------|
-| conductor | UP | idle, 27% context used, next cycle was ~01:27 |
-| admin | UP | BUG-12 eval running, code changes applied |
-| critic | UP | idle, no audit requests |
-| ops | UP | idle, crontab configured (save_tmux.sh every 10min) |
-| supervisor | UP | hibernating now |
+- 进度: iter 2840 / 4000 (**71%**)
+- GPU: 0 (22.4GB, 100%) + 2 (23.0GB, 100%)
+- ETA 完成: ~01:08
+- 下次 val: iter 3000 (~00:18)
+- 第二次 LR decay: iter 3500
 
-## Background Processes
-- sync_loop.sh: was running as daemon (PID unknown, started 00:53)
-  - Will continue running independently of this Claude session
-  - Will auto-deliver any new PENDING instructions to admin
+### 最近 val 结果 (P3@2500 — Cycle #107 刚捕获)
 
-## GPU State (last check 01:16)
-| GPU | Free |
-|-----|------|
-| 0 | 26.1 GB (eval was using it) |
-| 1 | 17.4 GB |
-| 2 | 25.6 GB |
-| 3 | 17.4 GB |
+| 指标 | P3@2500 | P2@6000 | 红线 |
+|------|---------|---------|------|
+| car_R | 0.606 | 0.596 | — |
+| truck_R | **0.336** | 0.290 | <0.08 SAFE |
+| truck_P | **0.211** | 0.190 | — |
+| bus_R | 0.667 | 0.623 | — |
+| bus_P | **0.180** | 0.150 | — |
+| trailer_R | 0.667 | 0.689 | — |
+| bg_FA | **0.199** | 0.198 | >0.25 SAFE |
+| offset_cx | **0.052** | 0.068 | ≤0.05 |
+| offset_cy | 0.117 | 0.095 | ≤0.10 |
+| offset_th | 0.215 | 0.217 | ≤0.20 |
 
-## Known BUGs
-- BUG-9 (fatal, UNPATCHED): 100% gradient clipping
-- BUG-10 (high, UNPATCHED): optimizer cold start
-- BUG-12 (urgent): admin actively fixing, eval in progress
+### P3 关键结论
+- LR decay 后 truck_R 从 0.152 恢复至 0.336 (+121%)
+- 精度全面提升，模型稳定收敛中
+- offset_th @2000 的 0.191 突破在 @2500 回退至 0.215
 
-## Resume Checklist
-When restarting supervisor:
-1. `git pull` to get latest state
-2. Check if ORCH_001 report was completed
-3. Check for new PENDING instructions
-4. Verify sync_loop.sh is still running (`ps aux | grep sync_loop`)
-5. Resume 10-min status cycle
+## Agent 状态
+全 5 agent tmux UP（共 8 会话含 3 遗留）。
+
+## 恢复后待办
+
+1. 捕获 P3@3000 val（~00:18 出结果）
+2. 捕获 P3@3500 val（第二次 LR decay @3500）
+3. 捕获 P3@4000 最终 val
+4. 训练完成后通知 Conductor
+5. 检查是否有新 ORCH 指令
+6. 恢复 30 分钟监控循环
