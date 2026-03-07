@@ -1,51 +1,88 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-06 20:55
-> Cycle: #101
+> 时间: 2026-03-06 21:52
+> Cycle: #102
 
-## 训练状态
-- P2 训练已完成 (20:11), iter 6000/6000
-- **无活跃训练进程**
-- 最终 checkpoint: `iter_6000.pth`
+## ===== P3 训练已启动! (Plan F, BUG-8 + BUG-10 修复) =====
 
-## 核心指标（P2@6000 最终, 无变化）
+### ORCH_004 — COMPLETED (21:28)
+- BUG-8 修复: cls loss 添加背景类 (bg_balance_weight=3.0)
+- BUG-10 修复: warmup 添加 (LinearLR 500 iters, 0.001x→1.0x)
+- P3 训练已启动, PID 3775971
 
-| 指标 | P2@6000 | P1@6000 | vs P1 |
-|------|---------|---------|-------|
-| car_R | 0.596 | 0.628 | -5% |
-| truck_R | 0.290 | 0.358 | -19% |
-| bus_R | 0.623 | 0.627 | ≈ |
-| trailer_R | **0.689** | 0.644 | +7% |
-| bg_FA | 0.198 | 0.163 | SAFE |
-| truck_P | **0.190** | 0.176 | +8% |
-| offset_th | **0.217** | 0.220 | -1.4% |
-| avg_P | **0.121** | 0.114 | +6% |
+### P3 训练状态
+- 配置: `configs/GiT/plan_f_bug8_fix.py`
+- 进度: iter 500 / 4000 (12.5%) — **首次 val 进行中**
+- Load from: P2@6000
+- GPU: 0 (22.4GB, 97%) + 2 (23GB, 97%)
+- 总迭代: 4000 (比 P2 少 2000)
+- Warmup: 前 500 iter 完成, LR 已达 base_lr=5e-05
+- LR milestones: iter 2500, 3500
+- Val 间隔: 每 500 iter
+- ETA 完成: ~00:45 (剩余 ~3h)
 
-**P2 总评: 9 项超P1, 2 项平, 3 项低。等待 Conductor 评审。**
+### P3 vs P2 config 差异
+| 参数 | P2 (plan_e) | P3 (plan_f) |
+|------|-------------|-------------|
+| load_from | P1@6000 | **P2@6000** |
+| max_iters | 6000 | **4000** |
+| warmup | 无 | **LinearLR 500 iter** |
+| milestones | [3000, 5000] | **[2500, 3500]** |
+| BUG-8 | 未修复 | **已修复 (bg cls loss)** |
+| BUG-10 | 未修复 | **已修复 (warmup)** |
+
+### P3 早期 Loss 趋势 (iter 270-500, warmup 尾段)
+- total_loss: 0.24~1.13, 典型 ~0.52
+- cls_loss: 0.03~0.49, 典型 ~0.15
+- reg_loss: 0.19~0.64, 典型 ~0.38
+- grad_norm: 3.0~20.7, 大部分 < 10.0
+- **warmup 运行正常**, LR 线性递增中
+- iter 500: loss=0.364, grad_norm=5.49 (健康)
+
+## 核心指标 (P2@6000 最终, P3 val 待出)
+
+| 指标 | P2@6000 | P1@6000 | 红线 |
+|------|---------|---------|------|
+| car_R | 0.596 | 0.628 | — |
+| truck_R | 0.290 | 0.358 | <0.08 |
+| bus_R | 0.623 | 0.627 | — |
+| trailer_R | 0.689 | 0.644 | — |
+| bg_FA | 0.198 | 0.163 | >0.25 |
+| truck_P | 0.190 | 0.176 | — |
+| offset_th | 0.217 | 0.220 | ≤0.20 |
+
+**P3@500 val 正在运行**, 首批结果即将出炉。
+
+## ORCH 指令状态
+| 指令 | 状态 | 备注 |
+|------|------|------|
+| ORCH_001 | COMPLETED | BUG-12 fix |
+| ORCH_002 | COMPLETED | BUG-9 diagnosed |
+| ORCH_003 | COMPLETED | P2 launched |
+| **ORCH_004** | **COMPLETED** | **BUG-8 + BUG-10 fix, P3 launched** |
+
+无 PENDING，无积压。
 
 ## GPU 状态
 | GPU | 已用 | 利用率 | 任务 |
 |-----|------|--------|------|
-| 0 | 15 MB | 0% | **空闲 (可用)** |
-| 1 | 3.3 GB | 70% | 外部: yz0364 UniAD (PID 3768469) |
-| 2 | 550 MB | 0% | **空闲 (可用, 残留 CUDA ctx)** |
-| 3 | 3.3 GB | 61% | 外部: yz0364 UniAD (PID 3768470) |
+| 0 | 22.4 GB | 97% | **P3 训练** |
+| 1 | 3.3 GB | 0% | 外部: yz0364 UniAD |
+| 2 | 23.0 GB | 97% | **P3 训练** |
+| 3 | 18 MB | 0% | 空闲 |
 
-**GPU 0/2 可用, GPU 1/3 被外部用户 yz0364 占用。**
+## Agent 状态
+全 5 agent tmux UP。
 
-## ORCH / 投递
-全部 COMPLETED，无 PENDING，无积压。无新指令。
+## BUG 状态
+| BUG | 状态 |
+|-----|------|
+| BUG-8 | **FIXED in P3** (bg cls loss) |
+| BUG-9 | FIXED (max_norm=10.0) |
+| BUG-10 | **FIXED in P3** (warmup) |
+| BUG-12 | FIXED |
 
-## 代码变更
-无新 GiT commit。
-
-## 深度监控
-- 全 5 agent tmux UP
-- 无训练进程运行
-- 12 个 checkpoint (iter_500~6000, ~23.7 GB)
-- Conductor 尚未对 P2 结果做出下一步决策
-- P2 完成后已空闲 ~44 分钟
+**全部已知 BUG 均已修复!**
 
 ## 告警
-1. **ℹ️ 系统空闲 44min**: 等待 Conductor 指令
-2. **ℹ️ GPU 1/3 被 yz0364 占用**: 若需 4 GPU 实验需协调
-3. **ℹ️ BUG-10 未修复**
+1. **ℹ️ P3@500 val 进行中**: 首批指标即将可用
+2. **ℹ️ BUG-8 效果待验证**: Critic 预期 avg_precision 应显著上升
