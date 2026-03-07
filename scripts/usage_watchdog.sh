@@ -114,6 +114,7 @@ done
 
 # =============================================================
 # 检测方式 3: Context 剩余监控 + 保存上下文 + /compact + 恢复
+# 注意: /compact 是 CLI 命令，必须由 bash 直接发送，不能让 Agent 自己执行
 # =============================================================
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
@@ -123,9 +124,21 @@ for session in "${SESSIONS[@]}"; do
             agent_name=$(echo "$session" | sed 's/agent-//')
             log "⚠️ ${session} context 剩余 ${CTX_LEFT}%"
             if is_idle "$session"; then
+                # 步骤1: 让 Agent 保存上下文
                 tmux send-keys -t "$session" \
-                    "请先将当前工作上下文（正在做什么、进度、待办、关键数据）保存到 shared/logs/compact_${agent_name}.md 并 git push，然后执行 /compact，compact 完成后读取 shared/logs/compact_${agent_name}.md 恢复上下文" Enter
-                log "→ ${session}: 已发送 保存+compact+恢复 指令（空闲状态）"
+                    "请将当前工作上下文（正在做什么、进度、待办、关键数据）保存到 shared/logs/compact_${agent_name}.md 并 git push" Enter
+                log "→ ${session}: 已发送保存指令，等待 60 秒"
+                sleep 60
+
+                # 步骤2: bash 直接发 /compact（CLI 命令）
+                tmux send-keys -t "$session" "/compact" Enter
+                log "→ ${session}: 已发送 /compact，等待 30 秒"
+                sleep 30
+
+                # 步骤3: 让 Agent 恢复上下文
+                tmux send-keys -t "$session" \
+                    "compact 已完成，请读取 shared/logs/compact_${agent_name}.md 恢复上下文并继续工作" Enter
+                log "→ ${session}: 已发送恢复指令"
             else
                 log "→ ${session}: 需要 compact 但正在忙碌，下轮再试"
             fi
