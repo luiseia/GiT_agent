@@ -34,3 +34,13 @@ Phase 1: AABB→旋转多边形 + BUG-11 + P3@3000 恢复训练
 Phase 2: DINOv3 离线预提取 Layer 16-20 为 .pt 文件
 评估标准: Phase 1 后 avg_P>0.15 则 Phase 2 低优先级, avg_P<0.12 则立即集成
 **执行结果**: 立即签发 ORCH_005 (Phase 1) + ORCH_006 (Phase 2), ORCH_005 已 DELIVERED.
+
+---
+## [2026-03-07 ~05:00] CEO 指令 #7
+ORCH_006 Phase 2 DINOv3 预提取执行:
+1. 批准 GPU 1,3 完成 DINOv3 中间层特征预提取
+2. 新建 conda env Python 3.10
+3. 存储预估: 先用 1 张图测试, 推算总量. 超 200 GB 只提取 1 层 (Layer 16 or 20)
+4. 存储路径: /mnt/SSD/GiT_Yihao/dinov3_features/
+5. GPU 1,3 仅用于本次提取, 完成后立即释放
+**执行结果**: 立即签发 ORCH_007 给 Admin, 包含 4 项任务: conda env + 单图测试 + 全量提取 + 验证释放.
