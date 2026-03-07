@@ -35,6 +35,77 @@ x = torch.cat([flatten_image_patch, flatten_grid_token], dim=1)
 
 **结论: 三层视野全部来自 DINOv3 PatchEmbed 的单一投影。** 没有任何层使用其他特征来源。Grid token 是可学习参数，通过注意力机制间接吸收 image_patch 信息，但初始化时不含 DINOv3 语义。
 
+### 详细数据流追踪: flatten_image_patch 与 flatten_grid_token
+
+拼接发生在 `vit_git.py:L485`:
+```python
+x = torch.cat([flatten_image_patch, flatten_grid_token], dim=1)
+```
+
+#### flatten_image_patch 来源
+
+完整链路:
+
+1. **DINOv3 Conv2d PatchEmbed** (`git.py:L239`):
+   ```python
+   patch_embed, patch_resolution = self.backbone.patch_embed(batch_inputs)
+   # batch_inputs: 原始图像 (B, 3, H, W)
+   # patch_embed: (B, N, 768) — DINOv3 的 Conv2d(3→4096) + Linear(4096→768)
+   ```
+
+2. **加入位置编码** (`git.py:L250`):
+   ```python
+   patch_embed = patch_embed + img_pos_embed
+   ```
+
+3. **进入 ViT 层循环** (`git.py:L508`):
+   ```python
+   patch_embed = layer(patch_embed, grid_token, ...)
+   ```
+   每层 TransformerLayer 内部 (`vit_git.py:L469-485`):
+   - `flatten_image_patch` 直接来自上一层输出的 `patch_embed`
+   - 经过 window_partition 展平后参与注意力计算
+
+**结论: flatten_image_patch 100% 来自 DINOv3 Conv2d PatchEmbed → Linear(4096,768) → pos_embed，然后逐层通过 Transformer 更新。**
+
+#### flatten_grid_token 来源
+
+完整链路:
+
+1. **初始化 — 可学习 task_embedding** (`git.py:L325-326`):
+   ```python
+   grid_start_embed = self.task_embedding[self.mode_id][None, None, :].repeat(B, num_grids, 1)
+   # task_embedding: nn.Parameter, 随机初始化, 与 DINOv3 无关
+   ```
+
+2. **赋值** (`git.py:L449`):
+   ```python
+   grid_token = grid_start_embed  # (B, num_grids, 768)
+   ```
+
+3. **每层更新 — 从 patch_embed 空间采样** (`git.py:L508-510`):
+   ```python
+   for layer in self.backbone.layers:
+       grid_feature = self.get_grid_feature(memory, grid_position)  # L509
+       # memory = patch_embed (来自 DINOv3)
+       # get_grid_feature 内部使用 F.grid_sample (git.py:L591-592):
+       #   grid_feature = F.grid_sample(memory_2d, grid_pos_norm, ...)
+       grid_token = torch.cat([grid_feature, grid_token], dim=2)  # L510 拼接
+       # 然后送入 Transformer layer, grid_token 通过注意力被更新
+   ```
+
+**结论: flatten_grid_token 的初始值是随机可学习参数 (与 DINOv3 无关)，但在每一层通过 `F.grid_sample` 从 DINOv3 patch_embed 中空间采样特征并拼接，间接获取 DINOv3 信息。**
+
+#### 关键区别总结
+
+| 属性 | flatten_image_patch | flatten_grid_token |
+|------|--------------------|--------------------|
+| **初始来源** | DINOv3 Conv2d PatchEmbed (直接) | task_embedding (随机可学习参数) |
+| **DINOv3 关系** | 直接投影 | 间接 (每层 F.grid_sample 从 patch_embed 采样) |
+| **位置编码** | img_pos_embed (直接加) | grid_position (采样坐标) |
+| **语义丰富度 (初始)** | 中 (Conv2d 级别的空间特征) | 零 (随机初始化) |
+| **逐层更新** | Transformer self-attention | Transformer attention + F.grid_sample 注入 |
+
 **BUG-14: Grid token 与 image patch 的信息冗余**
 
 - 严重性: **MEDIUM**
