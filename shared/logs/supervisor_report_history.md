@@ -3270,3 +3270,19 @@ BUG-33 RESOLVED (ORCH_018):
 
 P6 @2000 val 进行中. Plan M: 1920/2000, Plan N: 1890/2000
 Next: P6 @2000 + M/N @2000 final (~11:30-11:33)
+
+---
+## Cycle #157 | 2026-03-08 11:53
+**Plan M/N COMPLETED | P6 @2000 car_P=0.111 | ORCH_016 诊断全结束 | GPU 1+3 空闲**
+
+Plan M FINAL @2000 (unfreeze): car_R=0.507, car_P=0.049, bg_FA=0.188, off_cx=0.066, off_cy=**0.079**, off_th=0.223
+Plan N FINAL @2000 (frozen): car_R=0.513, car_P=0.045, bg_FA=0.198, off_cx=0.071, off_cy=0.084, off_th=**0.217**
+→ M ≈ N @2000, LR decay 后收敛. 预提取 (K) 整体优于在线 (M/N)
+→ 在线唯一优势: off_cy (M=0.079 vs K=0.171). 推荐预提取路径.
+→ ORCH_016 → COMPLETED
+
+P6 @2000 val: car_P=**0.111** ✅ (>P5b 0.107), off_th=0.230⚠️ (>>0.18 目标)
+- P6 @2000 car_P = Plan L @2000 = 0.111, 两者持平
+- P6 LR decay @2500 即将 (~11:54)
+
+GPU: 0+2 P6, 1+3 空闲. P6 @3000 ~12:24 (ORCH_017 full nuScenes 决策点)
