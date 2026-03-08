@@ -3239,3 +3239,18 @@ P6 @1000 val: car_R=0.197↓, car_P=**0.054** ❌(<0.10), bg_FA=**0.323** ❌(>0
 
 Plan M: 1480/2000 (@1500 ~10:28), Plan N: 1460/2000 (@1500 ~10:30)
 P6: 1020/6000, 继续训练, @1500 ~10:43
+
+---
+## Cycle #155 | 2026-03-08 10:55
+**Plan M/N @1500 | M car_R 崩塌 0.489 | ORCH_018 BUG-33 | P6 减速**
+
+Plan M @1500 (unfreeze): car_R=**0.489**↓↓, car_P=0.047, bg_FA=**0.182**, off_cx=0.071, off_cy=0.098, off_th=**0.194**
+Plan N @1500 (frozen): car_R=0.630, car_P=0.045, bg_FA=0.236, off_cy=**0.081**, off_th=0.229
+→ M car_R 从 0.699 崩至 0.489 (-21%), N 稳定 → **Frozen >> Unfreeze**
+→ 两者 LR decayed: 2.5e-06→2.5e-07
+
+P6: ~1500/6000, @1500 val 中. 训练减速 3.0→5.3 s/iter, GPU 0 内存 +12GB (32.5GB)
+Loss 飙升: iter 1460 loss=8.61, grad_norm 高位
+
+🆕 ORCH_018 (DELIVERED): BUG-33 gt_cnt 不一致调查, P6 @2000 前完成 (~11:10)
+Plan M: 1640/2000, Plan N: 1610/2000, @2000 ~11:32-11:35
