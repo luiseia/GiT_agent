@@ -44,3 +44,7 @@ ORCH_006 Phase 2 DINOv3 预提取执行:
 4. 存储路径: /mnt/SSD/GiT_Yihao/dinov3_features/
 5. GPU 1,3 仅用于本次提取, 完成后立即释放
 **执行结果**: 立即签发 ORCH_007 给 Admin, 包含 4 项任务: conda env + 单图测试 + 全量提取 + 验证释放.
+
+---
+## [2026-03-08 04:38:26] CEO 指令
+CEO批准双层投影: Linear(4096,1024)+GELU+Linear(1024,768), 缓解类别子空间干扰。5.3:1 压缩是结构性瓶颈, sqrt 加权无法解决
