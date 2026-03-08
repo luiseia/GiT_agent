@@ -3138,3 +3138,15 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **ORCH_015 执行中**: Plan K(单类car诊断)+Plan L(宽投影诊断), 各2000iter, iter~280, ETA~08:28
 **Plan K loss~0.8**: 远低于P5b同期, 暗示类竞争确实存在
 **Plan L loss~7.9**: 投影层从随机初始化, 高loss spike正常
+
+---
+
+## Cycle #148 | 2026-03-08 07:32 | 4 GPU满载! Plan K/L @500 val + Plan M/N启动
+
+**4实验并行**: Plan K(单类car,GPU0,780/2000) + Plan L(10类宽投影,GPU2,750/2000) + Plan M(在线unfreeze,GPU1,70/2000) + Plan N(在线frozen,GPU3,70/2000)
+**Plan K @500**: car_R=0.629(↓from P5b,重建中), car_P=0.064, bg_FA=**0.183**(显著低!), off_cy=0.082(好)
+**Plan L @500**: car_R=0.084(投影随机初始化), pedestrian_R=**0.451**(意外!), bg_FA=0.237
+**⚠️ Plan L用了10类**(ORCH_015指定4类, Admin偏离), 含pedestrian/bicycle等
+**ORCH_016 NEW**: CEO选在线DINOv3路线(绕过2.1TB), Plan M(unfreeze)+Plan N(frozen), 显存+13-14GB
+**在线速度**: 6.26s/iter(2x慢于预提取的2.97s)
+**下次val**: Plan K/L @1000(~07:50), Plan M/N @500(~08:00)
