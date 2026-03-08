@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-08
 
-## 当前状态: P6_3000 审计完成 (2026-03-08)
+## 当前状态: P6_VS_P5B 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -20,6 +20,7 @@
 | VERDICT_P6_1000 | CONDITIONAL | afbd4e8 | pending/ |
 | VERDICT_P6_1500 | PROCEED | 5f63b0e | pending/ |
 | VERDICT_P6_3000 | CONDITIONAL | 67f6644 | pending/ |
+| VERDICT_P6_VS_P5B | CONDITIONAL | d852faf | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -57,7 +58,7 @@ shared/audit/
 | BUG-27 | CRITICAL | NEW | Plan K vocab mismatch (230→221) 导致实验无效 |
 | BUG-28 | HIGH | NEW | Plan L 双变量混淆 (投影宽度 + vocab 保留) |
 | BUG-29 | LOW | 记录 | Plan K sqrt balance 对单类无意义 |
-| BUG-30 | **MEDIUM** (降级) | OPEN | GELU ~0.05 一致性惩罚 (Plan K@2000 达标 0.191) |
+| BUG-30 | ~~MEDIUM~~ | **INVALID** | GELU不损害off_th (P5b=0.195≈P6=0.196), 假设基于BUG-27污染数据 |
 | BUG-31 | HIGH | 记录 | Plan M/N 继承 BUG-27 vocab mismatch |
 | BUG-32 | MEDIUM | 记录 | Plan K @1500 off_cy 跳变 (LR decay 后退化) |
 | BUG-33 | **MEDIUM** (降级) | 确认 | DDP val GT 重复, Precision 可信, Recall 偏差 ~10% |
@@ -66,8 +67,10 @@ shared/audit/
 | BUG-36 | HIGH | NEW | Plan M/N vs P6 对比条件不一致 (proj_dim 1024 vs 2048) |
 | BUG-37 | HIGH | NEW | P5b 基线缺乏可信单 GPU 数据 |
 | BUG-38 | MEDIUM | 自我纠正 | Critic car_P 预测偏乐观 (0.12-0.13 vs 实际 0.106) |
+| BUG-39 | **CRITICAL** | NEW | 双层Linear无激活函数=单层Linear, P6 2048中间维度无效 |
+| BUG-40 | HIGH | 自我纠正 | Critic审计链连锁失误: BUG-27→BUG-30→去GELU→P6退化 |
 
-## 下一个 BUG 编号: BUG-39
+## 下一个 BUG 编号: BUG-41
 
 ## P6 关键数据 (当前主线)
 - Config: plan_p6_wide_proj.py
@@ -84,7 +87,12 @@ shared/audit/
 - P6@3000: car_P=0.106(DDP,偏差<2%), bg_FA=0.309, off_th=0.205, off_cx=0.039
 - car_P 平台化 0.106-0.111 (@1500-@3000), mini 天花板
 - P6 继续到@6000, 但 @3000 已是 mini 决策点
-- CONDITIONAL: 需 COND-1(P5b re-eval) + COND-2(Plan O: 在线+2048+frozen 500iter)
+- CONDITIONAL @3000: 需 COND-1(P5b re-eval) + COND-2(Plan O)
+- **P5b@3000 单GPU可信数据**: car_P=0.116, bg_FA=0.189, off_th=0.195
+- **P6 vs P5b**: car_P -8.6%, bg_FA +57%, off_cx -38%, off_cy -30%, off_th ≈持平
+- **BUG-39 CRITICAL**: 双层Linear无激活=单层Linear, P6"宽投影2048"无效
+- **BUG-30 INVALID**: GELU不损害off_th, 假设被BUG-27污染数据误导
+- 修正路线: Plan P (2048+GELU+lr_mult=1.0) 500iter验证 → full nuScenes
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -106,7 +114,9 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P6 继续到@3000, 假说B完全验证, 架构方向正确
 → Plan M/N 归档: 在线DINOv3不达标, frozen>>unfreeze
 → P6 @3000 CONDITIONAL(car_P平台化0.106, 需Plan O验证在线路径)
-→ Plan O (待定: 在线DINOv3 frozen + 2048 + 无GELU, 500iter mini验证)
+→ P6 VS P5B: P6 car_P=0.106 < P5b=0.116, BUG-39(无GELU退化)
+→ Plan P (待定: 2048+GELU+lr_mult=1.0, 500iter mini验证)
+→ Plan O (待定: 在线DINOv3 frozen + 2048 + GELU, 500iter mini验证)
 → P7 (待定: full nuScenes)
 ```
 
