@@ -3529,3 +3529,13 @@ bg_FA=0.295, off_th=**0.208**, off_cx=0.061, off_cy=0.074
 ## Cycle #170 — 2026-03-08 17:42
 
 Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 val @2000 ~20:13.
+
+---
+
+## Cycle #171 | 2026-03-08 18:12
+- **Full nuScenes**: iter 890/40000 (2.2%), 训练正常
+- Speed: ~6.3-6.5 s/iter, Mem: 28849 MB/GPU, LR: 1.11e-06 (warmup 4.5%)
+- Loss @890: 5.92 (cls=3.92, reg=1.99), grad_norm 正常 (偶有尖峰 132@790)
+- GPU: 4卡 36.4-37.0 GB, 100% util
+- 无新 ORCH 指令
+- 首次 val @2000 ETA ~20:10
