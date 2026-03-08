@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 18:00 (循环 #42)
+> 最后更新: 2026-03-07 18:30 (循环 #43)
 
 ## 当前阶段: P5 训练已启动! ORCH_008 验收通过, DINOv3 Layer 16 集成完成
 
@@ -69,6 +69,11 @@
 - [ ] BUG-14: Grid token 冗余
 - [x] BUG-16: NOT BLOCKING (无增强)
 
+### 3D 空间编码路线图 (VERDICT_3D_ANCHOR, 循环 #43 纳入)
+- [ ] **P6 第一步**: BEV 坐标 PE — grid_reference 从 2D 图像坐标→BEV 物理坐标 + MLP(2→768)。0.5 天，风险极低
+- [ ] **P6 第二步**: 3D Anchor — BEV grid 中心沿 z 轴采样 + 相机投影。2-3 天
+- [ ] **P7+**: V2X 融合 — sender occ box → BEV feature map + cross-attention。需多车数据集
+
 ## BUG 跟踪
 | BUG | 严重性 | 状态 |
 |-----|--------|------|
@@ -101,6 +106,13 @@
 | avg_P | ≥ 0.20 | 0.107 | **P5 核心目标** |
 
 ## 历史决策
+### [2026-03-07 18:30] 循环 #43 — VERDICT_3D_ANCHOR 处理, 路线图更新
+- Critic 主动审计 3D Anchor + V2X 融合方向
+- 判决 CONDITIONAL: DINOv3 (P5) >> 3D Anchor (P6) >> V2X (P7+)
+- P6 最小实验: BEV 坐标 PE (0.5 天, 极低风险)
+- 纳入 MASTER_PLAN 架构路线图
+- P5 仍在 warmup, @500 val 即将到来
+
 ### [2026-03-07 18:00] 循环 #42 — ORCH_008 验收通过, P5 训练已启动
 - ORCH_008 全部 6 项检查 PASS
 - P5 PID 1572, GPU 0,2, 显存 20.4 GB/GPU
