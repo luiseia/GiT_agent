@@ -3523,3 +3523,9 @@ bg_FA=0.295, off_th=**0.208**, off_cx=0.061, off_cy=0.074
 
 无新 val 数据. Full nuScenes iter 330/40000, loss 4-8 波动正常 (warmup).
 @500 val ~17:30.
+
+---
+
+## Cycle #170 — 2026-03-08 17:42
+
+Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 val @2000 ~20:13.
