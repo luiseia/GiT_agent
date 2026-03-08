@@ -2942,3 +2942,13 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **P5超P4指标**: car_P(+11%), truck_R(+3%), offset_cx(+11%), offset_cy(+12%), **offset_th(+31%!)**
 **⚠️LR未衰减**: iter4010-4030仍lr=2.5e-06, milestones可能是相对于begin=1000的步数, 实际decay可能在iter5000
 **bg_FA**: 0.290→0.213大幅下降(-27%), 新历史低点, 首次<0.25红线
+
+---
+
+## Cycle #130 | 2026-03-07 21:53 | P5@4500 bg_FA创新低0.167超P4! 但Recall/offset全面回调
+
+**P5@4500 Val**: car_R=0.529 car_P=0.091 truck_R=0.317 truck_P=0.095 **bus_R=0.058**(坍塌!) trailer_R=0.361 **bg_FA=0.167**(新低!超P4的0.194!) cx=0.083 cy=0.111 th=0.226
+**bg_FA突破**: 0.213→0.167, P5全程新低, 首次超越P4@4000(0.194)
+**全面回调**: @4000的四类平衡+offset精度无法维持; bus坍塌(-82%), offset三指标全失守红线(th: 0.142→0.226!)
+**LR确认未衰减**: iter4500仍lr=2.5e-06; milestones为相对值, 实际decay@5000, 第二次@6500不可达(>max_iter)
+**最佳checkpoint**: P5@4000仍是综合最优(四类>0.3, offset_th=0.142, bg_FA=0.213)
