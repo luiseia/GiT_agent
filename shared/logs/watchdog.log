@@ -2161,3 +2161,14 @@ baseline comparison" completed (exit code 0)
 [2026-03-08 12:20:01] watchdog: === 用量检查开始 ===
 [2026-03-08 12:20:07] watchdog: 用量: 19%  |  Resets 2pm (America/Chicago)
 [2026-03-08 12:20:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 12:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 12:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 12:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 12:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 12:40:08] watchdog: 用量: 21%  |  Resets 2pm (America/Chicago)
+[2026-03-08 12:40:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 12:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 12:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 12:50:01] watchdog: ⚠️ agent-admin context 剩余 12%
+[2026-03-08 12:50:01] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 12:50:01] watchdog: ✅ 用量正常，无需休眠
