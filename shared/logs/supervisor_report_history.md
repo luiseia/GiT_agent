@@ -3501,3 +3501,18 @@ bg_FA=0.295, off_th=**0.208**, off_cx=0.061, off_cy=0.074
 
 ### ORCH_023 结论: Full nuScenes 建议用 2048+GELU, milestone @2500 decay 应避免 @2000 回调
 ### ALL GPU FREE: 0+1+2+3 全空闲, 等待 Conductor 新指令
+
+---
+
+## Cycle #168 — 2026-03-08 16:44
+
+### 🚀 ORCH_024: Full nuScenes 训练已启动!
+- 4 GPU DDP, 在线 DINOv3 frozen + 2048+GELU
+- Full nuScenes: 28130 train, 6019 val
+- max_iters=40000, warmup=2000, milestones=[15000,25000]
+- 显存: 28.8 GB/GPU, 速度 ~6.3 s/iter
+- ETA: ~3/11 14:30 (约 2 天 22 小时)
+- iter 60/40000, loss 4.00 正常下降
+- 日志: `.../full_nuscenes_gelu/20260308_163535/20260308_163535.log`
+- @500 val ~17:29, @1000 ~18:22, @2000 ~20:08
+### GPU: 0+1+2+3 全部 Full nuScenes (36-37 GB, 100%)
