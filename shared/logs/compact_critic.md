@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-07
 
-## 当前状态: P5B_3000 审计完成
+## 当前状态: P6_ARCHITECTURE 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -12,7 +12,8 @@
 | VERDICT_3D_ANCHOR | CONDITIONAL | 91443d4 | audit/ (根目录) |
 | VERDICT_P5_MID | CONDITIONAL | ba27c27 | pending/ |
 | VERDICT_INSTANCE_GROUPING | CONDITIONAL | 81e231c | processed/ |
-| VERDICT_P5B_3000 | CONDITIONAL | b6a9717 | pending/ |
+| VERDICT_P5B_3000 | CONDITIONAL | b6a9717 | processed/ |
+| VERDICT_P6_ARCHITECTURE | CONDITIONAL | 4c5aa24 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -42,9 +43,13 @@ shared/audit/
 | BUG-19 | HIGH | FIXED | proj_z0 标签问题 (z center 偏移 + valid_mask) |
 | BUG-20 | HIGH | 数据层 | bus 振荡根因是 nuScenes-mini 样本不足 (~120 标注) |
 | BUG-21 | MEDIUM | OPEN | off_th 退化 0.142→0.200 (疑似双层投影 GELU 损害方向特征) |
-| BUG-22 | HIGH | OPEN | 10 类扩展 ckpt 兼容性 (4 类→10 类, 新 6 类 token 随机初始化) |
+| BUG-22 | HIGH | 已修正 | P5b 已用 10 类 config, P6 无词表不匹配 |
+| BUG-23 | HIGH | 事实纠正 | 审计请求 GPU 显存信息错误 (实际 4×A6000 48GB) |
+| BUG-24 | MEDIUM | OPEN | 缺少单类 car 诊断 config |
+| BUG-25 | HIGH | OPEN | 无在线 DINOv3 提取路径 (LoRA/unfreeze 前提) |
+| BUG-26 | MEDIUM | OPEN | DINOv3 存储只需前摄 fp16 ~175GB (非 2.1TB) |
 
-## 下一个 BUG 编号: BUG-23
+## 下一个 BUG 编号: BUG-27
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -60,7 +65,9 @@ shared/audit/
 P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P4 (plan_g, AABB fix + BUG-11) → P5 (plan_h, DINOv3 Layer 16)
 → P5b (plan_i, 双层投影+sqrt+LR fix, P5@4000起点)
-→ P6 (待定: 10类扩展, 建议从 P5b@3000 启动)
+→ P6 Phase 0: 单类car诊断 + 方案D(宽中间层2048)
+→ P6 Phase 1: 根据诊断选择 全量nuScenes / LoRA
+→ P7 (待定: 历史 occ box t-1)
 ```
 
 ## 恢复指引
