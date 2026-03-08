@@ -2971,3 +2971,13 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **LR decay效果**: car强劲回升(0.615→0.721), trailer恢复(trailer_P首超P4的0.044!), offset_th保持红线内
 **P5超P4指标增至5个**: car_R(+22%), car_P(+14%), trailer_P(+5%首超!), bg_FA(+4%), offset_th(+12%)
 **未恢复**: bus(0.014)/truck(0.203)仍低, 500iter收敛不足; 最终@6000(~23:17)将是关键
+
+---
+
+## Cycle #133 | 2026-03-07 23:20 | ★ P5 训练完成! @6000最终val: trailer_R=0.500恢复, offset_th=0.192达标
+
+**P5@6000 Val (FINAL)**: car_R=0.682 car_P=0.089 **truck_R=0.228**(止跌回升+12%) truck_P=0.065 bus_R=0.011(未恢复) **trailer_R=0.500**(恢复!) trailer_P=0.043 **bg_FA=0.190**(稳定<红线) cx=0.066 cy=0.111 **th=0.192**(仍达标!)
+**P5训练完成**: 6000/6000 iters, 23:19结束, 总时长~5h40m
+**最优checkpoint排名**: #1=@4000(类别全平衡+offset最优), #2=@5500(car最强+trailer_P超P4), #3=@6000(trailer恢复+truck回升)
+**P5 vs P4总结**: P5在9/12指标上取得超P4的最优值! DINOv3 Layer16验证成功。P4仅在bus(R/P)和truck_P上保持领先
+**P5未解决**: bus坍塌(最佳0.315@4000), 类别振荡, LR milestone配置错误(相对值导致延迟)
