@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 ~17:00 (循环 #87 Phase 1)
+> 最后更新: 2026-03-08 ~17:15 (循环 #87 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (60/40000) | CEO 新战略方案送审中
+## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (60/40000) | CEO 战略审计完成, 等 @2000 决策
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -156,7 +156,18 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 **Full nuScenes 路线 (VERDICT_P2_FINAL_FULL_CONFIG 最终决定)**:
 1. ✅ **Plan P2 COMPLETED**: GELU 确认 (@1000 +72%, @1500 +5.7%). BUG-42: @2000 回调 = LR 问题
 2. ✅ **Config 选择**: **2048+GELU + 在线 DINOv3 frozen** (Critic PROCEED)
-3. **ORCH_024 DELIVERED**: 4 GPU DDP, ~40000 iter, ~3.7 天. 在线路径 @1000 early eval
+3. **ORCH_024 IN PROGRESS**: 60/40000, loss 4.00@60 正常下降, 6.3 s/iter, 36-37 GB/GPU, ETA 3/11
+
+**VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
+- **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
+- **方案 B (DINOv3 unfreeze)**: ❌ 三重否决 (显存超限 50+GB>48GB, BUG-35 特征漂移, GPU 全占用)
+- **方案 C (单类 car)**: ⚠️ 不改 vocab, ORCH_024 car 指标已足够替代
+- **方案 D (历史 occ box)**: ✅ 最有前途的下一步! ORCH_024 后执行. **2 帧 1.0s** (CEO 建议 1 帧, Critic 推荐 2 帧). 编码用轻量条件信号 (方案 3)
+- **方案 E (LoRA)**: ✅ 最佳 DINOv3 域适应方案. 在 D 之后执行. rank=16, ~12M 参数, 显存 +2 GB
+- **方案 F (多尺度特征)**: ⚠️ 搁置, 复杂度高, 当前不紧急
+- **方案 G (等 @2000)**: ✅ 最正确的当下行动
+- **优先级**: ORCH_024 >> 方案 G >> 方案 D >> 方案 E >> F >> C >> B >> A
+- **@2000 决策矩阵**: car_P>0.15 → 继续+排队 D; 0.08-0.15 → 继续; 0.03-0.08 → 调参; <0.03 → 切预提取
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -652,6 +663,13 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~17:15] 循环 #87 Phase 2 — VERDICT_CEO_STRATEGY_NEXT CONDITIONAL | 等 @2000 决策 | 无新 ORCH
+- **VERDICT 处理**: CEO 方案 A 已涵盖, B 三重否决, C 不改 vocab, D 最有前途 (2帧 1.0s), E LoRA 推荐, F 搁置, G 等数据
+- **优先级排序**: ORCH_024 >> G >> D >> E >> F >> C >> B >> A
+- **@2000 决策矩阵**: car_P>0.15→继续+D; 0.08-0.15→继续; 0.03-0.08→调参; <0.03→切预提取
+- **无新 ORCH**: ORCH_024 运行正常, 等 @2000 eval (~20:00) 再决策
+- **Critic 建议对 CEO**: 方案 A 直觉完全正确 (已被 2048 实现); 方案 B 用 LoRA 替代; 方案 D 最有前途
+
 ### [2026-03-08 ~17:00] 循环 #87 Phase 1 — ORCH_024 IN PROGRESS (60/40000) | CEO 新战略方案送审
 - **ORCH_024 已启动**: 4 GPU DDP, 60/40000 iter, loss 4.00@60 持续下降, 速度 6.3 s/iter, 显存 36-37 GB/GPU
 - **@500 val ETA ~17:29**: 第一次 eval, 确认在线路径正常
