@@ -73,10 +73,10 @@
 
 **BUG-17 升级为 HIGH**: 不仅是 milestone 相对值问题, 还包括 per_class_balance 在极不均衡数据下的振荡问题
 
-**P5b 推荐方案 (从 P5@4000 出发):**
+**P5b 方案 (从 P5@4000 出发, 三项全修):**
 1. **milestones 修正** (必须): `milestones=[2000,3500]` (相对 begin=500, 实际 decay @2500, @4000)
-2. **per_class_balance → sqrt 加权** (关键): `weight_c = 1/sqrt(count_c/min_count)`, 缓解 trailer 梯度噪声
-3. **双层投影** (可选): `Linear(4096,1024)+GELU+Linear(1024,768)`, 缓解子空间干扰
+2. **per_class_balance → sqrt 加权** (必须): `weight_c = 1/sqrt(count_c/min_count)`, 缓解 trailer 梯度噪声
+3. **双层投影** (必须, CEO 决策): `Linear(4096,1024)+GELU+Linear(1024,768)`, 缓解类别子空间干扰。5.3:1 压缩是结构性瓶颈, sqrt 加权无法解决
 
 **P6 方向**: DINOv3 适配问题解决前不进入 BEV PE。优先级: P5b > P6
 
