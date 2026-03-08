@@ -3370,3 +3370,23 @@ P6 无GELU: Linear(4096,2048)→Linear(2048,768) 数学等价于 Linear(4096,768
 ### P6 训练: iter 3960/6000, LR=2.5e-07, @4000 val 即将
 
 ### GPU: 4卡满载 — P6(0+2), Plan P(1), Plan O(3)
+
+---
+## Cycle #161 | 2026-03-08 13:50
+
+### P6 @4000 DDP Val (13:26:39)
+car_P=**0.123** (新高!), truck_P=0.077, bus_P=0.052, bg_FA=0.285, off_th=0.202
+P6 car_P 持续增长: 0.106→0.110→0.111→0.106→0.121→**0.123** (真实@4000≈0.121-0.125)
+
+### ORCH_022 Plan P @500 COMPLETED — 异常
+car_P=**0.004**, car_R=0.002 — 几乎为零!
+原因: lr_mult=1.0 (P6用2.0) + warmup=100 (P6用500) → 500 iter 内随机投影层未收敛
+不是架构问题: truck_P=0.040/bus_P=0.045 反而好, bg_FA=0.165 历史最低
+建议: Plan P2 (2048+GELU+lr_mult=2.0+warmup=500) 或延长到 2000 iter
+
+### Plan O — val 运行中
+iter 500/500 完成, val 在 GPU 3 运行中 (在线 DINOv3 eval 慢)
+
+### P6 训练: iter 4450/6000, LR decay @4500 即将
+
+### GPU: 0+2 P6, 1 空闲, 3 Plan O val
