@@ -3313,3 +3313,32 @@ GPU: 0+2 P6, 1+3 空闲. P6 @3000 ~12:24 (ORCH_017 full nuScenes 决策点)
 **P6 训练**: iter 2970/6000, 3.0 s/iter, @3000 val ~12:28
 
 **GPU**: 0+2 P6, 1+3 空闲
+
+---
+## Cycle #159 | 2026-03-08 12:51
+
+### P6 @3000 Val — ORCH_017 决策点
+
+**P6 @3000 DDP val** (12:27:53):
+- car_P = 0.106 (↓ from @2500 true 0.111)
+- truck_P = 0.061 (最高), ped_P = 0.129
+- bg_FA = 0.309, off_th = 0.205
+- 类振荡: car_P 下降, truck/ped 上升
+
+**car_P 轨迹 (真实)**:
+@500=0.073, @1000=0.058, @1500=0.106, @2000=0.110, @2500=0.111, @3000≈0.105
+
+**off_th 轨迹**: 0.259→0.220→0.246→0.234→0.201→0.205 (停滞)
+
+**ORCH_017 决策**: car_P 回落, off_th/bg_FA 未达标, 但被 COND-1 (P5b 基线待修正) 和 COND-2 (BUG-36 公平对比) 阻塞
+
+### 新 ORCH 指令
+
+**ORCH_020** (DELIVERED → 执行中): P5b@3000 单 GPU re-eval, GPU 1 (12 GB 99%)
+**ORCH_021** (DELIVERED): Plan O — 在线 DINOv3 frozen + 2048 + 无 GELU, GPU 3, 500 iter
+
+**BUG-36**: Plan M/N 用 proj_dim=1024, P6 用 2048, 对比不公平。Plan O 做公平验证。
+
+**P6 训练**: iter 3460/6000, 3.0 s/iter, LR=2.5e-07
+
+**GPU**: 0+2 P6, 1 ORCH_020, 3 空闲→待 Plan O
