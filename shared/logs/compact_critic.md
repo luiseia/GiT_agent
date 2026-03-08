@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-08
 
-## 当前状态: PLAN_P_FAIL_P6_TREND 审计完成 (2026-03-08)
+## 当前状态: P2_FINAL_FULL_CONFIG 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -22,6 +22,7 @@
 | VERDICT_P6_3000 | CONDITIONAL | 67f6644 | pending/ |
 | VERDICT_P6_VS_P5B | CONDITIONAL | d852faf | pending/ |
 | VERDICT_PLAN_P_FAIL_P6_TREND | CONDITIONAL | df6427d | pending/ |
+| VERDICT_P2_FINAL_FULL_CONFIG | **PROCEED** | df2d2a4 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -71,8 +72,9 @@ shared/audit/
 | BUG-39 | **MEDIUM** (降级) | 设计层 | 双层Linear无激活=单层Linear, 但P6@3500 car_P=0.121>P5b, 因式分解有优化优势 |
 | BUG-40 | HIGH | 自我纠正+补充 | Critic过激反应: @3000振荡低谷做CRITICAL判定, @3500即推翻 |
 | BUG-41 | HIGH | 确认 | Plan O全程warmup (LinearLR end=500=max_iters) + 未采纳GELU推荐 |
+| BUG-42 | MEDIUM | NEW | Plan P2 max_iters=2000 < first milestone@2500, 全程full LR无decay |
 
-## 下一个 BUG 编号: BUG-42
+## 下一个 BUG 编号: BUG-43
 
 ## P6 关键数据 (当前主线)
 - Config: plan_p6_wide_proj.py
@@ -103,6 +105,13 @@ shared/audit/
 - Plan P bg_FA=0.165(历史最低): GELU对bg/fg判别有强大独立贡献
 - BUG-41确认: Plan O全程warmup, 结果不可信
 - **最高优先级**: Plan P2 (P6 config仅改proj_use_activation=True, 2000iter, ~2h)
+- Plan P2@1000: car_P=0.100(+72% vs P6), bg_FA=0.328
+- Plan P2@1500: car_P=0.112, bg_FA=0.279
+- Plan P2@2000: car_P=0.096(回调, BUG-42全程无LR decay), car_R=0.801(过拟合mini)
+- P6@4000单GPU: car_P=0.126, bg_FA=0.274, off_th=0.191
+- P6@6000 DDP: car_P=0.129, bg_FA=0.274, off_th=0.200
+- **PROCEED**: Full nuScenes 用 2048+GELU+lr_mult=2.0+在线DINOv3 frozen
+- Mini验证阶段结束, 不再做mini实验
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -127,9 +136,9 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P6 VS P5B: P6 car_P=0.106 < P5b=0.116, BUG-39(无GELU退化)
 → P6 @3500 突破(car_P=0.121>P5b), BUG-39降级MEDIUM
 → Plan P @500 FAIL(超参灾难, 非架构问题), bg_FA=0.165暗示GELU价值
-→ Plan P2 (最高优先: P6+GELU, 2000iter验证)
-→ Plan O2 (在线+2048+GELU+正确warmup)
-→ P7 (待定: full nuScenes, 等Plan P2结果)
+→ Plan P2 完成: GELU收敛更快(+72%@1000), @2000回调=全程无decay(BUG-42)
+→ **PROCEED Full nuScenes**: 2048+GELU+lr_mult=2.0+在线DINOv3 frozen
+→ 跳过Plan O2, 直接Full nuScenes验证在线路径
 ```
 
 ## 恢复指引
