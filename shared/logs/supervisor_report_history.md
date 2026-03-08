@@ -2990,3 +2990,13 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **ORCH_010(P5b)**: HIGH, DELIVERED — 三项修复: LR milestones修正(warmup500+begin500+milestones[2000,3500]), sqrt类别权重(car:trailer从1:1→0.1:1), 双层投影(4096→1024→768); 起点P5@4000
 **ORCH_011(SSD迁移)**: HIGH, DELIVERED — work_dirs+work_dirs_12迁移到ssd_workspace, 磁盘空间告急
 **ORCH_009(可视化)**: MEDIUM, DELIVERED — 旋转多边形可视化, 保存到SSD
+
+---
+
+## Cycle #135 | 2026-03-08 00:14 | P5b(plan_i)训练已启动! 三修复就位, iter330 warmup中
+
+**P5b启动**: plan_i_p5b_3fixes, 23:56:39开始, iter330/6000(5.5%), warmup到500, GPU0+2(20.5+21.0GB, 100%)
+**修复验证**: 双层投影✓(missing keys确认Sequential), LR milestones待@2500验证, sqrt权重待确认
+**ORCH_009完成**: 旋转多边形可视化10张图, 独立脚本, 不改训练代码
+**ORCH_011状态不明**: work_dirs仍为普通目录(非软链接), 待确认
+**显存**: 15867 MB/GPU(P5为15757, +110MB双层投影开销); grad_norm峰值70(P5为247, 下降显著)
