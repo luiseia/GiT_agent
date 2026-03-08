@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 21:55 (循环 #50)
+> 最后更新: 2026-03-07 22:05 (循环 #50 Phase 2)
 
 ## 当前阶段: P5 训练 75% — bg_FA 创新低! LR decay 延迟问题确认
 
@@ -62,14 +62,31 @@
 - offset 三指标全失守红线 (从 @4000 的全面达标大幅退步)
 - **诊断**: @4000 是局部最优, @4500 振荡偏离。full LR 下无法收敛
 
+### VERDICT_P5_MID 核心发现 (Critic 已返回)
+
+**判决: CONDITIONAL — P5b 是必要的**
+
+**类别振荡根因 (三重冲突):**
+1. **DINOv3 Layer 16 语义过强**: 不同于 Conv2d 的纯纹理, Layer 16 含清晰类别表征, 但类别间不均衡 (car 8269 vs trailer 90 = 92:1)
+2. **per_class_balance 放大噪声**: 等权平衡让 trailer (90 GT) 的 loss 统计噪声主导部分 batch 梯度, 导致零和振荡
+3. **Linear(4096,768) 压缩瓶颈**: 5.3:1 压缩迫使不同类别共享子空间, 改善一个类别时破坏另一个
+
+**BUG-17 升级为 HIGH**: 不仅是 milestone 相对值问题, 还包括 per_class_balance 在极不均衡数据下的振荡问题
+
+**P5b 推荐方案 (从 P5@4000 出发):**
+1. **milestones 修正** (必须): `milestones=[2000,3500]` (相对 begin=500, 实际 decay @2500, @4000)
+2. **per_class_balance → sqrt 加权** (关键): `weight_c = 1/sqrt(count_c/min_count)`, 缓解 trailer 梯度噪声
+3. **双层投影** (可选): `Linear(4096,1024)+GELU+Linear(1024,768)`, 缓解子空间干扰
+
+**P6 方向**: DINOv3 适配问题解决前不进入 BEV PE。优先级: P5b > P6
+
 ### 干预策略
 
-**当前策略: 不干预, 等待 LR decay @5000 (~22:02)**
+**当前策略: 让 P5 自然完成, 规划 P5b**
 
-- @5000 LR decay (0.1x) 将抑制振荡, 预期回到 @4000 附近的稳定态
-- @5500: LR decay 效果首次评估
-- @6000: P5 训练结束, 综合评估
-- 已签发 **AUDIT_REQUEST_P5_MID** → Critic 评估全局 + milestone 问题 + P6 方向
+- P5 继续运行至 @6000, 收集 LR decay 后数据
+- P5 结束后从 P5@4000 启动 P5b (纠正 milestones + sqrt 加权 balance)
+- 等 P5 完成后签发 ORCH_010 (P5b)
 
 ---
 
@@ -117,14 +134,14 @@
 | BUG-14 | MEDIUM | 架构层面 |
 | BUG-15 | HIGH | P5 正在解决 |
 | BUG-16 | MEDIUM | NOT BLOCKING |
-| **BUG-17** | **MEDIUM** | **CONFIRMED** — milestone 相对值导致 decay 延迟+二次 decay 不可达 |
+| **BUG-17** | **HIGH** | **CONFIRMED** — milestone 相对值 + per_class_balance 极不均衡振荡 (Critic 升级) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
 | ORCH_008 | P5 DINOv3 集成 | COMPLETED (P5 RUNNING) |
 | ORCH_009 | 旋转多边形 Grid 分配可视化 | PENDING (CEO 请求) |
-| AUDIT_P5_MID | P5 中期审计 | REQUEST SENT (等 Critic) |
+| AUDIT_P5_MID | P5 中期审计 | **VERDICT RECEIVED** — P5b 必要, 修复振荡 |
 
 ## 红线监控
 | 指标 | 红线 | P5@4000 (最优) | P5@4500 (最新) | 状态 |
@@ -137,6 +154,15 @@
 | avg_P | ≥ 0.20 | 0.066 | 0.054 | 差距大, 持续改善 |
 
 ## 历史决策
+### [2026-03-07 22:05] 循环 #50 Phase 2 — VERDICT_P5_MID 处理, P5b 规划
+- Critic VERDICT: CONDITIONAL — P5b 必要
+- 振荡根因: DINOv3 语义过强 + per_class_balance 等权 + Linear 压缩瓶颈
+- BUG-17 升级 HIGH: 含 per_class_balance 极不均衡振荡
+- P5b 方案: P5@4000 出发, 修正 milestones, sqrt 加权 balance, 可选双层投影
+- P6 推迟: 先解决 DINOv3 适配问题
+- ORCH: 不签发, 等 P5 完成后签发 ORCH_010 (P5b)
+- ORCH_009 (多边形可视化) 仍 PENDING
+
 ### [2026-03-07 21:55] 循环 #50 — P5@4000+@4500 双 checkpoint, milestone 问题, 审计签发
 - P5@4000 综合最优: 四类 Recall>0.3, offset 三指标全面超 P4, bg_FA=0.213
 - P5@4500 bg_FA=0.167 创跨代新低, 但 Recall/offset 全线回调 — full LR 振荡
