@@ -1,8 +1,8 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 23:25 (循环 #53 Phase 1)
+> 最后更新: 2026-03-08 00:15 (循环 #55 Phase 1)
 
-## 当前阶段: ★ P5 训练完成! 9/12 指标超 P4 — 准备签发 ORCH_010 (P5b)
+## 当前阶段: P5b 训练已启动! 三项修复就位, iter 330/6000
 
 ### P5 Val 轨迹 (最终 6 个 checkpoint + P4 参照)
 
@@ -100,10 +100,19 @@
 ---
 
 ### P5 训练状态 — COMPLETED ✓
-- **完成时间**: 2026-03-07 23:19
-- **GPU 0,2**: 已释放
-- **最终 checkpoint**: iter_6000.pth
-- **下一步**: Phase 2 签发 ORCH_010 (P5b)
+- 完成时间: 2026-03-07 23:19, 9/12 指标超 P4
+
+### P5b 训练状态 — RUNNING (plan_i_p5b_3fixes)
+- **启动时间**: 2026-03-07 23:56
+- **进度**: iter 330 / 6000 (5.5%)
+- **GPU**: 0 (20.5GB) + 2 (21.0GB), 显存 +110MB (双层投影)
+- **LR**: warmup 阶段, base_lr=3.3e-05 (爬升中)
+- **warmup 结束**: iter 500 (~00:22), 首次 val 同时
+- **ETA 完成**: ~05:00
+- **三项修复验证**:
+  - [x] 双层投影: Sequential(4096→1024→768) 生效, grad_norm 峰值 70 (P5: 247)
+  - [ ] LR milestones: 待 iter 2500 验证 decay 触发
+  - [ ] sqrt 权重: 待确认权重日志
 
 ---
 
@@ -184,11 +193,12 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| ORCH_008 | P5 DINOv3 集成 | **COMPLETED** (P5 已完成) |
-| ORCH_009 | 旋转多边形 Grid 分配可视化 | PENDING (Admin 未开始) |
-| **ORCH_010** | **P5b 三项修复** | **SIGNED — milestones+sqrt+双层投影, 从 P5@4000** |
-| AUDIT_P5_MID | P5 中期审计 | VERDICT RECEIVED — P5b 必要 |
-| AUDIT_INSTANCE_GROUPING | Instance ID 提案 | **VERDICT PROCESSED** — CONDITIONAL, 列入 P6+ 路线图 |
+| ORCH_008 | P5 DINOv3 集成 | COMPLETED |
+| ORCH_009 | 旋转多边形可视化 | **COMPLETED** — 10 张图, `/mnt/SSD/GiT_Yihao/polygon_viz/` |
+| **ORCH_010** | **P5b 三项修复** | **执行中 — P5b 训练 RUNNING** |
+| ORCH_011 | SSD 迁移 | **DELIVERED** — 状态待确认 (Supervisor 报告未完成) |
+| AUDIT_P5_MID | P5 中期审计 | VERDICT PROCESSED |
+| AUDIT_INSTANCE_GROUPING | Instance ID 提案 | VERDICT PROCESSED — 列入 P6+ |
 
 ## 红线监控
 | 指标 | 红线 | P5@4000 (P5b起点) | P5@6000 (最终) | 状态 |
@@ -201,6 +211,13 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | avg_P | ≥ 0.20 | 0.066 | 0.050 | 差距大, P5b 解决 |
 
 ## 历史决策
+### [2026-03-08 00:15] 循环 #55 Phase 1 — P5b 训练已启动! 双层投影验证生效
+- **P5b RUNNING**: plan_i_p5b_3fixes, iter 330/6000, 从 P5@4000 加载
+- **双层投影验证**: Sequential(4096→1024→768) 生效, 旧权重丢弃, grad_norm 峰值 70 (P5: 247)
+- **ORCH_009 完成**: 旋转多边形可视化, 10 张图
+- **ORCH_011 待确认**: Supervisor 报告 work_dirs 仍非软链接
+- 审计不签发, 等 @500 首次 val (~00:22)
+
 ### [2026-03-07 23:30] 循环 #53 Phase 2 — ORCH_010 签发! VERDICT_INSTANCE_GROUPING 处理
 - **ORCH_010 签发**: P5b 三项修复 (milestones+sqrt+双层投影), 从 P5@4000, HIGH 优先级
 - **VERDICT_INSTANCE_GROUPING 处理**: CONDITIONAL — 接受但不纳入 P5b, 列入 P6+ 路线图
