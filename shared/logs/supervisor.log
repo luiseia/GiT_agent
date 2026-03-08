@@ -312,3 +312,7 @@
 [07:04:43] 🔔 通知 Critic: REQUEST_P5B_3000
 [07:05:43] 🔔 通知 Critic: REQUEST_P5B_3000
 [07:06:47] 📨 投递: ORCH_0308_0705_016.md → admin
+[09:02:54] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: DIAG_FINAL
+[09:03:09] → Critic 已重启并发送审计指令: DIAG_FINAL
+[09:04:09] 🔔 通知 Critic: REQUEST_DIAG_FINAL
+[09:05:10] 🔔 通知 Critic: REQUEST_DIAG_FINAL

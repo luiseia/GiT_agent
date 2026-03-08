@@ -1,82 +1,108 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 08:35 (循环 #69 Phase 2)
+> 最后更新: 2026-03-08 09:10 (循环 #70 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: 诊断 @1500 数据 — Plan L car_P 回落, 类振荡重现; Plan K/L 即将完成 @2000; Plan M @500 首数据
+## 当前阶段: ★ P6 Config 定稿! VERDICT_DIAG_FINAL 批准宽投影; ORCH_017 签发; 等 Plan M/N @1000
 
-### VERDICT_DIAG_RESULTS 核心判决 (Critic, Cycle #68)
+### VERDICT_DIAG_FINAL 核心判决 (Critic, Cycle #70)
 
-**判决: CONDITIONAL — 方向正确但论证不可靠, 实验设计存在致命混淆**
+**判决: CONDITIONAL — 宽投影 2048 获批, 但投影层必须是纯双 Linear (无 GELU 无 LayerNorm!)**
 
-**关键发现**:
-1. **BUG-27 (CRITICAL)**: Plan K vocab 不兼容 (230→221), vocab_embed 随机初始化 — **Plan K 结论无效**, 类竞争问题仍未回答
-2. **BUG-28 (HIGH)**: Plan L 双变量混淆 (投影宽度 + vocab 保留), car_P=0.140 无法干净归因于投影宽度
-3. **BUG-30 (HIGH)**: GELU 损害 off_th 已从"疑似"升级为三组交叉印证 (BUG-21 升级)
-4. **P6 必须用 10 类**: 保持 vocab 兼容, 减少类别会破坏预训练特征空间
-5. **P6 投影: 去掉 GELU**: Linear(4096,2048) + LayerNorm + Linear(2048,768)
-6. **弱推理仍支持宽投影**: 随机初始化的 2048 @1000 > 训练好的 1024 @3000, 暗示容量优势
-
-**通过条件** (定稿 P6 前必须满足):
-1. 认识 Plan L 结论是混淆的
-2. P6 用 10 类 (保持 vocab 兼容)
-3. P6 宽投影去掉 GELU (用 LayerNorm 或无激活)
-4. 等 Plan M/N @1000 数据
-5. Plan L @2000: bg_FA 需回落到 <0.30
-
-**P6 Config 建议 (Critic)**:
+**P6 Config 定稿 (Critic 批准)**:
+```python
+classes = 10 类 (num_vocal=230)
+load_from = P5b@3000
+proj 层: nn.Sequential(nn.Linear(4096, 2048), nn.Linear(2048, 768))  # 无 GELU, 无 LN!
+backbone.patch_embed.proj lr_mult = 2.0  # 加速投影层收敛
+balance_mode = 'sqrt'
+bg_balance_weight = 2.5 (bg_FA @1000 > 0.30 则提到 3.0)
+数据: nuScenes-mini (前 3000 iter 验证)
+max_iters = 6000 (mini)
+warmup = 500
+milestones = [2000, 4000] (相对 begin=500)
+val_interval = 500
 ```
-类别:    10 类 (num_vocal=230)
-投影层:  Linear(4096, 2048) + LayerNorm + Linear(2048, 768) — 无 GELU!
-load_from: P5b@3000 (backbone+head+vocab 完整加载, 仅 proj 随机)
-```
+
+**P6 监控红线**:
+- @1000: car_P ≥ 0.10 且 bg_FA ≤ 0.30 → PASS, 否则 STOP
+- @3000: off_th ≤ 0.18 (测试无 GELU 是否恢复方向精度)
+
+**通过条件状态**:
+1. ✅ P6 用纯双 Linear 无激活无归一化
+2. ✅ P6 先跑 mini 3000 iter 验证
+3. ✅ P6 从 P5b@3000 加载
+4. ✅ P6 用 10 类 num_vocal=230
+5. ✅ Plan M/N @1000 不阻塞 P6 启动 (但做最终在线评估)
+6. ✅ bg_balance_weight 考虑提升
+
+**Critic 关键纠正**:
+1. **去掉 LayerNorm**: LN 会抹除通道间尺度差异, DINOv3 不同通道的尺度编码了方向/尺度语义。纯双 Linear = rank-2048 矩阵分解, 优化条件更好
+2. **BUG-30 降级 HIGH→MEDIUM**: GELU 是"一致性 ~0.05 惩罚"非"系统性致命损害" (Plan K@2000 off_th=0.191 达标)
+3. **投影层 LR 2x**: proj 层从零学习, 需要更大 LR 追上已训练的 backbone
+4. **BUG-31 (HIGH)**: Plan M/N 继承 BUG-27 vocab mismatch, 但 M vs N 对比仍有效
+5. **BUG-32 (MEDIUM)**: Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化风险
+
+**Plan L 宽投影净效果 (Critic 评估: 正面但信号弱)**:
+| 指标 | Plan L @2000 | P5b @2000 | 差值 |
+|------|-------------|-----------|------|
+| car_P | 0.111 | 0.094 | +0.017 ✅ |
+| car_R | 0.512 | 0.856 | -0.344 ❌ (proj 随机初始化暂态) |
+| bg_FA | 0.331 | 0.282 | +0.049 ❌ (10类+容量增加) |
+| off_cy | 0.074 | 0.113 | -0.039 ✅ |
+
+**Plan M/N @1000 快速评判标准**: M_car_P > 0.077 → 在线路径有价值; 否则 mini 无优势
 
 ### 诊断实验完整轨迹 (截至 @1500)
 
-**Plan K (单类 car, 预提取)**:
+**Plan K 完整最终轨迹 (单类 car, 预提取) — COMPLETED ✅**:
 | Ckpt | car_R | car_P | bg_FA | off_cx | off_cy | off_th |
 |------|-------|-------|-------|--------|--------|--------|
-| @500 | 0.629 | 0.064 | **0.183** | 0.073 | **0.082** | 0.228 |
-| @1000 | 0.507 | 0.047 | 0.211 | **0.056** | **0.073** | 0.254 |
-| @1500 | 0.639 | 0.060 | 0.185 | 0.059 | **0.206⚠️** | 0.212 |
+| @500 | 0.629 | 0.064 | 0.183 | 0.073 | 0.082 | 0.228 |
+| @1000 | 0.507 | 0.047 | 0.211 | 0.056 | 0.073 | 0.254 |
+| @1500 | 0.639 | 0.060 | 0.185 | 0.059 | 0.206⚠️ | 0.212 |
+| **@2000** | 0.602 | 0.063 | **0.166** | 0.054 | 0.171 | **0.191** |
 
-**Plan L (10类+宽投影2048, 预提取)**:
+**Plan L 完整最终轨迹 (10类+宽投影2048, 预提取) — COMPLETED ✅**:
 | Ckpt | car_R | car_P | truck_R | bus_R | constr_R | ped_R | cone_R | barrier_R | bg_FA | off_cy | off_th |
 |------|-------|-------|---------|-------|----------|-------|--------|-----------|-------|--------|--------|
 | @500 | 0.084 | 0.054 | 0 | 0.017 | 0.088 | 0.451 | 0 | 0 | 0.237 | 0.085 | 0.277 |
 | @1000 | 0.338 | **0.140** | 0.263 | 0.334 | 0.212 | 0.096 | 0.170 | 0.425 | 0.407 | 0.080 | 0.242 |
-| @1500 | **0.572** | 0.103↓ | 0.015↓ | 0.024↓ | **0.637** | 0.105 | **0.556** | 0↓ | 0.447↑ | **0.069** | 0.225 |
+| @1500 | 0.572 | 0.103 | 0.015 | 0.024 | 0.637 | 0.105 | 0.556 | 0 | 0.447 | **0.069** | 0.225 |
+| **@2000** | 0.512 | 0.111 | 0.360 | 0.101 | 0.212 | 0.425 | 0.182 | 0 | 0.331↓ | 0.074 | 0.205 |
 
-**Plan M @500 vs Plan K @500 (在线 DINOv3 unfreeze vs 预提取)**:
-| 指标 | Plan M @500 | Plan K @500 | 差异 |
-|------|------------|------------|------|
-| car_R | 0.621 | 0.629 | K ≈ M |
-| car_P | 0.052 | 0.064 | K 略优 |
-| bg_FA | 0.220 | **0.183** | K 显著优 |
-| off_th | **0.217** | 0.228 | **M 略优** |
+**Plan M/N @500 对比 (在线 DINOv3)**:
+| 指标 | Plan M (unfreeze) | Plan N (frozen) | Plan K (预提取) |
+|------|-------------------|-----------------|-----------------|
+| car_R | 0.621 | 0.618 | 0.629 |
+| car_P | 0.052 | 0.050 | 0.064 |
+| bg_FA | 0.220 | 0.219 | **0.183** |
+| off_th | 0.217 | **0.206** | 0.228 |
 
-**car_P 趋势对比 (核心指标)**:
-| Iter | Plan K (1类) | Plan L (10类+宽) | P5b (4类) |
+> M ≈ N @500, 均有 BUG-31 (继承 BUG-27 vocab mismatch), M vs N 对比仍有效
+
+**car_P 完整趋势对比**:
+| Iter | Plan K (1类) | Plan L (10类+宽) | P5b (10类) |
 |------|-------------|------------------|-----------|
 | @500 | 0.064 | 0.054 | 0.080 |
 | @1000 | 0.047 | **0.140** | 0.089 |
-| @1500 | 0.060 | 0.103↓ | 0.091 |
+| @1500 | 0.060 | 0.103 | 0.091 |
+| @2000 | 0.063 | **0.111** | 0.094 |
+| @3000 | — | — | **0.107** |
 
-**@1500 关键发现**:
-1. **Plan L car_P 回落**: 0.140→0.103, @1000 峰值是类别未展开时的虚高, 实际优势大幅缩小
-2. **类振荡重现**: truck(0.263→0.015), bus(0.334→0.024), barrier(0.425→0) — 与 P5b 相同模式
-3. **新类爆发**: construction_vehicle(0.637!), traffic_cone(0.556!) — 类别轮换而非整体改善
-4. **Plan L bg_FA=0.447 持续恶化**: 0.237→0.407→0.447, Critic 条件 (bg_FA<0.30) 几乎无法达成
-5. **Plan K off_cy=0.206 异常暴涨**: 从 0.073→0.206, 原因不明
-6. **Plan L off_cy=0.069**: 优于 P5b 全程最优 (0.085), 宽投影对 offset 有益
-7. **Plan M @500 略逊于 Plan K @500**: 在线 DINOv3 初期不稳定, 需 @1000+ 数据
+**四路诊断最终结论**:
+1. **宽投影有轻微帮助**: Plan L car_P=0.111 > P5b@2000=0.094 (+18% 同 iter); 但 car_R=0.512 严重退化 (proj 随机初始化暂态)
+2. **宽投影显著改善 off_cy**: Plan L 0.069-0.074 优于 P5b 全程最优 (0.085)
+3. **类振荡是结构性问题**: Plan L 10 类出现完整 ~1000 iter 振荡周期, 与 P5b 相同 (BUG-20)
+4. **bg_FA=0.331 条件失败但趋势收敛**: 0.447→0.331 最后 1000 iter 下降 26%, Critic 批准 (P6 起点更好)
+5. **在线 DINOv3 初期略劣**: M/N @500 全面低于 K, 但有 BUG-31 混淆, 需 @1000 确认
 
-⚠️ **Plan K 结论无效**: vocab_embed 随机初始化 (BUG-27), 不代表单类更差
-⚠️ **Plan L 结论混淆**: 同时改变投影宽度+保留vocab (BUG-28)
-⚠️ **Critic 条件 #5 (bg_FA<0.30) 告急**: Plan L bg_FA 持续恶化, @2000 回落到 0.30 以下的可能性极低
+⚠️ Plan K: BUG-27 (vocab mismatch) + BUG-29 (sqrt 单类无意义)
+⚠️ Plan L: BUG-28 (双变量混淆)
+⚠️ Plan M/N: BUG-31 (继承 BUG-27)
 
 ### CEO 在线提取决策 (2026-03-08, Cycle #66)
 > CEO: 放弃预提取路线, 走在线 DINOv3 提取以支持完整 nuScenes 训练。
@@ -333,20 +359,21 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 
 **训练策略**: 50% 概率清除所有先验 (prior_tokens 全设 NO_PRIOR), 防止模型过度依赖外部信息。
 
-**P6 核心方向 (CEO 战略转向 + VERDICT_P6_ARCHITECTURE 后)**:
-- **首要**: 诊断实验确认瓶颈来源 (单类 car + 宽中间层)
-- **DINOv3 BLOCKER 降级**: 仅 CAM_FRONT, fp16 ~175GB 可放入 SSD (BUG-26)
-- **从 P5b@3000 启动** (Critic 推荐, Conductor 确认)
-- **双层投影保留** (CEO 批准), 但已触顶 (Critic 确认)
-- **GPU**: A6000 48GB × 4, 显存约束大幅放松 (BUG-23)
+**P6 核心方向 (VERDICT_DIAG_FINAL 定稿)**:
+- **架构**: 宽投影 2048 + 纯双 Linear (无 GELU 无 LN) — Critic 批准
+- **从 P5b@3000 启动**: backbone+head+vocab 完整, 仅 proj 随机初始化
+- **投影层 LR 2x**: `backbone.patch_embed.proj lr_mult=2.0`
+- **先 mini 验证**: 3000 iter, @1000 car_P≥0.10 且 bg_FA≤0.30 → 切 full
+- **GPU**: 0+2 (双卡 DDP), 1+3 仍跑 Plan M/N
 
-**分阶段验证 (VERDICT_P6_ARCHITECTURE 更新)**:
-- [ ] **Phase 0 (诊断)**: 实验 α 单类 car + 实验 β 宽中间层 2048 (ORCH_015)
-- [ ] **P6**: 根据诊断结果选择路径 — 全量 nuScenes + 架构改进
+**分阶段验证 (VERDICT_DIAG_FINAL 更新)**:
+- [x] **Phase 0 (诊断)**: Plan K/L COMPLETED ✅, Plan M/N 运行中
+- [ ] **P6 mini**: 宽投影 2048 + 纯双 Linear, mini 3000 iter 验证 (ORCH_017)
+- [ ] **P6 full**: mini 通过后切 full nuScenes (需提取 DINOv3 ~175GB)
 - [ ] **P6b**: BEV 坐标 PE + 先验词汇表
-- [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP, Conductor 同意
-- [ ] **P7b**: 3D Anchor — 射线采样, 对齐 NEAR/MID/FAR slot
-- [ ] **P8**: V2X 融合 — sender box 2D 刚体变换
+- [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP
+- [ ] **P7b**: 3D Anchor — 射线采样
+- [ ] **P8**: V2X 融合
 
 ### Instance Grouping (VERDICT_INSTANCE_GROUPING — CONDITIONAL, 已归档)
 - **提案**: SLOT_LEN 10→11, 加 instance_id token (g_idx, 32 bins)
@@ -375,7 +402,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-27** | **CRITICAL** | Plan K vocab 不兼容 (230→221), vocab_embed 随机初始化, Plan K "类竞争否定"结论无效 (Critic VERDICT_DIAG_RESULTS) |
 | **BUG-28** | **HIGH** | Plan L 双变量混淆: 投影宽度+vocab 保留同时变化, 无法干净归因 (Critic VERDICT_DIAG_RESULTS) |
 | **BUG-29** | **LOW** | Plan K sqrt balance 对单类无意义, 不影响结果 (Critic VERDICT_DIAG_RESULTS) |
-| **BUG-30** | **HIGH** | GELU 系统性损害 off_th: 三组实验交叉印证 (BUG-21 升级). 建议去掉 GELU 用 LayerNorm (Critic VERDICT_DIAG_RESULTS) |
+| **BUG-30** | **MEDIUM** (降级) | GELU ~0.05 一致性惩罚 (非致命). Plan K@2000 off_th=0.191 达标. P6 仍去 GELU (Critic VERDICT_DIAG_FINAL) |
+| **BUG-31** | **HIGH** | Plan M/N 继承 BUG-27 vocab mismatch (num_vocal=221). M vs N 对比仍有效, 绝对性能受拖累 (Critic VERDICT_DIAG_FINAL) |
+| **BUG-32** | **MEDIUM** | Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化. P6 LR milestones 需关注 (Critic VERDICT_DIAG_FINAL) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -392,8 +421,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_014** | **P6 完整 nuScenes 准备** | **COMPLETED — BUG-26: 仅 175GB fp16, BLOCKER 降级** |
 | AUDIT_P6_ARCHITECTURE | P6 架构方案审计 | VERDICT PROCESSED — 诊断优先, D>C>B |
 | AUDIT_DIAG_RESULTS | 诊断 @1000 结果审计 | VERDICT PROCESSED — 方向对但混淆, 去 GELU, 10 类 |
-| **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **即将完成 — Plan K 1780/2000, Plan L 1710/2000, GPU 0,2** |
-| **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — Plan M ~510/2000 (@500 done), Plan N ~510/2000, GPU 1,3** |
+| **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **COMPLETED ✅ — Plan K/L @2000 最终结果到手** |
+| **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — Plan M 770/2000, Plan N 760/2000 (@500 done), GPU 1,3** |
+| **ORCH_017** | **P6 宽投影 mini 验证** | **PENDING — 创建 config + 启动训练, GPU 0,2** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -407,6 +437,19 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 09:10] 循环 #70 Phase 2 — ★★ VERDICT_DIAG_FINAL: P6 Config 定稿! 纯双 Linear 无 GELU 无 LN
+- **VERDICT_DIAG_FINAL (CONDITIONAL)**: 宽投影 2048 获批, 但去掉 LayerNorm!
+- **P6 投影层定稿**: `nn.Sequential(nn.Linear(4096,2048), nn.Linear(2048,768))` — 纯线性, 无任何激活/归一化
+- **投影层 LR 2x**: `backbone.patch_embed.proj lr_mult=2.0` 加速 proj 收敛
+- **P6 先 mini 3000 iter**: 监控红线 @1000 car_P≥0.10 + bg_FA≤0.30
+- **Plan K COMPLETED @2000**: car_P=0.063, bg_FA=0.166 (全实验最低), off_th=0.191
+- **Plan L COMPLETED @2000**: car_P=0.111 (> P5b@3000=0.107), bg_FA=0.331 (条件 #5 失败但趋势收敛)
+- **Plan N @500**: 与 M 几乎一致, 需 @1000 区分
+- **BUG-30 降级 HIGH→MEDIUM**: GELU 是 ~0.05 一致性惩罚非致命
+- **BUG-31 (HIGH)**: Plan M/N 继承 BUG-27 vocab mismatch
+- **BUG-32 (MEDIUM)**: Plan K off_cy LR decay 后退化
+- **ORCH_017 签发**: P6 config 创建 + mini 训练启动 (GPU 0+2)
+
 ### [2026-03-08 08:35] 循环 #69 Phase 2 — Plan L car_P 回落 0.103, 类振荡重现; Plan M @500 首数据
 - **Plan L @1500**: car_P 从 @1000 的 0.140 回落至 0.103, @1000 峰值系类别未展开时的虚高
 - **类振荡重现**: Plan L truck(0.263→0.015), bus(0.334→0.024), 与 P5b 相同模式 — 系统性问题非投影宽度能解
