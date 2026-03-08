@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 16:10 (循环 #86 Phase 2)
+> 最后更新: 2026-03-08 ~17:00 (循环 #87 Phase 1)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ VERDICT PROCEED! Full nuScenes 2048+GELU 启动! ORCH_024 已签发 | Mini 验证完成
+## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (60/40000) | CEO 新战略方案送审中
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -638,7 +638,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **DELIVERED — 4 GPU DDP, ~40000 iter, Config+代码验证+训练启动** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 60/40000, 4 GPU DDP, loss 正常 (4.00@60), ETA 3/11** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -652,6 +652,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~17:00] 循环 #87 Phase 1 — ORCH_024 IN PROGRESS (60/40000) | CEO 新战略方案送审
+- **ORCH_024 已启动**: 4 GPU DDP, 60/40000 iter, loss 4.00@60 持续下降, 速度 6.3 s/iter, 显存 36-37 GB/GPU
+- **@500 val ETA ~17:29**: 第一次 eval, 确认在线路径正常
+- **CEO 新指令**: DINOv3 适配层改进 (方案A/B) + 3D 空间编码路线图 + 单类 car 验证
+- **GPU 冲突**: CEO 要用 GPU 1,3 做 mini 调试, 但全被 ORCH_024 占用
+- **AUDIT_REQUEST_CEO_STRATEGY_NEXT 签发**: CEO 方案 A/B/C/D + Conductor 方案 E/F/G 统一送审
+- **Conductor 方案 E**: LoRA/Adapter 替代全量 unfreeze (显存可控)
+- **Conductor 方案 G**: 等 ORCH_024 @2000 结果再做 GPU 重分配决策
+
 ### [2026-03-08 16:10] 循环 #86 Phase 2 — ★★★★ VERDICT PROCEED! Full nuScenes 2048+GELU 启动! ORCH_024 签发!
 - **VERDICT_P2_FINAL_FULL_CONFIG (PROCEED)**: Full nuScenes 使用 2048+GELU + 在线 DINOv3 frozen
 - **BUG-42 NEW (MEDIUM)**: P2 max_iters < first milestone, 全程 full LR 无 decay. P2@2000 回调不能归因 GELU
