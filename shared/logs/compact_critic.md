@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-08
 
-## 当前状态: P6_1500 审计完成 (2026-03-08)
+## 当前状态: P6_3000 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -19,6 +19,7 @@
 | VERDICT_DIAG_FINAL | CONDITIONAL | 3f3c1ec | pending/ |
 | VERDICT_P6_1000 | CONDITIONAL | afbd4e8 | pending/ |
 | VERDICT_P6_1500 | PROCEED | 5f63b0e | pending/ |
+| VERDICT_P6_3000 | CONDITIONAL | 67f6644 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -62,8 +63,11 @@ shared/audit/
 | BUG-33 | **MEDIUM** (降级) | 确认 | DDP val GT 重复, Precision 可信, Recall 偏差 ~10% |
 | BUG-34 | **LOW** (降级) | 自动缓解 | proj lr_mult=2.0, LR decay @2500 后不再过激 |
 | BUG-35 | MEDIUM | NEW | DINOv3 unfreeze last-2 导致特征漂移 (car_R -21%) |
+| BUG-36 | HIGH | NEW | Plan M/N vs P6 对比条件不一致 (proj_dim 1024 vs 2048) |
+| BUG-37 | HIGH | NEW | P5b 基线缺乏可信单 GPU 数据 |
+| BUG-38 | MEDIUM | 自我纠正 | Critic car_P 预测偏乐观 (0.12-0.13 vs 实际 0.106) |
 
-## 下一个 BUG 编号: BUG-36
+## 下一个 BUG 编号: BUG-39
 
 ## P6 关键数据 (当前主线)
 - Config: plan_p6_wide_proj.py
@@ -75,7 +79,12 @@ shared/audit/
 - P6@500: car_P=0.073, bg_FA=**0.163**(历史最优), off_cx=0.087
 - P6@1000: car_P=0.054(类振荡暂态FAIL), constr_R爆发0.306
 - P6@1500: car_P=**0.117**(超P5b最优), bg_FA=0.278, off_cx=**0.034**(历史最优)
-- P6 下一关键点: @2000 (ETA ~11:10), @2500 LR decay, @3000 mini 最终评估
+- P6@2000: car_P=0.110, bg_FA=0.300, off_th=0.234 (单GPU可信)
+- P6@2500: car_P=0.111, bg_FA=0.336, off_th=0.201 (单GPU可信, LR decay生效)
+- P6@3000: car_P=0.106(DDP,偏差<2%), bg_FA=0.309, off_th=0.205, off_cx=0.039
+- car_P 平台化 0.106-0.111 (@1500-@3000), mini 天花板
+- P6 继续到@6000, 但 @3000 已是 mini 决策点
+- CONDITIONAL: 需 COND-1(P5b re-eval) + COND-2(Plan O: 在线+2048+frozen 500iter)
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -96,7 +105,9 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P6 @1000 FAIL(类振荡暂态) → @1500 PASS(car_P=0.117, bg_FA=0.278)
 → P6 继续到@3000, 假说B完全验证, 架构方向正确
 → Plan M/N 归档: 在线DINOv3不达标, frozen>>unfreeze
-→ P7 (待定: 历史 occ box t-1)
+→ P6 @3000 CONDITIONAL(car_P平台化0.106, 需Plan O验证在线路径)
+→ Plan O (待定: 在线DINOv3 frozen + 2048 + 无GELU, 500iter mini验证)
+→ P7 (待定: full nuScenes)
 ```
 
 ## 恢复指引
