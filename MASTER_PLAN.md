@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 12:18 (循环 #77 Phase 2)
+> 最后更新: 2026-03-08 12:38 (循环 #78 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★ P6 @2500 可信数据! car_P=0.111 稳定 >P5b, off_th=0.201 首破 0.21 — 等 @3000 最终判定
+## 当前阶段: ★ P6 @3000 CONDITIONAL PASS — COND-1(P5b re-eval) + COND-2(Plan O) BLOCKING full nuScenes
 
 ### VERDICT_DIAG_FINAL 核心判决 (Critic, Cycle #70)
 
@@ -27,38 +27,49 @@ milestones = [2000, 4000] (相对 begin=500)
 val_interval = 500
 ```
 
-**P6 监控红线 (ORCH_019 单 GPU re-eval 校正)**:
-- @1000: ❌ 双 FAIL (car_P=0.058, bg_FA=0.352) — 类振荡暂态
-- **@1500: ✅ PASS** (car_P=0.106, bg_FA=0.250) — 假说 B 完全验证
-- **@2500: ✅ LR decay 生效** (car_P=0.111, off_th=0.201) — Critic 预测 off_th~0.20 已兑现!
-- **@3000 为 P6 mini 最终评估点** (~12:24): 决定是否切 full nuScenes
-- **不需要 P6b**: LR decay @2500 自动缓解 BUG-34 (proj LR 1e-4→1e-5)
-- **⚠️ bg_FA=0.336 @2500 偏高**: 上升趋势需关注, 但 CEO 方向不以此为最高目标
+**P6 监控红线 (VERDICT_P6_3000 更新)**:
+- @1000: ❌ 双 FAIL — 类振荡暂态
+- @1500: ✅ PASS — 假说 B 完全验证
+- @2500: ✅ LR decay 生效 — off_th=0.201
+- **@3000: CONDITIONAL PASS** — car_P=0.106 ≈ P5b, off_th=0.205 达标, bg_FA=0.309 改善中
+- **car_P 平台化 0.106-0.111 @1500-3000** — mini 数据天花板 (Critic: 继续训练不会突破)
+- **Full nuScenes BLOCKING**: COND-1 (P5b re-eval) + COND-2 (Plan O 在线+2048+无GELU)
 
 ### VERDICT_P6_1500 核心判决 (Critic, Cycle #74)
 
 **判决: PROCEED — P6 继续到 @3000, 不需要 P6b**
 
-**关键结论**:
-1. **假说 B 完全验证**: @1000 失败是类振荡暂态, 非架构缺陷
-2. **P6 car_P=0.106-0.111**: 单 GPU re-eval 修正后, @1500=0.106 ≈ P5b@3000 (0.107), @2000-2500 稳定 0.110-0.111 略超 P5b
-3. **off_cx=0.038 历史最佳** (修正后), off_cy=0.069 远优于 P5b
-4. **类振荡周期 ~1000 iter**: @500 car主导→@1000 小类爆发→@1500 car反弹, LR decay @2500 后 off_th 已改善
-5. **BUG-33 ORCH_019 完成**: car_P 有小幅偏差 (~0.01@1500), 非完全不受影响; Recall 偏差 ~10-36%
-6. **BUG-34 降级 LOW**: LR decay @2500 后 proj LR 1e-4→1e-5, 自动缓解
-7. **BUG-35 (MEDIUM)**: DINOv3 unfreeze last-2 导致特征漂移 (car_R -21%)
-8. **Plan M/N 最终**: Frozen >> Unfreeze 确认; 在线路径 car_P ~0.05 不达标 (mini)
+### VERDICT_P6_3000 核心判决 (Critic, Cycle #78)
 
-**P6 @3000 预期 (Critic, 基于 DDP 数据; 现用单 GPU 修正)**:
-- car_P: Critic 预测 0.12-0.13, 实际 @2500=0.111 — 可能 @3000 达 ~0.115
-- off_th: Critic 预测 ~0.20, **@2500=0.201 已兑现!** @3000 有望降到 ~0.19
-- bg_FA: Critic 预测 0.22-0.28, 实际 @2500=0.336 — **超预期偏高**, 需关注
-- 类振荡: LR decay 确实在压缩 (car_R @2500=0.516 回弹)
+**判决: CONDITIONAL — P6 mini 有条件通过, Full nuScenes 启动需满足前置条件**
 
-**BUG-33 修复方案**:
-- ✅ ORCH_019 完成: 5 个 checkpoint 单 GPU re-eval (@500~@2500), 全部可信数据到手
-- ✅ config 已加 DistributedSampler (admin 修复)
-- ⚠️ 发现: car_P 也有小幅 DDP 偏差 (@1500: 0.117→0.106), 之前认为 Precision 完全不受影响不准确
+**核心结论**:
+1. **car_P 平台化 0.106-0.111** (@1500-3000): mini 数据天花板, 继续训练不会突破
+2. **架构验证通过**: 宽投影 2048 + 无 GELU 的价值在 offset 精度 (off_cx=0.039, off_th=0.205)
+3. **P6 未超越 P5b**: car_P=0.106 ≈ P5b@3000 (0.107), 但 P5b 也不可信 (BUG-37)
+4. **BUG-36 (HIGH)**: Plan M/N 用 proj=1024, P6 用 2048 — 在线路径对比不公平, 需 Plan O 验证
+5. **BUG-37 (HIGH)**: P5b 基线不可信 — 必须做单 GPU re-eval
+6. **BUG-38 (MEDIUM)**: Critic 自我纠正 car_P 预测偏乐观 (0.12-0.13 vs 0.106)
+7. **bg_FA 与 car_R 负相关**: 类振荡的另一表现, 非独立恶化
+8. **Full nuScenes 预期**: car_P 0.20-0.35, 类振荡大幅缓解, 试错成本高 (~24-48h/实验)
+
+**BLOCKING 条件 (full nuScenes 前必须满足)**:
+- **COND-1**: P5b@3000 单 GPU re-eval → 获取可信 car_P 基线 (~10 min, GPU 1/3)
+- **COND-2**: Plan O (在线 frozen + 2048 + 无 GELU + 10 类 + P5b@3000) → 500 iter mini, car_P>0.05=在线可行 (~1h, GPU 1/3)
+- **COND-3** (non-blocking): P6 @5000 单 GPU eval — 确认 LR decay 收敛
+
+**P6 @3500 预测 (Critic)**: car 回弹结束, 小类回摆, car_R~0.40, car_P~0.11, 不超 0.115
+
+**P6 mini 继续到 @6000**: 保险确认, 但不投入决策权重 (mini 价值 @3000 已耗尽)
+
+**Full nuScenes 路线决策 (取决于 Plan O)**:
+- Plan O car_P@500 > 0.05 → 在线路径可行 → full 用在线 DINOv3 frozen (0 存储)
+- Plan O car_P@500 < 0.05 → 在线路径不行 → full 用预提取 175GB fp16
+
+**BUG-33 修复完成**:
+- ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
+- ✅ config 已加 DistributedSampler
+- ⚠️ car_P DDP 偏差最大 ±10%@1500, @2000+ <2%
 
 **Plan L 宽投影净效果 (Critic 评估: 正面但信号弱)**:
 | 指标 | Plan L @2000 | P5b @2000 | 差值 |
@@ -116,7 +127,9 @@ val_interval = 500
 | @1500 | 0.060 | 0.103 | 0.091 | **0.106** |
 | @2000 | 0.063 | **0.111** | 0.094 | **0.110** |
 | @2500 | — | — | 0.094 | **0.111** |
-| @3000 | — | — | **0.107** | **(待 ~12:24)** |
+| @3000 | — | — | 0.107⚠️ | **0.106** |
+
+> **car_P 平台化**: P6 @1500-3000 在 0.106-0.111 范围, ≈ P5b@3000 (0.107⚠️ DDP 不可信 BUG-37)
 
 **四路诊断最终结论 (Plan K/L COMPLETED, Plan M/N @1500 done)**:
 1. **宽投影有轻微帮助**: Plan L car_P=0.111 > P5b@2000=0.094 (+18% 同 iter)
@@ -135,15 +148,18 @@ val_interval = 500
 | @1000 | 0.252 | 0.058↓ | 0.043↓ | 0.168↑ | **0.285↑** | 0.012 | 0.002 | 0.166↑ | **0.352↑** | 0.105↓ | 0.077 | 0.220 |
 | @1500 | **0.499↑** | **0.106↑** | 0.000↓ | 0.123 | 0.087↓ | 0.002 | 0.109 | 0.010↓ | **0.250↓** | **0.038↑** | 0.069 | 0.246 |
 | @2000 | 0.376↓ | **0.110** | 0.179↑ | 0.302↑ | 0.181↑ | 0.005 | 0.222↑ | 0.000 | 0.300↑ | 0.085↓ | **0.067** | 0.234 |
-| **@2500** | **0.516↑** | **0.111** | **0.356↑** | **0.518↑** | 0.001↓ | **0.170↑** | 0.082 | 0.091↑ | **0.336↑** | 0.058 | 0.076 | **0.201↑** |
+| @2500 | 0.516↑ | **0.111** | 0.356↑ | 0.518↑ | 0.001↓ | 0.170↑ | 0.082 | 0.091↑ | 0.336↑ | 0.058 | 0.076 | **0.201↑** |
+| **@3000** | **0.692⚠️↑** | **0.106**↓ | 0.324 | 0.220↓ | 0.016↓ | 0.063 | 0.137 | 0.017 | **0.309↓** | **0.039** | 0.073 | **0.205** |
+
+> @3000 是 DDP val, @2500 DDP 偏差 <2% 故近似可信. car_R=0.692 可能虚高 (DDP car_R 偏差最大 27%).
 
 **@500**: bg_FA=0.173 全实验最低, 无 GELU 对背景判别有巨大优势
-**@1000 崩塌**: 类振荡爆发, car 被挤压 → 双 FAIL (类振荡暂态)
-**@1500 反弹**: car_P=0.106 ≈ P5b@3000 (0.107), off_cx=0.038 历史最佳
-**@2000 回摆**: 小类反弹, car_P 稳定 0.110, bg_FA=0.300
-**★ @2500 LR decay 生效**: car_R=0.516 (回弹), off_th=0.201 (首破 0.21!), car_P=0.111 (稳定)
-- **⚠️ bg_FA=0.336 偏高** — @2500 多类大幅激活 (bus=0.518, truck=0.356, ped=0.170), 挤压背景
-- **@3000 ~12:24** — P6 mini 最终评估点
+**@1000 崩塌**: 类振荡爆发 → 双 FAIL (暂态)
+**@1500 反弹**: car_P=0.106, off_cx=0.038 历史最佳
+**@2000 回摆**: 小类反弹, car_P 稳定 0.110
+**@2500 LR decay**: off_th=0.201 首破 0.21, car_P=0.111
+**★ @3000 CONDITIONAL PASS**: car 回弹 (R=0.692), bg_FA 改善 0.336→0.309, off_th 稳定 0.205, **truck_P=0.061 历史最高**, ped_P=0.129
+**car_P 平台化**: @1500-3000 恒定 0.106-0.111 — mini 天花板 (BUG-38)
 
 **DDP vs 单 GPU 偏差 (BUG-33 ORCH_019 验证)**:
 | Ckpt | car_P (DDP→单GPU) | car_R (DDP→单GPU) | bg_FA (DDP→单GPU) | off_th (DDP→单GPU) |
@@ -423,7 +439,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 
 **分阶段验证 (VERDICT_DIAG_FINAL 更新)**:
 - [x] **Phase 0 (诊断)**: Plan K/L/M/N 全部 COMPLETED ✅
-- [ ] **P6 mini**: 宽投影 2048 + 纯双 Linear, @2500 done (car_P=0.111, off_th=0.201), **等 @3000 最终判定**
+- [x] **P6 mini**: @3000 CONDITIONAL PASS — car_P=0.106 平台化, off_th=0.205 达标, 架构验证通过
+- [ ] **COND-1**: P5b@3000 单 GPU re-eval (ORCH_020, BLOCKING)
+- [ ] **COND-2**: Plan O 在线+2048+无GELU (ORCH_021, BLOCKING)
 - [ ] **P6 full**: mini 通过后切 full nuScenes (需提取 DINOv3 ~175GB)
 - [ ] **P6b**: BEV 坐标 PE + 先验词汇表
 - [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP
@@ -463,6 +481,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-33** | **MEDIUM** (降级) | gt_cnt DDP inflation 根因确认: 缺 DistributedSampler. **ORCH_019 完成**: car_P 有小幅偏差 (最大 -9%@1500), car_R 偏差最大 (-27%@1500), 方向不一致. 修复已应用 (sampler config) |
 | **BUG-34** | **LOW** (降级) | proj lr_mult=2.0, LR decay @2500 后 proj LR 1e-4→1e-5 自动缓解. 无需 P6b (Critic VERDICT_P6_1500) |
 | **BUG-35** | **MEDIUM** | DINOv3 unfreeze last-2 导致特征漂移: Plan M car_R 0.699→0.489 (-21%). 在线路径必须 frozen (Critic VERDICT_P6_1500) |
+| **BUG-36** | **HIGH** | Plan M/N vs P6 对比条件不一致: Plan M/N proj_dim=1024, P6 proj_dim=2048. CEO 基于不公平对比否决在线路径. 需 Plan O 验证 (Critic VERDICT_P6_3000) |
+| **BUG-37** | **HIGH** | P5b 基线不可信: 全部 eval 来自 DDP (无 DistributedSampler), car_P=0.107 可能偏差 ±10%. 必须单 GPU re-eval (Critic VERDICT_P6_3000) |
+| **BUG-38** | **MEDIUM** | Critic 自我纠正: car_P @3000 预测 0.12-0.13 实际 0.106. LR decay 稳定了 off_th 但未提升 car_P. mini 天花板 ~0.11 (Critic VERDICT_P6_3000) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -481,9 +502,11 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | AUDIT_DIAG_RESULTS | 诊断 @1000 结果审计 | VERDICT PROCESSED — 方向对但混淆, 去 GELU, 10 类 |
 | **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **COMPLETED ✅ — Plan K/L @2000 最终结果到手** |
 | **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **COMPLETED ✅ — 预提取>在线, Frozen>>Unfreeze** |
-| **ORCH_017** | **P6 宽投影 mini 验证** | **执行中 — @2500 done, LR decay 生效, 等 @3000 最终判定 (~12:24)** |
-| **ORCH_018** | **BUG-33 gt_cnt 调查** | **COMPLETED ✅ — 根因确认+修复已应用** |
-| **ORCH_019** | **BUG-33 P6 单 GPU re-eval** | **COMPLETED ✅ — 5 个 ckpt re-eval, 全可信数据到手, car_P 有小幅偏差** |
+| **ORCH_017** | **P6 宽投影 mini 验证** | **@3000 CONDITIONAL PASS — car_P=0.106 平台化, 继续到 @6000 (保险)** |
+| **ORCH_018** | **BUG-33 gt_cnt 调查** | **COMPLETED ✅** |
+| **ORCH_019** | **BUG-33 P6 单 GPU re-eval** | **COMPLETED ✅** |
+| **ORCH_020** | **P5b@3000 单 GPU re-eval** | **PENDING — COND-1 BLOCKING, ~10 min, GPU 1/3** |
+| **ORCH_021** | **Plan O 在线+2048+无GELU 验证** | **PENDING — COND-2 BLOCKING, 500 iter ~1h, GPU 1/3** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -497,6 +520,18 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 12:38] 循环 #78 Phase 2 — ★★ P6 @3000 CONDITIONAL PASS! ORCH_020+021 签发
+- **P6 @3000 DDP val**: car_P=0.106, off_th=0.205, bg_FA=0.309, truck_P=0.061 历史最高
+- **VERDICT_P6_3000 (CONDITIONAL)**: 架构验证通过, 精度验证不充分 (car_P 平台化 0.106-0.111)
+- **car_P 平台化**: @1500-3000 恒定 ~0.11 — mini 数据天花板, Critic: 继续训练不会突破
+- **BUG-36 (HIGH)**: Plan M/N vs P6 对比不公平 (proj 1024 vs 2048), 需 Plan O 验证
+- **BUG-37 (HIGH)**: P5b 基线不可信 (DDP, 无 sampler), 必须 re-eval
+- **BUG-38 (MEDIUM)**: Critic 自我纠正预测偏乐观
+- **ORCH_020 签发**: P5b@3000 单 GPU re-eval (COND-1, GPU 1, ~10 min)
+- **ORCH_021 签发**: Plan O 在线+2048+无GELU (COND-2, GPU 3, 500 iter ~1h)
+- **两个 BLOCKING 条件满足后**: 决定 full nuScenes 路线 (在线 vs 预提取 175GB)
+- Critic: P6 mini @6000 不投入决策权重, mini 价值 @3000 已耗尽
+
 ### [2026-03-08 12:18] 循环 #77 Phase 2 — ★ ORCH_019 完成! P6 全可信数据, @2500 off_th=0.201 首破 0.21
 - **ORCH_019 re-eval 完成**: 5 个 ckpt 单 GPU re-eval (@500~@2500), 全部可信数据到手
 - **car_P 修正**: @1500 DDP=0.117 实际=0.106 (偏差 -9%), @2000-2500 差异 ≤1%, 仍 ≈ P5b@3000 (0.107)
