@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-07
 
-## 当前状态: INSTANCE_GROUPING 审计完成
+## 当前状态: P5B_3000 审计完成
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -11,7 +11,8 @@
 | VERDICT_P4_FINAL | CONDITIONAL | b076fa0 | pending/ |
 | VERDICT_3D_ANCHOR | CONDITIONAL | 91443d4 | audit/ (根目录) |
 | VERDICT_P5_MID | CONDITIONAL | ba27c27 | pending/ |
-| VERDICT_INSTANCE_GROUPING | CONDITIONAL | 81e231c | pending/ |
+| VERDICT_INSTANCE_GROUPING | CONDITIONAL | 81e231c | processed/ |
+| VERDICT_P5B_3000 | CONDITIONAL | b6a9717 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -38,8 +39,12 @@ shared/audit/
 | BUG-16 | MEDIUM | 设计层 | 预提取特征与数据增强不兼容 |
 | BUG-17 | HIGH | NEW | per_class_balance 在极不均衡数据下零和振荡 |
 | BUG-18 | MEDIUM | 设计层 | 评估未跨 cell 关联 GT instance (box_idx 存在但未用) |
+| BUG-19 | HIGH | FIXED | proj_z0 标签问题 (z center 偏移 + valid_mask) |
+| BUG-20 | HIGH | 数据层 | bus 振荡根因是 nuScenes-mini 样本不足 (~120 标注) |
+| BUG-21 | MEDIUM | OPEN | off_th 退化 0.142→0.200 (疑似双层投影 GELU 损害方向特征) |
+| BUG-22 | HIGH | OPEN | 10 类扩展 ckpt 兼容性 (4 类→10 类, 新 6 类 token 随机初始化) |
 
-## 下一个 BUG 编号: BUG-19
+## 下一个 BUG 编号: BUG-23
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -54,7 +59,8 @@ shared/audit/
 ```
 P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P4 (plan_g, AABB fix + BUG-11) → P5 (plan_h, DINOv3 Layer 16)
-→ P5b (待定: 修正 milestones + BUG-17 fix)
+→ P5b (plan_i, 双层投影+sqrt+LR fix, P5@4000起点)
+→ P6 (待定: 10类扩展, 建议从 P5b@3000 启动)
 ```
 
 ## 恢复指引
