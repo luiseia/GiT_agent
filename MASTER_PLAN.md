@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 13:30 (循环 #80 Phase 2)
+> 最后更新: 2026-03-08 13:52 (循环 #81 Phase 1)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★ P6@3500 car_P=0.121 首超 P5b! Plan P@500 结果即将 (~13:39) — 关键决策点
+## 当前阶段: ★★ Plan P@500 FAIL (超参问题) | P6@3500 car_P=0.121 首超P5b | Plan P2 签发 | BUG-41
 
 ### ★★ VERDICT_P6_VS_P5B 核心判决 (Critic, Cycle #79) — P6 架构退化!
 
@@ -489,9 +489,10 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - [x] **Phase 0 (诊断)**: Plan K/L/M/N 全部 COMPLETED ✅
 - [x] **P6 mini**: @3000 CONDITIONAL PASS — 但 BUG-39 退化架构, 作为负面参考
 - [x] **COND-1**: ✅ P5b@3000 单GPU car_P=0.116 (ORCH_020 COMPLETED)
-- [ ] **COND-2 (修正)**: Plan P 2048+GELU (ORCH_022, GPU 1, BLOCKING)
-- [ ] **COND-3 (修正)**: Plan O 在线+2048+GELU (需 GELU 版本, 当前 noGELU 版仅作参考)
-- [ ] **Full nuScenes**: Plan P 结果决定 config (2048+GELU or 1024+GELU)
+- [x] ~~**COND-2**: Plan P 2048+GELU (ORCH_022)~~ → **FAIL: car_P=0.004 (超参问题, 非架构缺陷)**
+- [ ] **COND-2 (再修正)**: **Plan P2** 2048+GELU+lr_mult=2.0+2000iter (ORCH_023, GPU 1, ~2h)
+- [ ] **COND-3 (待)**: Plan O BUG-41 (warmup=max_iters), 结果不可信, 需后续 GELU 版本
+- [ ] **Full nuScenes**: Plan P2 结果决定 config — P2>P6→2048+GELU; P2≈P6→P6 config
 - [ ] **P6b**: BEV 坐标 PE + 先验词汇表
 - [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP
 - [ ] **P7b**: 3D Anchor — 射线采样
@@ -535,6 +536,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-38** | **MEDIUM** | Critic car_P 预测偏乐观. **根因补充**: Critic 未意识到 P6 是退化架构 (BUG-39), 2048+GELU 的预测可能准确 |
 | **BUG-39** | **CRITICAL** | **双层 Linear 无激活函数数学退化**: `Sequential(Linear(4096,2048), Linear(2048,768))` 无 GELU = `Linear(4096,768)`. 2048 中间维度无效. P6 全部 3000 iter 基于退化架构. 代码: `vit_git.py:L238-244` (Critic VERDICT_P6_VS_P5B) |
 | **BUG-40** | **HIGH** | **Critic 审计链连锁失误**: BUG-27(vocab mismatch)→BUG-30(GELU损害off_th错误假设)→VERDICT_DIAG_FINAL(推荐去GELU)→P6退化架构→3000iter低效. Critic 自我纠正 (VERDICT_P6_VS_P5B) |
+| **BUG-41** | **HIGH** | **Plan O warmup=max_iters=500**: `LinearLR end=500` = 全程在 warmup 中, LR 从未达正常值. Plan O 结果不可信. 在线路径验证被阻塞 |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -557,8 +559,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_018** | **BUG-33 gt_cnt 调查** | **COMPLETED ✅** |
 | **ORCH_019** | **BUG-33 P6 单 GPU re-eval** | **COMPLETED ✅** |
 | **ORCH_020** | **P5b@3000 单 GPU re-eval** | **COMPLETED ✅ — car_P=0.116! P5b >> P6!** |
-| **ORCH_021** | **Plan O 在线+2048+无GELU 验证** | **IN PROGRESS — GPU 3, ETA ~13:45. ⚠️ 使用退化架构 (BUG-39), 仅作 online vs preextract 对比** |
-| **ORCH_022** | **Plan P 2048+GELU 验证** | **签发中 — GPU 1, 500 iter, 最高优先级** |
+| **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (val中) — BUG-39+BUG-41 (退化+全程warmup), 结果不可信** |
+| **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), 非架构缺陷** |
+| **ORCH_023** | **P6@4000 re-eval + Plan P2** | **DELIVERED — GPU 1, re-eval ~10min + Plan P2 2000iter ~2h** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -572,6 +575,16 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 13:52] 循环 #81 Phase 1 — Plan P FAIL (超参), P6 突破平台, Plan P2+ORCH_023 签发
+- **Plan P @500 car_P=0.004**: lr_mult=1.0+warmup=100+500iter 严重不足. Admin 诊断: 超参问题, 非架构
+- **P6@3500 car_P=0.121**: 首超 P5b 0.116 (+4.5%), 尽管 BUG-39 退化架构!
+- **P6@4000 DDP car_P=0.123**: 趋势继续上升. bg_FA=0.285, truck_P=0.077 均为新高
+- **BUG-41**: Plan O warmup=max_iters=500, 全程 warmup, 结果不可信. 在线路径验证阻塞
+- **ORCH_023 签发**: P6@4000 re-eval (10 min) + Plan P2 (2048+GELU+lr_mult=2.0, 2000 iter, ~2h)
+- **Plan P2 设计**: 从 P6 config 仅改 proj_use_activation=True. 唯一干净分离 GELU 变量的实验
+- **AUDIT_REQUEST 签发**: Plan P 失败归因 + BUG-39 重评 + Full nuScenes 路线决策
+- **Plan P bg_FA=0.165 历史最低!**: 暗示 GELU 对 bg/fg 判别有巨大帮助
+
 ### [2026-03-08 13:06] 循环 #79 Phase 2 — ★★★ BUG-39 CRITICAL! P6 架构退化! Plan P 签发!
 - **VERDICT_P6_VS_P5B (CONDITIONAL)**: P6 架构方向需修正, BUG-39 致命
 - **BUG-39 CRITICAL**: `Sequential(Linear(4096,2048), Linear(2048,768))` 无 GELU = `Linear(4096,768)`. 2048 维度无效
