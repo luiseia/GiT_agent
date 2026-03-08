@@ -3025,3 +3025,16 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **sqrt权重强力验证**: car适度让出→truck+bus大幅提升, 类别均衡效果远超预期
 **红线**: truck_R✅, off_th✅, off_cx✅(3/5达标); bg_FA(0.302>0.25)和off_cy(0.122>0.10)暂超线
 **下次val**: @1500(~01:22)
+
+---
+
+## Cycle #138 | 2026-03-08 01:40 | P5b@1500振荡回归bus坍塌; ORCH_012 BUG-19修复完成
+
+**P5b进度**: iter1800/6000(30%), LR=2.5e-06, ETA~05:09, iter_1500.pth已保存
+**P5b@1500 val**: car_R=0.924(↑22%回弹), truck_R=0.390(↓31%), bus_R=**0.000(坍塌!从0.368→0)**, trailer_R=0, bg_FA=0.333, off_cx=0.064(失守), off_cy=0.144, off_th=0.203(失守)
+**振荡回归**: @1000三类同活的突破未能维持, @1500与P5@1500几乎一致(car主导+bus消失), sqrt权重优势消退
+**Offset全面回退**: cx(0.049→0.064), cy(0.122→0.144), th(0.168→0.203), 红线达标从3/5降至1/5(仅truck_R)
+**ORCH_012 COMPLETED**: BUG-19 proj_z0修复, CEO指出polygon_viz中很多有车grid未分配正样本。Admin修复valid_mask=全True, commit dcf819a, P6+生效
+**GiT新commit**: dcf819a (BUG-19修复)
+**关键观察**: @2500 LR decay是下一个转折点, 需确认lr从2.5e-06→2.5e-07
+**下次val**: @2000(~01:50)
