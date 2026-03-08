@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-07
 
-## 当前状态: P6_ARCHITECTURE 审计完成 (2026-03-08)
+## 当前状态: DIAG_RESULTS 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -14,6 +14,8 @@
 | VERDICT_INSTANCE_GROUPING | CONDITIONAL | 81e231c | processed/ |
 | VERDICT_P5B_3000 | CONDITIONAL | b6a9717 | processed/ |
 | VERDICT_P6_ARCHITECTURE | CONDITIONAL | 4c5aa24 | pending/ |
+| VERDICT_P5B_3000 (re-issue) | CONDITIONAL | 4cfc0d1 | pending/ |
+| VERDICT_DIAG_RESULTS | CONDITIONAL | f457807 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -42,14 +44,18 @@ shared/audit/
 | BUG-18 | MEDIUM | 设计层 | 评估未跨 cell 关联 GT instance (box_idx 存在但未用) |
 | BUG-19 | HIGH | FIXED | proj_z0 标签问题 (z center 偏移 + valid_mask) |
 | BUG-20 | HIGH | 数据层 | bus 振荡根因是 nuScenes-mini 样本不足 (~120 标注) |
-| BUG-21 | MEDIUM | OPEN | off_th 退化 0.142→0.200 (疑似双层投影 GELU 损害方向特征) |
+| BUG-21 | HIGH | **升级→BUG-30** | off_th 退化, GELU 损害方向特征 (三组实验交叉印证) |
 | BUG-22 | HIGH | 已修正 | P5b 已用 10 类 config, P6 无词表不匹配 |
 | BUG-23 | HIGH | 事实纠正 | 审计请求 GPU 显存信息错误 (实际 4×A6000 48GB) |
 | BUG-24 | MEDIUM | OPEN | 缺少单类 car 诊断 config |
 | BUG-25 | HIGH | OPEN | 无在线 DINOv3 提取路径 (LoRA/unfreeze 前提) |
 | BUG-26 | MEDIUM | OPEN | DINOv3 存储只需前摄 fp16 ~175GB (非 2.1TB) |
+| BUG-27 | CRITICAL | NEW | Plan K vocab mismatch (230→221) 导致实验无效 |
+| BUG-28 | HIGH | NEW | Plan L 双变量混淆 (投影宽度 + vocab 保留) |
+| BUG-29 | LOW | 记录 | Plan K sqrt balance 对单类无意义 |
+| BUG-30 | HIGH | OPEN | GELU 系统性损害 off_th (三组实验一致) |
 
-## 下一个 BUG 编号: BUG-27
+## 下一个 BUG 编号: BUG-31
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -65,7 +71,8 @@ shared/audit/
 P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P4 (plan_g, AABB fix + BUG-11) → P5 (plan_h, DINOv3 Layer 16)
 → P5b (plan_i, 双层投影+sqrt+LR fix, P5@4000起点)
-→ P6 Phase 0: 单类car诊断 + 方案D(宽中间层2048)
+→ P6 诊断: Plan K(单类car,无效BUG-27) + Plan L(宽2048,car_P=0.140)
+→ P6 Phase 0: 宽投影2048 + 10类 + 去GELU (待定)
 → P6 Phase 1: 根据诊断选择 全量nuScenes / LoRA
 → P7 (待定: 历史 occ box t-1)
 ```
