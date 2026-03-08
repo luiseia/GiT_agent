@@ -136,10 +136,41 @@
 - [ ] Score 区分度改进
 - [ ] BUG-14: Grid token 冗余
 
-### 3D 空间编码路线图 (VERDICT_3D_ANCHOR)
-- [ ] P6 第一步: BEV 坐标 PE (0.5 天, 极低风险)
-- [ ] P6 第二步: 3D Anchor (2-3 天)
-- [ ] P7+: V2X 融合
+### 3D 空间编码路线图 (VERDICT_3D_ANCHOR + CEO 词汇表方案)
+
+**核心思路 (CEO 决策)**: 复用 GiT 的 vocab_embed 做语义先验注入, 输入输出共享同一语义空间。不需要额外编码器, 只扩展词汇表。
+
+**词汇表扩展 (224→232, +8 先验 token)**:
+| Token ID | 名称 | 含义 |
+|----------|------|------|
+| 224 | PRIOR_CAR | V2X/历史: 此 cell 有 car |
+| 225 | PRIOR_TRUCK | V2X/历史: 此 cell 有 truck |
+| 226 | PRIOR_BUS | V2X/历史: 此 cell 有 bus |
+| 227 | PRIOR_TRAILER | V2X/历史: 此 cell 有 trailer |
+| 228 | PRIOR_OCCUPIED | 有东西但类别未知 |
+| 229 | PRIOR_EMPTY | 确认空 |
+| 230 | PRIOR_EGO_PATH | 自车轨迹经过 |
+| 231 | NO_PRIOR | 无先验信息 |
+
+**注入方式 (git.py L328, 3 行代码)**:
+```python
+prior_token_ids = batch_data['prior_tokens']  # [B, 100], 每个 cell 一个先验 token
+prior_embed = self.vocab_embed(prior_token_ids)  # [B, 100, 768]
+grid_start_embed = grid_start_embed + prior_embed
+```
+注: BEV Grid 为 10×10 = 100 cell, 非 20×20。
+
+**V2X 2D box 工作流 (CEO 确认)**:
+sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) → ego BEV 平面 → 检查覆盖的 grid cell → 标记 PRIOR_CLASS token。无需跨视角相机几何。
+
+**训练策略**: 50% 概率清除所有先验 (prior_tokens 全设 NO_PRIOR), 防止模型过度依赖外部信息。
+
+**分阶段验证**:
+- [ ] **P6**: BEV 坐标 PE — MLP(2→768) 加到 grid_start_embed (0.5 天, 极低风险)
+- [ ] **P6b**: + 先验词汇表 — 8 token, 用 GT 模拟"完美先验"验证信息论上限 (1 天)
+- [ ] **P7**: + 历史检测 — ego motion 补偿 + 随机 mask (1-2 天)
+- [ ] **P8**: + V2X 融合 — sender box 2D 刚体变换 + 融合 (1-2 天)
+- [ ] **P9+**: 3D Anchor 扩展 (射线采样, 对齐 NEAR/MID/FAR slot)
 
 ## BUG 跟踪
 | BUG | 严重性 | 状态 |

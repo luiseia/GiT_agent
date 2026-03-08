@@ -54,11 +54,13 @@
 - 起点: P5@4000 checkpoint
 - 时机: P5 完成后签发 ORCH_010
 
-### P6 方向
-- BEV 坐标 PE **推迟** — 先解决 DINOv3 适配 (P5b)
-- 代码改动: git.py L329, 给 grid_start_embed 加 BEV 物理坐标 PE (MLP 2→768)
-- 路线: P5b → P6 (BEV PE, 0.5天) → P6b (3D Anchor, 2-3天) → P7+ (V2X)
-- 详见: shared/audit/processed/VERDICT_3D_ANCHOR.md
+### P6+ 方向 (CEO 词汇表方案, 推迟到 P5b 之后)
+- **核心**: 复用 vocab_embed 注入语义先验, 词汇表 224→232 (+8 先验 token)
+- **注入**: grid_start_embed += vocab_embed(prior_tokens), BEV 10×10=100 cell
+- **V2X 工作流**: sender BEV box → 2D 刚体变换 → ego grid → 标记 prior token
+- **训练**: 50% 随机 mask 先验, 防过度依赖
+- **路线**: P5b → P6 (BEV PE) → P6b (先验词汇表, GT 模拟) → P7 (历史) → P8 (V2X) → P9+ (3D Anchor)
+- 详见: MASTER_PLAN.md 路线图
 
 ---
 
