@@ -64,7 +64,7 @@
 - **训练**: 50% 随机 mask 先验, 防过度依赖
 - **路线 (CEO 修正)**:
   - P5b → P6 (BEV PE) → P6b (先验词汇表, GT 模拟)
-  - → P7 (历史 occ box, ego motion 补偿, 为 planning 准备)
+  - → P7 (历史 occ box, ego motion 补偿, 预测未来 box / 时序建模; planning 靠历史 ego 轨迹)
   - → P7b (3D Anchor, 射线采样, 对齐 NEAR/MID/FAR)
   - → P8 (V2X 融合, 需 V2X 数据集)
 

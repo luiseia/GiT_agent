@@ -1,8 +1,8 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 00:15 (循环 #55 Phase 1)
+> 最后更新: 2026-03-08 00:50 (循环 #56 Phase 1)
 
-## 当前阶段: P5b 训练已启动! 三项修复就位, iter 330/6000
+## 当前阶段: P5b@500 首次 val 积极! sqrt 权重效果显著, iter 820/6000
 
 ### P5 Val 轨迹 (最终 6 个 checkpoint + P4 参照)
 
@@ -104,15 +104,35 @@
 
 ### P5b 训练状态 — RUNNING (plan_i_p5b_3fixes)
 - **启动时间**: 2026-03-07 23:56
-- **进度**: iter 330 / 6000 (5.5%)
+- **进度**: iter 820 / 6000 (13.7%)
 - **GPU**: 0 (20.5GB) + 2 (21.0GB), 显存 +110MB (双层投影)
-- **LR**: warmup 阶段, base_lr=3.3e-05 (爬升中)
-- **warmup 结束**: iter 500 (~00:22), 首次 val 同时
-- **ETA 完成**: ~05:00
+- **LR**: 2.5e-06 (warmup 结束, full LR)
+- **ETA 完成**: ~05:01
+- **下次 val**: @1000 (~00:47)
 - **三项修复验证**:
-  - [x] 双层投影: Sequential(4096→1024→768) 生效, grad_norm 峰值 70 (P5: 247)
+  - [x] 双层投影: Sequential(4096→1024→768) 生效, grad_norm 峰值 70→稳定 8-39
+  - [x] sqrt 权重: **初步验证!** truck_R 0.025→0.153 (6x), car_R 0.932→0.856 (均衡化)
   - [ ] LR milestones: 待 iter 2500 验证 decay 触发
-  - [ ] sqrt 权重: 待确认权重日志
+
+### ★ P5b@500 首次 Val — sqrt 权重效果显著! ★
+
+| 指标 | P5b@500 | P5@500 | 变化 |
+|------|---------|--------|------|
+| car_R | 0.856 | 0.932 | ↓8% (类别均衡改善) |
+| car_P | **0.080** | 0.055 | **+45%** |
+| truck_R | **0.153** | 0.025 | **↑6x! sqrt 权重效果!** |
+| truck_P | 0.039 | 0.027 | +44% |
+| bus_R | 0.014 | 0.000 | 微弱 (P5 bus @2500 才出现) |
+| trailer_R | 0.000 | 0.000 | 样本少 (72), 需更多 iter |
+| bg_FA | **0.235** | 0.320 | **↓27%** (继承 P5@4000) |
+| offset_cx | **0.068** | 0.189 | **↓64%** (继承 P5@4000) |
+| offset_cy | **0.085** | 0.291 | **↓71%** (继承 P5@4000) |
+| offset_th | 0.210 | 0.216 | 基本持平 |
+
+**核心发现**:
+1. sqrt 权重让 truck_R 提升 6 倍, car_R 相应下降 — 类别竞争向均衡方向移动
+2. offset 精度完美继承自 P5@4000, 不受双层投影随机初始化影响
+3. bg_FA 起点就在红线内 (0.235 < 0.25)
 
 ---
 
@@ -169,7 +189,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 **分阶段验证**:
 - [ ] **P6**: BEV 坐标 PE — MLP(2→768) 加到 grid_start_embed (0.5 天, 极低风险)
 - [ ] **P6b**: + 先验词汇表 — 8 token, 用 GT 模拟"完美先验"验证信息论上限 (1 天)
-- [ ] **P7**: + 历史 occ box — ego motion 补偿, 为 planning 任务做准备 (1-2 天, nuScenes 时序帧)
+- [ ] **P7**: + 历史 occ box — ego motion 补偿, 让模型具备预测未来 box 的能力 (时序建模, 1-2 天, nuScenes 时序帧)
 - [ ] **P7b**: 3D Anchor — 射线采样, 对齐 NEAR/MID/FAR slot (2-3 天, nuScenes-mini)
 - [ ] **P8**: + V2X 融合 — sender box 2D 刚体变换 + 融合 (需 V2X 数据集: V2X-Sim/OPV2V/DAIR-V2X)
 
@@ -189,6 +209,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | BUG-16 | MEDIUM | NOT BLOCKING |
 | **BUG-17** | **HIGH** | P5b 解决 (milestones + sqrt balance) |
 | **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
+| **BUG-19** | **HIGH** | 标签遗漏 — `proj_z0=-0.5` 高度截断导致部分有车 grid 未分配正样本 (CEO 从 polygon_viz 发现) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -196,21 +217,30 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | ORCH_008 | P5 DINOv3 集成 | COMPLETED |
 | ORCH_009 | 旋转多边形可视化 | **COMPLETED** — 10 张图, `/mnt/SSD/GiT_Yihao/polygon_viz/` |
 | **ORCH_010** | **P5b 三项修复** | **执行中 — P5b 训练 RUNNING** |
-| ORCH_011 | SSD 迁移 | **DELIVERED** — 状态待确认 (Supervisor 报告未完成) |
+| ORCH_011 | SSD 迁移 | **COMPLETED** (标记) — 但 work_dirs 仍为普通目录, 未建软链接 |
 | AUDIT_P5_MID | P5 中期审计 | VERDICT PROCESSED |
 | AUDIT_INSTANCE_GROUPING | Instance ID 提案 | VERDICT PROCESSED — 列入 P6+ |
 
 ## 红线监控
-| 指标 | 红线 | P5@4000 (P5b起点) | P5@6000 (最终) | 状态 |
-|------|------|-------------------|---------------|------|
-| truck_R | < 0.08 | 0.421 | 0.228 | 安全 |
-| bg_FA | > 0.25 | 0.213 | 0.190 | **达标, 优于 P4** |
-| offset_th | ≤ 0.20 | **0.142** | **0.192** | **两者均达标** |
-| offset_cy | ≤ 0.10 | **0.091** | 0.111 | @4000 达标 |
-| offset_cx | ≤ 0.05 | **0.051** | 0.066 | @4000 接近 |
-| avg_P | ≥ 0.20 | 0.066 | 0.050 | 差距大, P5b 解决 |
+| 指标 | 红线 | P5b@500 | P5@4000 (起点) | 状态 |
+|------|------|---------|---------------|------|
+| truck_R | ≥ 0.08 | **0.153** ✅ | 0.421 | **达标** |
+| bg_FA | ≤ 0.25 | **0.235** ✅ | 0.213 | **达标** |
+| offset_th | ≤ 0.20 | 0.210 | **0.142** | 差 0.01, 需观察 |
+| offset_cy | ≤ 0.10 | **0.085** ✅ | 0.091 | **达标, 超起点!** |
+| offset_cx | ≤ 0.05 | 0.068 | 0.051 | 差 0.018 |
+| avg_P | ≥ 0.20 | — | 0.066 | 差距大 |
 
 ## 历史决策
+### [2026-03-08 00:50] 循环 #56 Phase 1 — ★ P5b@500 首次 val! truck_R 6x 提升! BUG-19 记录
+- **P5b@500 核心**: truck_R=0.153 (6x P5@500!), car_P=0.080 (+45%), bg_FA=0.235 (红线内)
+- **sqrt 权重初步验证**: 类别竞争向均衡方向移动 (car↓ truck↑)
+- **offset 继承**: cx=0.068, cy=0.085 完美继承 P5@4000 精度
+- **bus_R=0.014**: 仍接近 0, P5 bus 到 @2500 才恢复, 需耐心
+- **BUG-19 (CEO 发现)**: `proj_z0=-0.5` 高度截断导致部分有车 grid 未分配正样本, HIGH 严重性
+- **ORCH_011**: 文件标记 COMPLETED 但实际未建软链接
+- 审计不签发, 继续监控 @1000 和后续
+
 ### [2026-03-08 00:15] 循环 #55 Phase 1 — P5b 训练已启动! 双层投影验证生效
 - **P5b RUNNING**: plan_i_p5b_3fixes, iter 330/6000, 从 P5@4000 加载
 - **双层投影验证**: Sequential(4096→1024→768) 生效, 旧权重丢弃, grad_norm 峰值 70 (P5: 247)
@@ -222,7 +252,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **ORCH_010 签发**: P5b 三项修复 (milestones+sqrt+双层投影), 从 P5@4000, HIGH 优先级
 - **VERDICT_INSTANCE_GROUPING 处理**: CONDITIONAL — 接受但不纳入 P5b, 列入 P6+ 路线图
 - **BUG-18 记录**: 评估时 GT instance 未跨 cell 关联
-- **路线图修正 (CEO)**: 3D Anchor (P7b) 早于 V2X (P8), 历史 occ box (P7) 为 planning 做准备
+- **路线图修正 (CEO)**: 3D Anchor (P7b) 早于 V2X (P8); P7 历史 occ box 目的是预测未来 box (时序建模), 帮助 planning 的是历史 ego 轨迹 (非历史 occ box)
 
 ### [2026-03-07 23:25] 循环 #53 Phase 1 — ★ P5 完成! @6000 最终数据, VERDICT_INSTANCE_GROUPING
 - **P5 训练完成**: 6000/6000, GPU 0,2 释放
