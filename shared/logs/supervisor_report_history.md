@@ -2981,3 +2981,12 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **最优checkpoint排名**: #1=@4000(类别全平衡+offset最优), #2=@5500(car最强+trailer_P超P4), #3=@6000(trailer恢复+truck回升)
 **P5 vs P4总结**: P5在9/12指标上取得超P4的最优值! DINOv3 Layer16验证成功。P4仅在bus(R/P)和truck_P上保持领先
 **P5未解决**: bus坍塌(最佳0.315@4000), 类别振荡, LR milestone配置错误(相对值导致延迟)
+
+---
+
+## Cycle #134 | 2026-03-07 23:50 | P5完成后GPU释放, ORCH_010(P5b三修复)+011(SSD迁移)投递
+
+**状态**: P5完成, GPU全部空闲(0-3), 无活跃训练
+**ORCH_010(P5b)**: HIGH, DELIVERED — 三项修复: LR milestones修正(warmup500+begin500+milestones[2000,3500]), sqrt类别权重(car:trailer从1:1→0.1:1), 双层投影(4096→1024→768); 起点P5@4000
+**ORCH_011(SSD迁移)**: HIGH, DELIVERED — work_dirs+work_dirs_12迁移到ssd_workspace, 磁盘空间告急
+**ORCH_009(可视化)**: MEDIUM, DELIVERED — 旋转多边形可视化, 保存到SSD
