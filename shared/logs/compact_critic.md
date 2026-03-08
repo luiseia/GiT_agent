@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-07
 
-## 当前状态: 空闲 (P5_MID 审计刚完成)
+## 当前状态: INSTANCE_GROUPING 审计完成
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -11,6 +11,7 @@
 | VERDICT_P4_FINAL | CONDITIONAL | b076fa0 | pending/ |
 | VERDICT_3D_ANCHOR | CONDITIONAL | 91443d4 | audit/ (根目录) |
 | VERDICT_P5_MID | CONDITIONAL | ba27c27 | pending/ |
+| VERDICT_INSTANCE_GROUPING | CONDITIONAL | 81e231c | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -36,8 +37,9 @@ shared/audit/
 | BUG-15 | HIGH | OPEN | Precision 瓶颈 (DINOv3 只用 Conv2d→P5 修但振荡) |
 | BUG-16 | MEDIUM | 设计层 | 预提取特征与数据增强不兼容 |
 | BUG-17 | HIGH | NEW | per_class_balance 在极不均衡数据下零和振荡 |
+| BUG-18 | MEDIUM | 设计层 | 评估未跨 cell 关联 GT instance (box_idx 存在但未用) |
 
-## 下一个 BUG 编号: BUG-18
+## 下一个 BUG 编号: BUG-19
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
