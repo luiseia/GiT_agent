@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-08
 
-## 当前状态: P6_VS_P5B 审计完成 (2026-03-08)
+## 当前状态: PLAN_P_FAIL_P6_TREND 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -21,6 +21,7 @@
 | VERDICT_P6_1500 | PROCEED | 5f63b0e | pending/ |
 | VERDICT_P6_3000 | CONDITIONAL | 67f6644 | pending/ |
 | VERDICT_P6_VS_P5B | CONDITIONAL | d852faf | pending/ |
+| VERDICT_PLAN_P_FAIL_P6_TREND | CONDITIONAL | df6427d | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -67,10 +68,11 @@ shared/audit/
 | BUG-36 | HIGH | NEW | Plan M/N vs P6 对比条件不一致 (proj_dim 1024 vs 2048) |
 | BUG-37 | HIGH | NEW | P5b 基线缺乏可信单 GPU 数据 |
 | BUG-38 | MEDIUM | 自我纠正 | Critic car_P 预测偏乐观 (0.12-0.13 vs 实际 0.106) |
-| BUG-39 | **CRITICAL** | NEW | 双层Linear无激活函数=单层Linear, P6 2048中间维度无效 |
-| BUG-40 | HIGH | 自我纠正 | Critic审计链连锁失误: BUG-27→BUG-30→去GELU→P6退化 |
+| BUG-39 | **MEDIUM** (降级) | 设计层 | 双层Linear无激活=单层Linear, 但P6@3500 car_P=0.121>P5b, 因式分解有优化优势 |
+| BUG-40 | HIGH | 自我纠正+补充 | Critic过激反应: @3000振荡低谷做CRITICAL判定, @3500即推翻 |
+| BUG-41 | HIGH | 确认 | Plan O全程warmup (LinearLR end=500=max_iters) + 未采纳GELU推荐 |
 
-## 下一个 BUG 编号: BUG-41
+## 下一个 BUG 编号: BUG-42
 
 ## P6 关键数据 (当前主线)
 - Config: plan_p6_wide_proj.py
@@ -93,6 +95,14 @@ shared/audit/
 - **BUG-39 CRITICAL**: 双层Linear无激活=单层Linear, P6"宽投影2048"无效
 - **BUG-30 INVALID**: GELU不损害off_th, 假设被BUG-27污染数据误导
 - 修正路线: Plan P (2048+GELU+lr_mult=1.0) 500iter验证 → full nuScenes
+- P6@3500: car_P=**0.121**(首超P5b 0.116), bg_FA=0.287, truck_P=0.069
+- P6@4000 DDP: car_P=0.123(趋势继续上升)
+- BUG-39 降级CRITICAL→MEDIUM: 退化架构可工作, 因式分解有优化优势
+- BUG-38 降级MEDIUM→LOW: 预测值0.12-0.13在@3500兑现, 仅时间偏差
+- Plan P@500 失败(car_P=0.004): 100%超参问题(warmup=100, decay@300, lr_mult=1.0)
+- Plan P bg_FA=0.165(历史最低): GELU对bg/fg判别有强大独立贡献
+- BUG-41确认: Plan O全程warmup, 结果不可信
+- **最高优先级**: Plan P2 (P6 config仅改proj_use_activation=True, 2000iter, ~2h)
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -115,9 +125,11 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → Plan M/N 归档: 在线DINOv3不达标, frozen>>unfreeze
 → P6 @3000 CONDITIONAL(car_P平台化0.106, 需Plan O验证在线路径)
 → P6 VS P5B: P6 car_P=0.106 < P5b=0.116, BUG-39(无GELU退化)
-→ Plan P (待定: 2048+GELU+lr_mult=1.0, 500iter mini验证)
-→ Plan O (待定: 在线DINOv3 frozen + 2048 + GELU, 500iter mini验证)
-→ P7 (待定: full nuScenes)
+→ P6 @3500 突破(car_P=0.121>P5b), BUG-39降级MEDIUM
+→ Plan P @500 FAIL(超参灾难, 非架构问题), bg_FA=0.165暗示GELU价值
+→ Plan P2 (最高优先: P6+GELU, 2000iter验证)
+→ Plan O2 (在线+2048+GELU+正确warmup)
+→ P7 (待定: full nuScenes, 等Plan P2结果)
 ```
 
 ## 恢复指引
