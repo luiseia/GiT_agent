@@ -3126,3 +3126,15 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **ORCH_014 COMPLETED**: P6完整nuScenes准备 — 28130样本(87x mini), config已创建(plan_j), ckpt兼容✅
 **⚠️ BLOCKER**: DINOv3特征需2.1TB, SSD仅剩528GB — 需CEO决策
 **P6 config**: plan_j_full_nuscenes.py, load_from=P5b@3000, 10类, max_iters=36000
+
+---
+
+## Cycle #147 | 2026-03-08 07:03 | 🏁 P5b完成! @6000: off_th=0.198达标, bg_FA=0.208最低 | 诊断实验启动
+
+**P5b训练完成**: 6000/6000, 训练时长~6h40m, 12个checkpoint
+**P5b@6000 最终val**: car_R=0.774, car_P=0.104, truck_R=0.240, bus_R=0.059, trailer_R=0.417, bg_FA=**0.208**(全程最低!), off_cx=0.057, off_cy=0.134, off_th=**0.198**(达标红线!)
+**最终红线3/5**: truck_R✅ bg_FA✅ off_th✅; off_cx(0.057差0.007), off_cy(0.134远)
+**P5b最优ckpt**: @1000(均衡+offset), @2500(四类全活), @6000(bg_FA+off_th最优)
+**ORCH_015 执行中**: Plan K(单类car诊断)+Plan L(宽投影诊断), 各2000iter, iter~280, ETA~08:28
+**Plan K loss~0.8**: 远低于P5b同期, 暗示类竞争确实存在
+**Plan L loss~7.9**: 投影层从随机初始化, 高loss spike正常
