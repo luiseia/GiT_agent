@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 ~17:20 (循环 #88 Phase 1)
+> 最后更新: 2026-03-08 ~17:45 (循环 #89 Phase 1)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (330/40000 warmup) | @500 val ETA ~17:30
+## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (610/40000 warmup) | 首次 val @2000 ETA ~20:13
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -156,7 +156,7 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 **Full nuScenes 路线 (VERDICT_P2_FINAL_FULL_CONFIG 最终决定)**:
 1. ✅ **Plan P2 COMPLETED**: GELU 确认 (@1000 +72%, @1500 +5.7%). BUG-42: @2000 回调 = LR 问题
 2. ✅ **Config 选择**: **2048+GELU + 在线 DINOv3 frozen** (Critic PROCEED)
-3. **ORCH_024 IN PROGRESS**: 330/40000 (warmup), loss 4-8 波动正常 (LR 仅 1.6%), 6.3 s/iter, 36-37 GB/GPU, ETA 3/11. @500 val ~17:30
+3. **ORCH_024 IN PROGRESS**: 610/40000 (warmup), loss 4-8 波动正常 (LR 仅 3%), 6.3 s/iter, 36-37 GB/GPU, ETA 3/11. **修正: val_interval=2000, 首次 val @2000 ETA ~20:13** (非 @500)
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
