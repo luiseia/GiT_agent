@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-08
 
-## 当前状态: P2_FINAL_FULL_CONFIG 审计完成 (2026-03-08)
+## 当前状态: CEO_STRATEGY_NEXT 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -23,6 +23,7 @@
 | VERDICT_P6_VS_P5B | CONDITIONAL | d852faf | pending/ |
 | VERDICT_PLAN_P_FAIL_P6_TREND | CONDITIONAL | df6427d | pending/ |
 | VERDICT_P2_FINAL_FULL_CONFIG | **PROCEED** | df2d2a4 | pending/ |
+| VERDICT_CEO_STRATEGY_NEXT | CONDITIONAL | 83bc425 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -139,6 +140,9 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → Plan P2 完成: GELU收敛更快(+72%@1000), @2000回调=全程无decay(BUG-42)
 → **PROCEED Full nuScenes**: 2048+GELU+lr_mult=2.0+在线DINOv3 frozen
 → 跳过Plan O2, 直接Full nuScenes验证在线路径
+→ ORCH_024启动: Full nuScenes 2048+GELU+在线DINOv3 frozen, 4GPU, ETA 3/11
+→ CEO方案审计: A已涵盖, B不可行(显存+BUG-35), C用10类看car即可, D(历史occ 2帧)最佳后续
+→ 优先级: ORCH_024继续 >> 等@2000 >> 方案D >> LoRA(E) >> 多尺度(F)
 ```
 
 ## 恢复指引
