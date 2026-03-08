@@ -3061,3 +3061,14 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **四类全>0.28**: 最均衡checkpoint! P5b@2500 vs P5@2500: car(+5%), truck(3.6x!), bus(+15%), bg_FA(-12%), 仅trailer_R略低
 **Offset回退**: cx(0.055→0.073), 与类别分布剧变(bus/trailer爆发)相关, 预期LR decay后改善
 **第二次decay**: @4000(lr→2.5e-08), 下次val @3000(~03:47)
+
+---
+
+## Cycle #141 | 2026-03-08 04:07 | P5b@3000: bg_FA突破红线(0.217)! off_th达标(0.200)! bus再振荡
+
+**P5b进度**: iter3340/6000(55.7%), LR=2.5e-07(decay后稳定), ETA~06:19
+**P5b@3000 val**: car_R=0.835, car_P=**0.107**(P5b+全程新高!), truck_R=0.205(↓28%), bus_R=0.051(↓89%坍塌!), trailer_R=0.389, trailer_P=**0.037**(↑270%), bg_FA=**0.217**(<0.25突破红线!), off_cx=0.059(↓19%改善), off_cy=0.112, off_th=**0.200**(达标红线!)
+**LR decay正面效果**: bg_FA↓23%(首破红线), car_P↑14%(精度新高), trailer_P↑270%, off_th达标, off_cx改善
+**bus振荡持续**: 0.470→0.051, ~1000iter周期未被LR decay消除, 深层类别竞争问题
+**红线达标3/5**: truck_R✅bg_FA✅off_th✅(从@2500的1/5回升); off_cx(0.059差0.009), off_cy(0.112差0.012)
+**下次val**: @3500(~04:17), 第二次LR decay @4000
