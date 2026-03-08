@@ -173,7 +173,8 @@ done
 - **任务**: 基于 DinoV3 特征的 BEV grid occupancy 预测
 - **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
 - **数据集**: nuScenes-mini，323 张图像，~3500 个 3D 框标注
-- **BEV Grid**: 20×20 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
+- **图像 Grid**: 20×20 cells（ViT 输入的空间划分）
+- **BEV Grid**: 10×10 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
 
 ### 红线指标（摘要中必须报告）
 | 指标 | 红线 | 说明 |

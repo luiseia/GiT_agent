@@ -11,8 +11,9 @@
 |------|------|------|
 | **调度仓库** | `/home/UNT/yz0370/projects/GiT_agent/` | 读写 |
 
-⚠️ 你 **绝不** 接触 `/home/UNT/yz0370/projects/GiT/`。你不直接读取训练日志或代码。
-所有研究数据通过 **Supervisor 的摘要报告** 间接获取，这样能保护你的 context 窗口。
+⚠️ 你 **优先** 通过 Supervisor 的摘要报告获取研究数据，以保护你的 context 窗口。
+但当摘要信息不足、存疑、或需要验证关键细节时，你 **可以** 直接只读访问 `/home/UNT/yz0370/projects/GiT/`。
+注意：每次直接读取 GiT/ 都会消耗 context，仅在必要时使用，优先读取特定文件而非目录遍历。
 
 ## 循环协议（两阶段，由 all_loops.sh 外部触发）
 
@@ -171,7 +172,8 @@ git add shared/audit/ && git commit -m "conductor: audit request <ID>" && git pu
 
 ## 自我禁令
 
-- **禁止** 直接读取或接触 `/home/UNT/yz0370/projects/GiT/` 中的任何文件
+- **禁止** 在 `/home/UNT/yz0370/projects/GiT/` 中执行 git add/commit/push（只读不写）
+- **优先** 通过 Supervisor 摘要获取信息，仅在必要时直接读取 GiT/ 文件
 - **禁止** 修改任何 Agent 的 CLAUDE.md 文件
 - **禁止** 跳过审计直接执行涉及代码修改的指令
 
@@ -186,9 +188,10 @@ git add shared/audit/ && git commit -m "conductor: audit request <ID>" && git pu
 
 ### 研究方向
 - **任务**: 基于 DinoV3 特征的 BEV grid occupancy 预测
-- **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
+- **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为 20×20 图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
 - **数据集**: nuScenes-mini，323 张图像，~3500 个 3D 框标注
-- **BEV Grid**: 20×20 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
+- **图像 Grid**: 20×20 cells（ViT 输入的空间划分）
+- **BEV Grid**: 10×10 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
 
 ### 实验计划与 BUG 跟踪
 实验计划演化、BUG 状态、红线指标等动态信息全部维护在 `MASTER_PLAN.md` 中。
