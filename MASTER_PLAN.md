@@ -1,37 +1,50 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 07:35 (循环 #67 Phase 2)
+> 最后更新: 2026-03-08 08:10 (循环 #68 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: 四路诊断实验运行中 — 首批 @500 数据到达, 等待 @1000 关键判断
+## 当前阶段: 诊断 @1000 关键数据 + VERDICT_DIAG_RESULTS 处理; 等待 Plan L @2000 + Plan M/N @1000
 
-### 诊断实验首批数据 (@500, Cycle #67)
+### VERDICT_DIAG_RESULTS 核心判决 (Critic, Cycle #68)
 
-| 实验 | GPU | 进度 | 目的 | 速度 | 显存 |
-|------|-----|------|------|------|------|
-| **Plan K (α)** | 0 | 780/2000 | 单类 car, 预提取 | 2.97s | 15.2 GB |
-| **Plan L (β)** | 2 | 750/2000 | ⚠️ 10类(偏差), 宽投影 2048 | 2.98s | 15.4 GB |
-| **Plan M (γ)** | 1 | 70/2000 | 单类 car, 在线 unfreeze | 6.26s | 29.5 GB |
-| **Plan N (δ)** | 3 | 70/2000 | 单类 car, 在线 frozen | 6.26s | 28.0 GB |
+**判决: CONDITIONAL — 方向正确但论证不可靠, 实验设计存在致命混淆**
 
-**Plan K @500 (单类 car)**:
-| 指标 | Plan K | P5b@500 | 对比 |
-|------|--------|---------|------|
-| car_R | 0.629 | 0.856 | 暂低 (重建中) |
-| car_P | 0.064 | 0.080 | 暂低 |
-| bg_FA | **0.183** | 0.235 | **大幅领先!** |
-| off_cy | **0.082** | 0.085 | 微优 |
-| off_th | 0.228 | 0.210 | 更差 |
+**关键发现**:
+1. **BUG-27 (CRITICAL)**: Plan K vocab 不兼容 (230→221), vocab_embed 随机初始化 — **Plan K 结论无效**, 类竞争问题仍未回答
+2. **BUG-28 (HIGH)**: Plan L 双变量混淆 (投影宽度 + vocab 保留), car_P=0.140 无法干净归因于投影宽度
+3. **BUG-30 (HIGH)**: GELU 损害 off_th 已从"疑似"升级为三组交叉印证 (BUG-21 升级)
+4. **P6 必须用 10 类**: 保持 vocab 兼容, 减少类别会破坏预训练特征空间
+5. **P6 投影: 去掉 GELU**: Linear(4096,2048) + LayerNorm + Linear(2048,768)
+6. **弱推理仍支持宽投影**: 随机初始化的 2048 @1000 > 训练好的 1024 @3000, 暗示容量优势
 
-**Plan L @500 (10 类, 宽投影)** ⚠️ Admin 偏差: 用 10 类非 ORCH 指定的 4 类:
-- car_R=0.084 (投影层随机初始化, 极低)
-- **pedestrian_R=0.451** (意外发现: 行人检测出奇地好)
-- 需更多 iter 恢复, @500 不具参考性
+**通过条件** (定稿 P6 前必须满足):
+1. 认识 Plan L 结论是混淆的
+2. P6 用 10 类 (保持 vocab 兼容)
+3. P6 宽投影去掉 GELU (用 LayerNorm 或无激活)
+4. 等 Plan M/N @1000 数据
+5. Plan L @2000: bg_FA 需回落到 <0.30
 
-**关键判断等 @1000** (~07:50): Plan K car_P 是否 > 0.107 (超 P5b@3000) → 类竞争确认
+**P6 Config 建议 (Critic)**:
+```
+类别:    10 类 (num_vocal=230)
+投影层:  Linear(4096, 2048) + LayerNorm + Linear(2048, 768) — 无 GELU!
+load_from: P5b@3000 (backbone+head+vocab 完整加载, 仅 proj 随机)
+```
+
+### 诊断实验 @1000 对比
+
+| 指标 | Plan K (1类) | Plan L (10类+宽) | P5b @1000 | P5b 最优 | 备注 |
+|------|-------------|------------------|-----------|----------|------|
+| car_P | 0.047 | **0.140** | 0.089 | 0.108 | L 领先但有混淆 |
+| car_R | 0.507 | 0.338 | 0.760 | 0.924 | 两者都在恢复中 |
+| bg_FA | 0.211 | 0.407 | 0.302 | 0.208 | L 恶化 (10类多预测) |
+| off_th | 0.254 | 0.242 | 0.168 | 0.168 | 均受 GELU 影响 (BUG-30) |
+
+⚠️ **Plan K 结论无效**: vocab_embed 随机初始化 (BUG-27), 不代表单类更差
+⚠️ **Plan L 结论混淆**: 同时改变投影宽度+保留vocab (BUG-28)
 
 ### CEO 在线提取决策 (2026-03-08, Cycle #66)
 > CEO: 放弃预提取路线, 走在线 DINOv3 提取以支持完整 nuScenes 训练。
@@ -327,6 +340,10 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-24** | **MEDIUM** | 缺少单类诊断 config: 需创建 `plan_k_car_only_diag.py` (Critic VERDICT_P6_ARCHITECTURE) |
 | **BUG-25** | **HIGH** | 无在线 DINOv3 提取路径: `PreextractedFeatureEmbed` 只支持磁盘预提取, 方案 C/B 需在线模式 (Critic VERDICT_P6_ARCHITECTURE) |
 | **BUG-26** | **MEDIUM** | DINOv3 存储过估: 代码只用 CAM_FRONT, 全量仅需 ~175GB fp16 (非 2.1TB). BLOCKER 降级 (Critic VERDICT_P6_ARCHITECTURE) |
+| **BUG-27** | **CRITICAL** | Plan K vocab 不兼容 (230→221), vocab_embed 随机初始化, Plan K "类竞争否定"结论无效 (Critic VERDICT_DIAG_RESULTS) |
+| **BUG-28** | **HIGH** | Plan L 双变量混淆: 投影宽度+vocab 保留同时变化, 无法干净归因 (Critic VERDICT_DIAG_RESULTS) |
+| **BUG-29** | **LOW** | Plan K sqrt balance 对单类无意义, 不影响结果 (Critic VERDICT_DIAG_RESULTS) |
+| **BUG-30** | **HIGH** | GELU 系统性损害 off_th: 三组实验交叉印证 (BUG-21 升级). 建议去掉 GELU 用 LayerNorm (Critic VERDICT_DIAG_RESULTS) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -342,6 +359,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | AUDIT_P5B_3000 | P5b 中期 + P6 决策 | VERDICT PROCESSED — P6 从 @3000 启动 |
 | **ORCH_014** | **P6 完整 nuScenes 准备** | **COMPLETED — BUG-26: 仅 175GB fp16, BLOCKER 降级** |
 | AUDIT_P6_ARCHITECTURE | P6 架构方案审计 | VERDICT PROCESSED — 诊断优先, D>C>B |
+| AUDIT_DIAG_RESULTS | 诊断 @1000 结果审计 | VERDICT PROCESSED — 方向对但混淆, 去 GELU, 10 类 |
 | **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **执行中 — Plan K 780/2000, Plan L 750/2000, GPU 0,2** |
 | **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — Plan M/N 70/2000, GPU 1,3** |
 
@@ -357,6 +375,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 08:10] 循环 #68 Phase 2 — ★ VERDICT_DIAG_RESULTS: 方向对但混淆, 去 GELU, 10 类
+- **VERDICT_DIAG_RESULTS (CONDITIONAL)**: 投影宽度方向正确但实验设计有致命混淆
+- **BUG-27 (CRITICAL)**: Plan K vocab 不兼容 → Plan K 结论无效, 类竞争仍未回答
+- **BUG-28 (HIGH)**: Plan L 双变量混淆, car_P=0.140 无法干净归因投影宽度
+- **BUG-30 (HIGH)**: GELU 损害 off_th 升级为三组交叉印证. P6 必须去 GELU
+- **P6 方向**: 10 类 + 宽投影 2048 + LayerNorm (无 GELU) + P5b@3000
+- **待**: Plan L @2000 (bg_FA<0.30?) + Plan M/N @1000 (在线 DINOv3 效果?)
+- 不签发 ORCH — 等数据满足 Critic 通过条件后再定稿 P6
+
 ### [2026-03-08 07:35] 循环 #67 Phase 2 — 四路诊断首批 @500 数据, 等待 @1000
 - **4 GPU 满载**: Plan K/L (GPU 0,2) ~780 iter + Plan M/N (GPU 1,3) ~70 iter
 - **Plan K @500 (单类 car)**: bg_FA=0.183 大幅领先 P5b, car_P=0.064 暂低 (重建中)
