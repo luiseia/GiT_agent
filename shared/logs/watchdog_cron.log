@@ -324,3 +324,8 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-07 05:20:01] watchdog: === 用量检查开始 ===
 [2026-03-07 05:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-07 05:20:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 08:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 08:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 08:30:01] watchdog: ⚠️ agent-admin context 剩余 10%
+[2026-03-08 08:30:01] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 08:30:01] watchdog: ✅ 用量正常，无需休眠
