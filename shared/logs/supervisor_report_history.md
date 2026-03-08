@@ -3174,3 +3174,20 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **Plan M @500 (在线unfreeze)**: car_R=0.621(≈K), car_P=0.052(略低于K), bg_FA=0.220
 **类振荡**: Plan L重现P5b相同模式! truck/bus/barrier坍塌, construction/cone爆发
 **Plan K/L即将完成**: K(1780/2000), L(1710/2000), 最终val@2000(~08:40-08:45)
+
+---
+## Cycle #151 | 2026-03-08 09:00
+**Plan K/L COMPLETED @2000 | Plan N @500 NEW | 诊断结论成型**
+
+Plan K final @2000: car_R=0.602, car_P=0.063, bg_FA=**0.166**, off_cx=0.054, off_cy=0.171, off_th=**0.191**
+→ car_P=0.063 << 0.15 阈值, **类竞争非瓶颈** (核心结论确认)
+
+Plan L final @2000: car_R=0.512, car_P=0.111, truck_R=0.360↑, bus_R=0.101↑, constr_R=0.212↓, ped_R=0.425↑, cone_R=0.182↓, barrier_R=0, bg_FA=0.331, off_cy=0.074, off_th=0.205
+→ car_P=0.111 > P5b@3000=0.107, 宽投影轻微帮助
+→ 类振荡全周期确认: @1000 truck/bus/barrier, @1500 constr/cone, @2000 truck/bus/ped
+
+Plan N @500 (NEW): car_R=0.618, car_P=0.050, bg_FA=0.219, off_cx=0.088, off_cy=0.104, off_th=0.206
+→ 与 Plan M @500 几乎一致, @1000+ 待分化
+
+ORCH_015: IN_PROGRESS → **COMPLETED** | GPU 0+2 空闲
+Plan M: 770/2000, Plan N: 760/2000, @1000 val ~09:22
