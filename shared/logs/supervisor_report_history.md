@@ -3163,3 +3163,14 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **Plan L bg_FA=0.407**: 10类预测过多, 投影层仍在收敛(从随机init)
 **Plan M/N**: iter340/2000, 在线DINOv3, 首次val@500(~08:20)
 **下次val**: Plan K/L @1500(~08:10), Plan M/N @500(~08:20)
+
+---
+
+## Cycle #150 | 2026-03-08 08:30 | Plan K/L @1500 + Plan M @500 | car_P回落, 类振荡重现
+
+**Plan K @1500 (单类car)**: car_R=0.639(V字恢复), car_P=0.060(仍低), bg_FA=0.185(好), **off_cy=0.206暴涨!**(异常)
+**Plan L @1500 (10类宽投影)**: car_R=0.572(持续恢复), car_P=**0.103**(从0.140回落!), truck=0.015(坍塌!), bus=0.024(坍塌!), construction=0.637(爆发!), traffic_cone=0.556(爆发!), bg_FA=0.447, off_cy=**0.069**(优于P5b全程!)
+**→ 修正诊断**: car_P@1000的0.140可能虚高(其他类未激活), @1500回落至0.103(仍≥P5b@1500的0.091)
+**Plan M @500 (在线unfreeze)**: car_R=0.621(≈K), car_P=0.052(略低于K), bg_FA=0.220
+**类振荡**: Plan L重现P5b相同模式! truck/bus/barrier坍塌, construction/cone爆发
+**Plan K/L即将完成**: K(1780/2000), L(1710/2000), 最终val@2000(~08:40-08:45)
