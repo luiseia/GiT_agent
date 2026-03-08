@@ -1,160 +1,184 @@
-# Conductor 上下文保存 (compact 前)
-> 时间: 2026-03-07 03:15
-> 循环: #33 完成, 下一轮 #34
-> 协议: 不直接读 GiT/, 通过 shared/logs/supervisor_report_latest.md 获取数据
+# Conductor 工作上下文快照
+> 时间: 2026-03-07 22:15
+> 循环: #50 (Phase 2 已完成)
+> 目的: Context compaction 备份
 
-## 当前正在做什么
-- P3 训练已完成 (4000/4000), P4 训练已启动
-- P4 包含 AABB→旋转多边形标签修复 + BUG-11 修复 + config 调优
-- ORCH_006 (DINOv3 离线预提取) Admin 并行执行中
-- 等待 P4@500 首次 val 验证 AABB 修复效果
+---
 
-## CEO 未处理指令
-- CEO_CMD.md: 空, 无待处理指令
+## 当前状态
 
-## P4 训练状态 — RUNNING
-- **实验**: Plan G (AABB fix + BUG-11 fix + config 调优), config `plan_g_aabb_fix.py`
-- **起点**: P3@3000 checkpoint
-- **进度**: 前 50+ iter (warmup 阶段)
-- **PID**: 3929983
-- **GPU**: 0,2 (RTX A6000) | CEO 限制只用 0,2
-- **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_g_aabb_fix/`
-- **ETA 完成**: ~06:20 (3月7日)
-- **首次 val**: P4@500
-- **Config 变化 vs P3**: bg_balance_weight 3.0→2.0, reg_loss_weight 1.0→1.5, use_rotated_polygon=True
+### P5 训练 — RUNNING (75%)
+- **PID**: 1572 | GPU 0,2 | 20.4 GB/GPU
+- **进度**: iter 4510 / 6000
+- **LR**: 2.5e-06 (仍未衰减!)
+- **实际 LR decay**: iter 5000 (~22:02) — milestone 相对值问题导致延迟
+- **第二次 decay**: iter 6500 — 超出 max_iter 6000, 永不触发
+- **ETA 完成**: ~23:07
+- **下次 val**: @5000 (与 LR decay 同步)
 
-## P4 早期信号
-- Warmup 正常, LR 从 ~1e-6 爬升
-- 梯度裁剪率 60% (高于 P3 的 0%) — 原因: reg_loss_weight 提升 + 标签分布变化
-- loss_reg 偏高 (预期, reg_loss_weight 1.5x)
-- 无 NaN/OOM, 显存 21.5GB/49.1GB per GPU
+### P5 Val 轨迹 (关键 checkpoint)
 
-## P3@3000 基线 (P4 起点)
-| 指标 | P3@3000 | P2@6000 | vs P2 |
-|------|---------|---------|-------|
-| car_R | 0.614 | 0.596 | +3.0% |
-| car_P | 0.082 | 0.079 | +3.8% |
-| truck_R | 0.326 | 0.290 | +12.4% |
-| truck_P | 0.306 | 0.190 | +61.1% |
-| bus_R | 0.636 | 0.623 | +2.1% |
-| bus_P | 0.133 | 0.150 | -11.3% |
-| trailer_R | 0.622 | 0.689 | -9.7% |
-| trailer_P | 0.068 | 0.066 | +3.0% |
-| bg_FA | 0.194 | 0.198 | -2.0% |
-| offset_cx | 0.059 | 0.068 | -13.2% |
-| offset_cy | 0.123 | 0.095 | +29.5% |
-| offset_th | 0.214 | 0.217 | -1.4% |
-| avg_P | **0.147** | 0.121 | +21.5% |
+| 指标 | P5@3500 | P5@4000 (最优) | P5@4500 | P4@4000 | 红线 |
+|------|---------|---------------|---------|---------|------|
+| car_R | 0.779 | 0.569 | 0.529 | 0.592 | — |
+| car_P | 0.093 | 0.090 | 0.091 | 0.081 | — |
+| truck_R | 0.679 | 0.421 | 0.317 | 0.410 | <0.08 |
+| truck_P | 0.072 | 0.130 | 0.095 | 0.175 | — |
+| bus_R | 0.120 | 0.315 | 0.058 | 0.752 | — |
+| bus_P | 0.024 | 0.037 | 0.024 | 0.129 | — |
+| trailer_R | 0.000 | 0.472 | 0.361 | 0.750 | — |
+| trailer_P | 0.000 | 0.006 | 0.005 | 0.044 | — |
+| bg_FA | 0.290 | 0.213 | **0.167** | 0.194 | ≤0.25 |
+| offset_cx | 0.066 | **0.051** | 0.083 | 0.057 | ≤0.05 |
+| offset_cy | 0.151 | **0.091** | 0.111 | 0.103 | ≤0.10 |
+| offset_th | 0.197 | **0.142** | 0.226 | 0.207 | ≤0.20 |
 
-## P3@4000 最终结果 (参考)
-| 指标 | P3@4000 | P2@6000 | vs P2 |
-|------|---------|---------|-------|
-| car_R | 0.570 | 0.596 | -4.4% |
-| car_P | 0.084 | 0.079 | +6.3% |
-| truck_R | 0.302 | 0.290 | +4.1% |
-| truck_P | 0.211 | 0.190 | +11.1% |
-| bus_R | 0.712 | 0.623 | +14.3% |
-| bus_P | 0.153 | 0.150 | +2.0% |
-| trailer_R | 0.622 | 0.689 | -9.7% |
-| trailer_P | 0.041 | 0.066 | -37.9% |
-| bg_FA | **0.185** | 0.198 | -6.6% |
-| offset_cx | 0.052 | 0.068 | -23.5% |
-| offset_cy | **0.087** | 0.095 | -8.4% |
-| offset_th | 0.214 | 0.217 | -1.4% |
-| avg_P | 0.122 | 0.121 | +0.8% |
+**P5@4000 是综合最优**: 四类 Recall>0.3, offset 三指标全面超 P4, bg_FA=0.213
 
-## P3 历史性成就
-- bg_FA=0.185 全项目历史最低
-- offset_cy=0.087 首破红线 (≤0.10)
-- offset_th=0.191 @2000 首触红线 (≤0.20, 未保持)
-- truck_P=0.306 @3000 历史最高
-- 9/12 指标超 P2@6000
+---
 
-## Phase 2 触发条件 (CEO 指令 #6)
-- P4 首批 val 后 avg_P > 0.15 → Phase 2 低优先级
-- P4 首批 val 后 avg_P < 0.12 → 立即集成 DINOv3 特征
+## 已完成的关键决策
 
-## ORCH 状态
+### VERDICT_P5_MID (Critic 已返回, 已归档到 shared/audit/processed/)
+- **判决**: CONDITIONAL — P5b 必要
+- **振荡根因**: DINOv3 语义过强 + per_class_balance 等权 (car 8269 vs trailer 90 = 92:1) + Linear(4096,768) 5.3:1 压缩瓶颈
+- **BUG-17 升级 HIGH**: milestone 相对值 + per_class_balance 振荡
+- Critic 修正方案: milestones 用相对值 `[2000,3500]` (begin=500), sqrt 加权 balance, 可选双层投影
+- Critic 建议: P6 BEV PE 推迟, 先解决 DINOv3 适配
+
+### P5b 方案 (CEO 批准, 三项全修)
+1. **milestones 修正** (必须): `milestones=[2000,3500]` 相对 begin=500, 实际 decay @2500, @4000
+2. **per_class_balance → sqrt 加权** (必须): `weight_c = 1/sqrt(count_c/min_count)`
+3. **双层投影** (必须, CEO 决策): `Linear(4096,1024)+GELU+Linear(1024,768)`
+- 起点: P5@4000 checkpoint
+- 时机: P5 完成后签发 ORCH_010
+
+### P6 方向
+- BEV 坐标 PE **推迟** — 先解决 DINOv3 适配 (P5b)
+- 代码改动: git.py L329, 给 grid_start_embed 加 BEV 物理坐标 PE (MLP 2→768)
+- 路线: P5b → P6 (BEV PE, 0.5天) → P6b (3D Anchor, 2-3天) → P7+ (V2X)
+- 详见: shared/audit/processed/VERDICT_3D_ANCHOR.md
+
+---
+
+## 活跃任务
+
 | ID | 目标 | 状态 |
 |----|------|------|
-| ORCH_001 | BUG-12 修复 | COMPLETED |
-| ORCH_002 | BUG-9 诊断 | COMPLETED |
-| ORCH_003 | P1 eval + P2 启动 | COMPLETED |
-| ORCH_004 | BUG-8/10 修复 + P3 启动 | COMPLETED |
-| **ORCH_005** | **AABB+BUG-11+P4 训练** | **COMPLETED (验收通过)** |
-| **ORCH_006** | **DINOv3 离线预提取** | **DELIVERED (Admin 执行中)** |
+| ORCH_008 | P5 DINOv3 集成 | COMPLETED (P5 RUNNING) |
+| ORCH_009 | 旋转多边形 Grid 分配可视化 | PENDING (CEO 请求, Admin 待执行) |
+| AUDIT_P5_MID | P5 中期审计 | COMPLETED (VERDICT 已处理并归档) |
+| ORCH_010 | P5b 三项修复 | 未签发 (等 P5 完成) |
 
-## Critic 审计
-- VERDICT_P2_FINAL: CONDITIONAL (条件已满足)
-- VERDICT_ARCH_REVIEW: CONDITIONAL (已处理, 持久追踪区域建立)
-- VERDICT_P3_FINAL: CONDITIONAL — avg_P 系统性瓶颈, loss 调参达天花板, 须转向标签/架构
+---
+
+## 待办 (按优先级)
+
+1. **等 P5 完成** (~23:07) — 收集 @5000 (LR decay 后), @5500, @6000 数据
+2. **签发 ORCH_010** — P5b: milestones 修正 + sqrt 加权 + 双层投影, 从 P5@4000 出发
+3. **跟踪 ORCH_009** — Admin 执行旋转多边形可视化
+4. **P5 完成后做最终评估** — 对比 @4000 (最优) vs @6000 (最终), 决定 P5b 起点
+
+---
 
 ## BUG 跟踪
+
 | BUG | 严重性 | 状态 |
 |-----|--------|------|
-| BUG-2 | CRITICAL | **FIXED** |
-| BUG-8 | CRITICAL | **FIXED & VALIDATED** — cls loss bg weight |
-| BUG-9 | 致命 | **FIXED** — max_norm=10.0 |
-| BUG-10 | HIGH | **FIXED & VALIDATED** — warmup 500步 |
-| BUG-11 | LOW | **FIXED (ORCH_005)** — 默认类别顺序 |
-| BUG-12 | HIGH | **FIXED** — eval slot 排序 |
-| BUG-13 | LOW | UNPATCHED — slot_class 溢出 |
-| BUG-14 | MEDIUM | 新发现 — Grid token 冗余 (架构) |
-| BUG-15 | HIGH | 新发现 — DINOv3 利用率极低 (架构) |
+| BUG-2~12 | — | 全部 FIXED |
+| BUG-13 | LOW | UNPATCHED |
+| BUG-14 | MEDIUM | 架构层面 (Grid token 冗余) |
+| BUG-15 | HIGH | Precision 瓶颈 — P5b 解决 |
+| BUG-16 | MEDIUM | NOT BLOCKING (无数据增强) |
+| BUG-17 | HIGH | milestone 相对值 + per_class_balance 振荡 — P5b 解决 |
 
-## 架构审计待办 (持久追踪)
-### 紧急修复 — 全部完成
-- [x] BUG-2, BUG-8, BUG-10, BUG-11
+---
 
-### 架构/标签优化
-- [x] AABB → 旋转多边形 (ORCH_005)
-- [ ] DINOv3 离线预提取 (ORCH_006 进行中)
-- [ ] Score 区分度改进
-- [ ] BUG-14: Grid token 冗余
-- [ ] BUG-15: DINOv3 利用率
-- [ ] 新增层 12-17 加 global attention
+## 基础设施
 
-### 未实现历史分析
-- [x] 分析 1: AABB (ORCH_005)
-- [x] 分析 3: Center/Around
-- [ ] 分析 2: 2D-3D 视觉对齐
-- [ ] 分析 4: Token 合并
+- 5 Agent 全部 UP (conductor, critic, supervisor, admin, ops)
+- all_loops.sh PID 4189737 运行 4h+
+- sync_loop PID 34389 运行 3h+
+- watchdog crontab 正常
+- GPU 0,2: P5 训练 | GPU 1,3: 空闲
 
-## CEO 指令归档
-- #1 (03-06 01:15): 读历史审计报告
-- #2 (03-06 01:15): 转达 Ops 修 watchdog
-- #3 (03-06 15:20): 深度重读历史审计
-- #4 (03-06 ~21:30): GPU 限制 (0,2 only)
-- #5 (03-06 ~23:30): 架构审计待办追踪
-- #6 (03-07 02:50): 批准 P4, Phase 1+2 并行, 评估标准
+---
 
-## 关键历史洞察
-1. BUG-9: 100% 梯度裁剪 → Sign-SGD (P2 修复)
-2. BUG-8: cls loss 丢弃背景 → precision 崩塌 (P3 修复, truck_R +34%)
-3. AABB 过估: truck 45° 旋转覆盖 ~2x cell → P4 用旋转多边形修复
-4. P2 LR decay @3000 over-prediction: bg_FA 0.284→0.198
-5. P3 LR decay @2500 同样验证: truck_R 0.152→0.336 (+121%)
-6. P3@2000 offset_th 首破红线 (0.191), LR decay 后回升至 0.214 (分类挤压回归)
-7. Critic: avg_P 瓶颈是系统性的 — AABB 污染 + score 无区分度 + DINOv3 只用 Conv2d
-8. Critic: P3@3000 是更好的 P4 起点 (avg_P=0.147 vs @4000 的 0.122)
-9. Critic: bg_balance_weight=3.0 偏高压制 car_R, 建议降至 2.0
+## 循环协议
+
+### Phase 1
+git pull → CEO_CMD.md → supervisor_report_latest.md → STATUS.md → 检查 ORCH 状态 → 读 Admin 报告 → 审计决策 → git push
+
+### Phase 2
+git pull → shared/audit/pending/ VERDICTs → 归档到 processed/ → 更新 MASTER_PLAN.md → ORCH 决策 → Context 检查 → git push
+
+---
+
+## 关键文件位置
+
+| 文件 | 用途 |
+|------|------|
+| MASTER_PLAN.md | 中央策略文档 (每循环更新) |
+| CEO_CMD.md | CEO 指令通道 |
+| STATUS.md | ops 自动生成的状态面板 |
+| shared/logs/supervisor_report_latest.md | Supervisor 最新报告 |
+| shared/pending/ORCH_*.md | 待执行/已完成的指令 |
+| shared/audit/processed/ | 已归档的 VERDICT 和 AUDIT_REQUEST |
+| shared/logs/report_ORCH_*.md | Admin 执行报告 |
+
+---
+
+## P5 Config (ORCH_008)
+
+```
+load_from: P4@500
+backbone: PreextractedFeatureEmbed (DINOv3 Layer 16, Linear 4096→768)
+max_iters: 6000, warmup: 1000 (begin=1000)
+milestones: [4000, 5500] (实际: @5000, @6500 永不触发)
+bg_balance_weight: 2.5
+base_lr: 5e-05, max_norm: 10.0
+use_rotated_polygon: True
+GPU: 0, 2
+work_dir: /mnt/SSD/GiT_Yihao/Train/Train_20260307/plan_h_dinov3_layer16/
+```
+
+## P5b 计划 Config (ORCH_010 待签发)
+
+```
+load_from: P5@4000
+backbone: PreextractedFeatureEmbed (DINOv3 Layer 16, Linear(4096,1024)+GELU+Linear(1024,768))
+max_iters: TBD (参考 P5 的 6000)
+warmup: 500 (缩短, Critic 建议)
+milestones: [2000, 3500] (相对 begin=500, 实际 decay @2500, @4000)
+per_class_balance: sqrt 加权 (weight_c = 1/sqrt(count_c/min_count))
+bg_balance_weight: 2.5 (保持)
+base_lr: 5e-05 (保持)
+其余参数: 保持 P5 配置
+```
+
+---
 
 ## 红线
+
 | 指标 | 红线 |
 |------|------|
 | truck_R | < 0.08 |
 | bg_FA | > 0.25 |
-| offset_th | <= 0.20 |
-| offset_cy | <= 0.10 |
-| avg_P | >= 0.20 |
+| offset_th | ≤ 0.20 |
+| offset_cy | ≤ 0.10 |
+| avg_P | ≥ 0.20 |
 
-## 系统状态
-- 全部 Agent UP
-- 基础设施: sync_loop + watchdog + all_loops.sh 正常
-- GPU 0,2: P4 训练 | GPU 1,3: 空闲
+## CEO 指令归档 (shared/logs/ceo_cmd_archive.md)
+- #1-#6: 历史指令 (见归档)
+- #7 (03-07 05:10): 批准 GPU 1,3 用于 DINOv3 特征提取
 
-## 待办 / 下一步
-1. **循环 #34**: 等待 P4@500 首次 val (AABB 修复效果验证!)
-2. **ORCH_006 进度**: DINOv3 预提取完成状态
-3. **Phase 2 触发**: 根据 avg_P 决定是否集成 DINOv3 特征
-4. **P4 全程监控**: @500→@1000→...→@4000
+## 关键历史洞察
+1. P3@3000 基线: avg_P=0.147 (最优起点选择依据)
+2. P4@4000: 7/9 指标历史最佳, avg_P=0.107 (Precision 瓶颈 → 触发 DINOv3 集成)
+3. P5 学习动态: 高振幅探索模式 (不同于 P3/P4 的平稳收敛)
+4. P5@1500: bg_FA=0.442 峰值 (自发回落, 未干预)
+5. P5@2500: 全类别恢复里程碑 (bus 最晚恢复)
+6. P5@3000: car_P=0.091 首超 P4
+7. P5@3500: truck_R=0.679 超 P4 66%, offset_th=0.197 首破红线
+8. P5@4000: 综合最优 (四类>0.3, offset 全面超 P4)
+9. Critic: 振荡根因 = 语义过强 + 等权 balance + Linear 压缩
