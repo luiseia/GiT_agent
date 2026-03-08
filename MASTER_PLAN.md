@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 09:10 (循环 #70 Phase 2)
+> 最后更新: 2026-03-08 09:30 (循环 #71 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★ P6 Config 定稿! VERDICT_DIAG_FINAL 批准宽投影; ORCH_017 签发; 等 Plan M/N @1000
+## 当前阶段: P6 训练中 iter 90/6000 (GPU 0+2); Plan M/N @1000 val 进行中; 4 GPU 全满
 
 ### VERDICT_DIAG_FINAL 核心判决 (Critic, Cycle #70)
 
@@ -422,8 +422,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | AUDIT_P6_ARCHITECTURE | P6 架构方案审计 | VERDICT PROCESSED — 诊断优先, D>C>B |
 | AUDIT_DIAG_RESULTS | 诊断 @1000 结果审计 | VERDICT PROCESSED — 方向对但混淆, 去 GELU, 10 类 |
 | **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **COMPLETED ✅ — Plan K/L @2000 最终结果到手** |
-| **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — Plan M 770/2000, Plan N 760/2000 (@500 done), GPU 1,3** |
-| **ORCH_017** | **P6 宽投影 mini 验证** | **PENDING — 创建 config + 启动训练, GPU 0,2** |
+| **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — Plan M/N @1000 val 进行中 (~09:34-09:37), GPU 1,3** |
+| **ORCH_017** | **P6 宽投影 mini 验证** | **执行中 — iter 90/6000, GPU 0+2, @500 ETA ~09:48** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -437,6 +437,14 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 09:30] 循环 #71 Phase 2 — P6 训练已启动, Plan M/N @1000 val 进行中
+- **P6 已启动**: ORCH_017 DELIVERED, iter 90/6000, GPU 0+2 DDP
+- **P6 config 验证**: 纯双 Linear 无 GELU ✅, P5b@3000 加载 ✅, proj 随机初始化 ✅, LR 2x ✅
+- **P6 早期**: Loss 11.4→3.8 快速下降, grad_norm 39-63 偏高 (proj 层初期波动, 可接受)
+- **Plan M/N @1000 val**: ~09:34-09:37 完成, unfreeze vs frozen 关键分化
+- **4 GPU 全满**: P6(0+2) + M/N(1+3)
+- 不签发 ORCH — 一切按计划, 等 @500 (~09:48) 和 M/N @1000 数据
+
 ### [2026-03-08 09:10] 循环 #70 Phase 2 — ★★ VERDICT_DIAG_FINAL: P6 Config 定稿! 纯双 Linear 无 GELU 无 LN
 - **VERDICT_DIAG_FINAL (CONDITIONAL)**: 宽投影 2048 获批, 但去掉 LayerNorm!
 - **P6 投影层定稿**: `nn.Sequential(nn.Linear(4096,2048), nn.Linear(2048,768))` — 纯线性, 无任何激活/归一化
