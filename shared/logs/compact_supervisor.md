@@ -1,100 +1,119 @@
 # Supervisor Compact Context Snapshot
-> Timestamp: 2026-03-06 23:25
-> Supervisor cycles: #103 — #106 (this session)
-> Role: 信息中枢 (CLAUDE.md unchanged)
-> Reason: CEO requested /compact
+> Timestamp: 2026-03-08 00:15
+> Supervisor cycles: #89 — #135 (本轮 session 覆盖 #129-#135)
+> Role: claude_supervisor — 信息中枢
+> Reason: 用户请求保存工作上下文
 
-## Current System State
+---
 
-### P3 Training — IN PROGRESS (50%)
-- Config: `configs/GiT/plan_f_bug8_fix.py`
-- Key fixes: BUG-8 (bg cls loss, bg_balance_weight=3.0) + BUG-10 (LinearLR warmup 500 iter)
-- Load from: P2@6000 checkpoint
-- GPU: 0 + 2 (~22.4GB + 23GB)
-- Progress: iter 2000 / 4000 (50%)
-- 4 checkpoints saved: iter_500, 1000, 1500, 2000
-- Work dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_f_bug8_fix/`
-- Train log: `/mnt/SSD/GiT_Yihao/Train/Train_20260306/plan_f_bug8_fix/train.log`
-- LR: base_lr=5e-05 (constant since warmup ended at iter 500)
-- **Next critical event: iter 2500 — 1st LR decay (5e-05 → 5e-06)**
-- LR milestones: [2500, 3500]
-- Val interval: every 500 iter
-- Next val: iter 2500 (~00:00)
-- ETA completion: ~00:50
+## 当前任务
 
-### P3 Val Trajectory (all 4 checkpoints)
+**角色**: claude_supervisor, 每 30 分钟执行自主监控循环
+**循环**: git pull 两仓库 → 读训练日志 → 写 supervisor_report_latest.md → 检查 ORCH → 深度监控 → git push
+**写入边界**: 只可写 `shared/logs/supervisor_*`, `shared/pending/` status 字段; GiT/ 只读
 
-| Metric | @500 | @1000 | @1500 | @2000 | P2@6000 | Red Line |
-|--------|------|-------|-------|-------|---------|----------|
-| car_R | 0.576 | 0.578 | 0.598 | **0.608** | 0.596 | — |
-| car_P | 0.075 | 0.087 | 0.083 | 0.074 | 0.079 | — |
-| truck_R | 0.374 | 0.390 | 0.382 | **0.152** | 0.290 | <0.08 |
-| truck_P | 0.254 | 0.250 | 0.118 | 0.167 | 0.190 | — |
-| bus_R | 0.697 | 0.576 | 0.680 | **0.737** | 0.623 | — |
-| bus_P | 0.125 | 0.081 | 0.127 | 0.142 | 0.150 | — |
-| trailer_R | 0.667 | 0.511 | 0.756 | 0.689 | 0.689 | — |
-| trailer_P | 0.044 | 0.022 | 0.024 | 0.023 | 0.066 | — |
-| bg_FA | 0.212 | 0.206 | 0.227 | 0.216 | 0.198 | >0.25 |
-| offset_cx | 0.085 | 0.055 | 0.066 | 0.071 | 0.068 | ≤0.05 |
-| offset_cy | 0.127 | 0.119 | 0.107 | 0.148 | 0.095 | ≤0.10 |
-| offset_th | 0.253 | 0.232 | 0.234 | **0.191** | 0.217 | ≤0.20 |
+---
 
-### Key Observations from P3 So Far
+## 正在进行: P5b 训练 (plan_i_p5b_3fixes)
 
-1. **BUG-8 fix validated at @500**: truck_R jumped to 0.374 (+29% vs P2), truck_P=0.254 (+33%)
-2. **Model entered over-prediction phase @1500**: bg_FA peaked 0.227, truck_P collapsed to 0.118
-3. **truck_R crashed at @2000**: 0.382→0.152 (-60%), bus_R anti-correlated (→0.737), likely truck→bus confusion
-4. **offset_th FIRST EVER below red line at @2000**: 0.191 (target ≤0.20), never achieved in P1 or P2
-5. **High LR oscillations throughout**: grad_norm spikes up to 76.6 (@730), 52.3 (@1140), 48.7 (@1670)
-6. **P2 had similar pattern**: over-prediction peak at @3000 (bg_FA=0.284), resolved by LR decay
+### 基本信息
+- **Work dir**: `/mnt/SSD/GiT_Yihao/Train/Train_20260307/plan_i_p5b_3fixes/`
+- **Train log**: 同目录 `train.log`
+- **Load from**: P5@4000 (`/mnt/SSD/GiT_Yihao/Train/Train_20260307/plan_h_dinov3_layer16/iter_4000.pth`)
+- **GPU**: 0 + 2 (~20.5+21.0 GB, 100%)
+- **启动**: 2026-03-07 23:56, **max_iters**: 6000, **val_interval**: 500
+- **进度 (Cycle #135)**: iter 330/6000 (5.5%), warmup 阶段
+- **ETA**: ~05:00
 
-### P2 Reference (completed earlier today)
-- Config: `configs/GiT/plan_e_bug9_fix.py`, max_norm=10.0 (BUG-9 fix)
-- Final: P2@6000, metrics in table above
-- Key P2 lesson: LR decay at @3000 resolved over-prediction, model stabilized @4500+
+### P5b 三项修复 (ORCH_010)
+1. **LR milestones 修正**: warmup=500, begin=500, milestones=[2000,3500] → decay @2500 和 @4000
+2. **sqrt 类别权重**: balance_mode='sqrt', 压缩 car:trailer 权重比从 92:1 → 9.6:1
+3. **双层投影**: Linear(4096,768) → Sequential(Linear(4096,1024), GELU, Linear(1024,768))
 
-### Completed ORCH Instructions
-| ID | Subject | Result |
-|----|---------|--------|
-| ORCH_001 | BUG-12 eval slot fix | truck_R +72% |
-| ORCH_002 | BUG-9 grad clip diagnosis | max_norm=10.0 |
-| ORCH_003 | P1 eval + P2 launch | P2 completed |
-| ORCH_004 | BUG-8 + BUG-10 fix, P3 launch | P3 running |
+### LR 调度
+- base_lr=5e-05, warmup_ratio=0.05 → 实际 lr≈2.5e-06 (warmup 结束后)
+- 第一次 decay: iter **2500** (begin500 + milestone2000) → lr=2.5e-07
+- 第二次 decay: iter **4000** (begin500 + milestone3500) → lr=2.5e-08
 
-### BUG Status
-| BUG | Status |
-|-----|--------|
-| BUG-8 | **FIXED & VALIDATED** (bg cls loss, truck_R +29% at @500) |
-| BUG-9 | FIXED (max_norm=10.0, validated in P2) |
-| BUG-10 | FIXED (LinearLR warmup 500 iter) |
-| BUG-12 | FIXED (eval slot ordering) |
+### P5b 关键验证点
+- [ ] @500 首次 val: warmup 结束, 初始状态
+- [ ] @2500 LR decay: 确认 lr 变化
+- [ ] @4000 第二次 decay: 确认 lr 再降
+- [ ] 类别振荡是否缓解 (sqrt 权重)
+- [ ] bus_R 是否恢复
 
-All known BUGs fixed.
+---
 
-### GPU Status (as of 23:25)
-| GPU | Used | Util | Task |
-|-----|------|------|------|
-| 0 | 22.4 GB | 99% | **P3 training** |
-| 1 | 3.3 GB | 56% | External: yz0364 |
-| 2 | 23.0 GB | 45% | **P3 training** |
-| 3 | 3.3 GB | 65% | External: yz0364 |
+## P5 已完成 — 参考基线
 
-### Agent Status
-All 5 agent tmux sessions UP. 8 total sessions (3 legacy: dinov3_integrated, plan_a, plan_b).
+### P5 最优 Checkpoint
+1. **P5@4000**: 类别全平衡(4类>0.3), offset_th=0.142, cy=0.091, cx=0.051, bg_FA=0.213
+2. **P5@5500**: car_R=0.721, car_P=0.092, trailer_P=0.046(超P4), bg_FA=0.186
+3. **P5@6000**: trailer_R=0.500, truck_R=0.228(止跌), offset_th=0.192
 
-### Key Files
-- Latest report: `shared/logs/supervisor_report_latest.md`
-- Report history: `shared/logs/supervisor_report_history.md`
-- ORCH reports: `shared/logs/report_ORCH_{001,002,003,004}.md`
-- CLAUDE.md: `agents/claude_supervisor/CLAUDE.md`
-- P3 config: `configs/GiT/plan_f_bug8_fix.py`
+### P5 Val 轨迹 (关键指标)
+| Ckpt | car_R | car_P | truck_R | truck_P | bus_R | trailer_R | trailer_P | bg_FA | off_th |
+|------|-------|-------|---------|---------|-------|-----------|-----------|-------|--------|
+| @1500 | 0.955 | 0.057 | 0.418 | 0.037 | 0 | 0 | 0 | 0.442 | 0.201 |
+| @2500 | 0.793 | 0.073 | 0.080 | 0.030 | 0.409 | 0.528 | 0.004 | 0.321 | 0.215 |
+| @3500 | 0.779 | 0.093 | 0.679 | 0.072 | 0.120 | 0 | 0 | 0.290 | 0.197 |
+| **@4000** | 0.569 | 0.090 | 0.421 | 0.130 | 0.315 | 0.472 | 0.006 | 0.213 | **0.142** |
+| @5000 | 0.615 | 0.085 | 0.199 | 0.086 | 0.002 | 0.333 | 0.033 | 0.160 | 0.163 |
+| @5500 | 0.721 | 0.092 | 0.203 | 0.065 | 0.014 | 0.417 | 0.046 | 0.186 | 0.182 |
+| @6000 | 0.682 | 0.089 | 0.228 | 0.065 | 0.011 | 0.500 | 0.043 | 0.190 | 0.192 |
 
-### Resume After Compact
-1. Read `agents/claude_supervisor/CLAUDE.md` for role definition
-2. `git pull` both repos
-3. P3 training IN PROGRESS — check current iter (should be past 2000)
-4. **CRITICAL**: iter 2500 LR decay is the decisive turning point — capture @2500 val
-5. Monitor truck_R recovery after LR decay (crashed to 0.152 at @2000)
-6. Verify offset_th stays below 0.20 red line after LR decay
-7. Check for new ORCH instructions
-8. Resume 30-min monitoring cycles
+### P5 关键发现
+- **LR milestone 配置错误 (BUG-17)**: milestones 相对于 begin, 实际 decay 延迟 1000 iter (@5000而非@4000)
+- **类别零和振荡**: full LR 下类别间竞争严重, 一类强则另一类塌
+- **DINOv3 Layer16 优势**: offset 精度飞跃 (th: P4的0.207→P5的0.142), bg_FA 大幅下降
+- **P5 在 9/12 指标上取得超 P4 的最优值**
+
+### P4@4000 基线
+| car_R | car_P | truck_R | truck_P | bus_R | bus_P | trailer_R | trailer_P | bg_FA | off_cx | off_cy | off_th |
+|-------|-------|---------|---------|-------|-------|-----------|-----------|-------|--------|--------|--------|
+| 0.592 | 0.081 | 0.410 | 0.175 | 0.752 | 0.129 | 0.750 | 0.044 | 0.194 | 0.057 | 0.103 | 0.207 |
+
+---
+
+## 红线指标
+| 指标 | 红线 | P5 最优 | 说明 |
+|------|------|---------|------|
+| truck_R | ≥0.08 | 0.679 (@3500) | DINOv3 语义特征效果 |
+| bg_FA | ≤0.25 | 0.160 (@5000) | 累计下降 64% |
+| offset_th | ≤0.20 | 0.142 (@4000) | P5 最大优势 |
+| offset_cx | ≤0.05 | 0.051 (@4000) | 接近达标 |
+| offset_cy | ≤0.10 | 0.091 (@4000) | 达标 |
+
+---
+
+## ORCH 指令状态
+
+| 指令 | 状态 | 内容 |
+|------|------|------|
+| ORCH_001-008 | COMPLETED | P1-P5 历史 |
+| ORCH_009 | **COMPLETED** | 旋转多边形可视化, 10 张图 `/mnt/SSD/GiT_Yihao/polygon_viz/` |
+| ORCH_010 | **执行中** | P5b 三修复, 训练已启动 |
+| ORCH_011 | DELIVERED | SSD 迁移 work_dirs — 未见软链接, 状态不明 |
+
+---
+
+## 关键路径
+| 用途 | 路径 |
+|------|------|
+| 调度仓库 | `/home/UNT/yz0370/projects/GiT_agent/` (读写) |
+| 研究代码 | `/home/UNT/yz0370/projects/GiT/` (只读) |
+| P5b train log | `/mnt/SSD/GiT_Yihao/Train/Train_20260307/plan_i_p5b_3fixes/train.log` |
+| DINOv3 特征 | `/mnt/SSD/GiT_Yihao/dinov3_features/` |
+| 报告输出 | `shared/logs/supervisor_report_latest.md` |
+| 报告历史 | `shared/logs/supervisor_report_history.md` (~3000行) |
+
+---
+
+## 恢复指南
+1. 读 `agents/claude_supervisor/CLAUDE.md` 确认角色
+2. `git pull` 两仓库
+3. 读 P5b train log 尾部 — 检查当前 iter 和最新 val
+4. 检查 ORCH_010/011 状态变化
+5. 写 supervisor_report_latest.md
+6. git push
+7. 继续 30 分钟循环
