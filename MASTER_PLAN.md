@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 10:00 (循环 #72 Phase 2)
+> 最后更新: 2026-03-08 10:35 (循环 #73 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★ P6 @500 bg_FA=0.163 历史最低! Plan M/N 判决: 在线不达标; 等 P6 @1000 关键判定
+## 当前阶段: P6 @1000 双 FAIL 但 Critic 判定继续 — 假说 B (类振荡+LR过激); 等 @2000 (~11:10)
 
 ### VERDICT_DIAG_FINAL 核心判决 (Critic, Cycle #70)
 
@@ -27,24 +27,34 @@ milestones = [2000, 4000] (相对 begin=500)
 val_interval = 500
 ```
 
-**P6 监控红线**:
-- @1000: car_P ≥ 0.10 且 bg_FA ≤ 0.30 → PASS, 否则 STOP
+**P6 监控红线 (VERDICT_P6_1000 更新)**:
+- @1000: ❌ 双 FAIL (car_P=0.054 < 0.10, bg_FA=0.323 > 0.30) — Critic: 继续训练
+- **@2000 判定标准 (新)**:
+  - PASS: car_P ≥ 0.07 且 bg_FA ≤ 0.28 → 继续到 @3000
+  - MARGINAL: car_P 0.05-0.07 或 bg_FA 0.28-0.35 → 等 @3000 再决定
+  - FAIL: car_P < 0.05 且 car_R < 0.15 → 启动 P6b (加回 GELU 或 ReLU)
 - @3000: off_th ≤ 0.18 (测试无 GELU 是否恢复方向精度)
 
-**通过条件状态**:
-1. ✅ P6 用纯双 Linear 无激活无归一化
-2. ✅ P6 先跑 mini 3000 iter 验证
-3. ✅ P6 从 P5b@3000 加载
-4. ✅ P6 用 10 类 num_vocal=230
-5. ✅ Plan M/N @1000 不阻塞 P6 启动 (但做最终在线评估)
-6. ✅ bg_balance_weight 考虑提升
+### VERDICT_P6_1000 核心判决 (Critic, Cycle #73)
 
-**Critic 关键纠正**:
-1. **去掉 LayerNorm**: LN 会抹除通道间尺度差异, DINOv3 不同通道的尺度编码了方向/尺度语义。纯双 Linear = rank-2048 矩阵分解, 优化条件更好
-2. **BUG-30 降级 HIGH→MEDIUM**: GELU 是"一致性 ~0.05 惩罚"非"系统性致命损害" (Plan K@2000 off_th=0.191 达标)
-3. **投影层 LR 2x**: proj 层从零学习, 需要更大 LR 追上已训练的 backbone
-4. **BUG-31 (HIGH)**: Plan M/N 继承 BUG-27 vocab mismatch, 但 M vs N 对比仍有效
-5. **BUG-32 (MEDIUM)**: Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化风险
+**判决: CONDITIONAL — 继续训练到 @2000, 不中止**
+
+**关键结论**:
+1. **假说 B 最可能**: 类振荡 + proj LR 2x 过激, 非架构缺陷
+2. **核心证据**: P6@500 bg_FA=0.163 历史最优 → 无 GELU 架构对背景判别有巨大优势, 无根本缺陷
+3. **@1000 崩塌原因**: constr_R 0.046→0.306 (+565%), barrier 0.020→0.141 (+605%) 爆发, sqrt 权重让小类梯度主导, 挤压 car/truck
+4. **BUG-33 (HIGH)**: gt_cnt 跨实验不一致 (truck GT +95%!), 需 Admin 紧急调查
+5. **BUG-34 (MEDIUM)**: proj lr_mult=2.0 过激 (Critic 自认失误), P6b 降回 1.0
+6. **BUG-30 维持 MEDIUM**: 无 GELU 不改善也不恶化 off_th, 差异 0.008 在噪声内
+
+**P6b 备选 (如 @2000 仍 FAIL)**:
+```
+方案 1 (推荐): 宽投影 2048 + GELU + lr_mult=1.0
+方案 2: 宽投影 2048 + ReLU + lr_mult=1.0
+方案 3: 回退 1024 + 无 GELU (排除宽投影干扰)
+```
+
+**Critic Mea Culpa**: lr_mult=2.0 建议过激, 正确做法应是更长 warmup (1000 iter) 而非更高 LR
 
 **Plan L 宽投影净效果 (Critic 评估: 正面但信号弱)**:
 | 指标 | Plan L @2000 | P5b @2000 | 差值 |
@@ -110,19 +120,17 @@ val_interval = 500
 | off_cy | 0.090 | **0.078** | **0.073** |
 | off_th | 0.232 | 0.231 | 0.254 |
 
-### ★ P6 @500 首次 Val — bg_FA=0.163 历史最低!
+### P6 Val 轨迹 (宽投影 2048, 无 GELU, 10 类)
 
-| 指标 | P6 @500 | Plan L @500 | P5b @500 | 备注 |
-|------|---------|-------------|----------|------|
-| car_R | 0.252 | 0.084 | 0.856 | P6 proj 重建中 |
-| car_P | **0.073** | 0.054 | 0.080 | 同期接近 P5b |
-| truck_R | 0.116 | 0 | 0.153 | 多类恢复中 |
-| trailer_R | 0.286 | — | 0 | P5b@500 还是 0! |
-| bg_FA | **0.163** | 0.237 | 0.235 | **全实验历史最低!** |
-| off_cy | **0.077** | 0.085 | 0.085 | 优于 P5b |
-| off_th | 0.236 | 0.277 | 0.210 | 无 GELU 效果待观察 |
+| Ckpt | car_R | car_P | truck_R | bus_R | constr_R | barrier_R | bg_FA | off_cx | off_cy | off_th |
+|------|-------|-------|---------|-------|----------|-----------|-------|--------|--------|--------|
+| @500 | 0.252 | 0.073 | 0.116 | 0.009 | 0.046 | 0.020 | **0.163** | 0.087 | **0.077** | 0.236 |
+| @1000 | 0.197↓ | 0.054↓ | 0.043↓ | 0.112↑ | **0.306↑** | 0.141↑ | **0.323↑** | 0.127↓ | 0.092 | 0.250 |
 
-> ⚠️ P6 val gt_cnt (car=7232) 与其他实验 (car=6720) 不同 (~+7.6%), 可能是 val set 配置差异, 跨实验对比需谨慎
+**@500 亮点**: bg_FA=0.163 全实验历史最低, 证明无 GELU 对背景判别有巨大优势
+**@1000 崩塌**: 类振荡爆发 (constr +565%, barrier +605%), car/truck 被挤压 → 双 FAIL
+
+> ⚠️ BUG-33: P6 val gt_cnt (car=7232, truck=3206) 与其他实验 (car=6719, truck=1640) 不一致, truck +95% 极度异常, 需 Admin 调查
 
 ⚠️ Plan K: BUG-27 (vocab mismatch) + BUG-29 (sqrt 单类无意义)
 ⚠️ Plan L: BUG-28 (双变量混淆)
@@ -429,6 +437,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-30** | **MEDIUM** (降级) | GELU ~0.05 一致性惩罚 (非致命). Plan K@2000 off_th=0.191 达标. P6 仍去 GELU (Critic VERDICT_DIAG_FINAL) |
 | **BUG-31** | **HIGH** | Plan M/N 继承 BUG-27 vocab mismatch (num_vocal=221). M vs N 对比仍有效, 绝对性能受拖累 (Critic VERDICT_DIAG_FINAL) |
 | **BUG-32** | **MEDIUM** | Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化. P6 LR milestones 需关注 (Critic VERDICT_DIAG_FINAL) |
+| **BUG-33** | **HIGH** | gt_cnt 跨实验不一致: P6 truck GT=3206 vs 其他=1640 (+95%). 可能是代码/评估变更. 需 Admin 调查 (Critic VERDICT_P6_1000) |
+| **BUG-34** | **MEDIUM** | proj lr_mult=2.0 过激 (Critic 失误). 加速了小类梯度噪声, 加剧类振荡. P6b 应降回 1.0 (Critic VERDICT_P6_1000) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -447,7 +457,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | AUDIT_DIAG_RESULTS | 诊断 @1000 结果审计 | VERDICT PROCESSED — 方向对但混淆, 去 GELU, 10 类 |
 | **ORCH_015** | **诊断实验 (单类 car + 宽投影)** | **COMPLETED ✅ — Plan K/L @2000 最终结果到手** |
 | **ORCH_016** | **DINOv3 在线提取 + unfreeze** | **执行中 — M 1200/2000, N 1180/2000, @1000 done: 在线不达标** |
-| **ORCH_017** | **P6 宽投影 mini 验证** | **执行中 — 550/6000, @500 done: bg_FA=0.163! @1000 ETA ~10:18** |
+| **ORCH_017** | **P6 宽投影 mini 验证** | **执行中 — 1020/6000, @1000 双 FAIL, Critic: 继续到 @2000 (~11:10)** |
+| **ORCH_018** | **BUG-33 gt_cnt 调查** | **PENDING — Admin 调查 P6 val gt_cnt 差异 (truck +95%)** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -461,6 +472,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 10:35] 循环 #73 Phase 2 — ⚠️ P6 @1000 双 FAIL; VERDICT_P6_1000: 继续, 假说 B
+- **P6 @1000 双 FAIL**: car_P=0.054 < 0.10, bg_FA=0.323 > 0.30
+- **VERDICT_P6_1000 (CONDITIONAL)**: 继续到 @2000, 不中止. 假说 B (类振荡+LR过激) 最可能
+- **核心证据**: P6@500 bg_FA=0.163 历史最优 → 架构无根本缺陷, @1000 崩塌 = constr/barrier 爆发
+- **BUG-33 (HIGH)**: gt_cnt 跨实验不一致 (truck +95%), 需 Admin 紧急调查
+- **BUG-34 (MEDIUM)**: proj lr_mult=2.0 过激, Critic 自认失误
+- **@2000 新判定**: car_P≥0.07+bg_FA≤0.28 → PASS; car_P<0.05+car_R<0.15 → P6b
+- **ORCH_018 签发**: BUG-33 gt_cnt 调查 (Admin)
+
 ### [2026-03-08 10:00] 循环 #72 Phase 2 — ★ P6 @500 bg_FA=0.163 历史最低! Plan M/N 在线不达标
 - **P6 @500**: bg_FA=0.163 全实验最低, car_P=0.073 同期最优, off_cy=0.077 优于 P5b
 - **Plan M/N @1000 判决**: M_car_P=0.049 < 0.077 阈值 → 在线路径精度不达标
