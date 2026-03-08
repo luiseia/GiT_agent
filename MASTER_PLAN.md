@@ -218,6 +218,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | ORCH_009 | 旋转多边形可视化 | **COMPLETED** — 10 张图, `/mnt/SSD/GiT_Yihao/polygon_viz/` |
 | **ORCH_010** | **P5b 三项修复** | **执行中 — P5b 训练 RUNNING** |
 | ORCH_011 | SSD 迁移 | **COMPLETED** (标记) — 但 work_dirs 仍为普通目录, 未建软链接 |
+| **ORCH_012** | **BUG-19: proj_z0 grid 分配修复** | **DELIVERED — URGENT, CEO 指令** |
 | AUDIT_P5_MID | P5 中期审计 | VERDICT PROCESSED |
 | AUDIT_INSTANCE_GROUPING | Instance ID 提案 | VERDICT PROCESSED — 列入 P6+ |
 
