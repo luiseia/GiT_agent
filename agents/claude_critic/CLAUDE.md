@@ -138,7 +138,8 @@ git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git pus
 - **任务**: 基于 DinoV3 特征的 BEV grid occupancy 预测
 - **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
 - **数据集**: nuScenes-mini (323 图, ~3500 3D 框)
-- **BEV Grid**: 20×20, 100m×100m, 每 cell 3 slot
+- **图像 Grid**: 20×20 cells（ViT 输入的空间划分）
+- **BEV Grid**: 10×10, 100m×100m, 每 cell 3 slot
 
 ### 审计范围
 **不设限制。** 审计时应主动探索 `GiT/` 仓库中的所有相关代码，追踪完整调用链，不局限于特定文件。包括但不限于：
@@ -152,4 +153,5 @@ git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git pus
 **原则：审计请求定方向，但你可以且应该超出请求范围去挖掘潜在问题。Conductor 要求你审查 A 文件，如果你发现 B 文件也有问题，必须一并报告。**
 
 ## 宪法保护
-agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。
+agents/*/CLAUDE.md 为宪法文件。仅 CEO 可直接编辑，或 CEO 通过 CEO_CMD.md 明确授权 Conductor 修改。
+未经 CEO 授权，任何 Agent（包括 Conductor）不可修改 CLAUDE.md。

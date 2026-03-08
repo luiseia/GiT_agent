@@ -121,7 +121,8 @@ git add shared/logs/ && git commit -m "admin: training update" && git push
 - **任务**: 单帧多视图图像 → BEV grid occupancy 预测
 - **模型**: ViT-Base (冻结) encoder + Transformer 自回归 decoder
 - **数据集**: nuScenes-mini (323 图, ~3500 3D 框)
-- **BEV Grid**: 20×20 cells, 100m×100m, 每 cell 3 深度 slot
+- **图像 Grid**: 20×20 cells（ViT 输入的空间划分）
+- **BEV Grid**: 10×10, 100m×100m, 每 cell 3 slot
 
 ### 核心代码文件
 | 文件 | 内容 |
@@ -166,4 +167,5 @@ clip_grad: max_norm=0.5 (⚠️ BUG-9)
 ```
 
 ## 宪法保护
-agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。
+agents/*/CLAUDE.md 为宪法文件。仅 CEO 可直接编辑，或 CEO 通过 CEO_CMD.md 明确授权 Conductor 修改。
+未经 CEO 授权，任何 Agent（包括 Conductor）不可修改 CLAUDE.md。

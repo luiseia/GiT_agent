@@ -193,4 +193,5 @@ done
 | Admin 日志 | `GiT_agent/shared/logs/admin.log` |
 
 ## 宪法保护
-agents/*/CLAUDE.md 为只读宪法，任何 Agent 均不可修改，仅 CEO 手动编辑。
+agents/*/CLAUDE.md 为宪法文件。仅 CEO 可直接编辑，或 CEO 通过 CEO_CMD.md 明确授权 Conductor 修改。
+未经 CEO 授权，任何 Agent（包括 Conductor）不可修改 CLAUDE.md。
