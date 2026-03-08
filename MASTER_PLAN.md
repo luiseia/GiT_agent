@@ -160,9 +160,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 **分阶段验证**:
 - [ ] **P6**: BEV 坐标 PE — MLP(2→768) 加到 grid_start_embed (0.5 天, 极低风险)
 - [ ] **P6b**: + 先验词汇表 — 8 token, 用 GT 模拟"完美先验"验证信息论上限 (1 天)
-- [ ] **P7**: + 历史检测 — ego motion 补偿 + 随机 mask (1-2 天)
-- [ ] **P8**: + V2X 融合 — sender box 2D 刚体变换 + 融合 (1-2 天)
-- [ ] **P9+**: 3D Anchor 扩展 (射线采样, 对齐 NEAR/MID/FAR slot)
+- [ ] **P7**: + 历史 occ box — ego motion 补偿, 为 planning 任务做准备 (1-2 天, nuScenes 时序帧)
+- [ ] **P7b**: 3D Anchor — 射线采样, 对齐 NEAR/MID/FAR slot (2-3 天, nuScenes-mini)
+- [ ] **P8**: + V2X 融合 — sender box 2D 刚体变换 + 融合 (需 V2X 数据集: V2X-Sim/OPV2V/DAIR-V2X)
 
 ## BUG 跟踪
 | BUG | 严重性 | 状态 |
