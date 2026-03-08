@@ -164,24 +164,31 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - [ ] **P7b**: 3D Anchor — 射线采样, 对齐 NEAR/MID/FAR slot (2-3 天, nuScenes-mini)
 - [ ] **P8**: + V2X 融合 — sender box 2D 刚体变换 + 融合 (需 V2X 数据集: V2X-Sim/OPV2V/DAIR-V2X)
 
+### Instance Grouping (VERDICT_INSTANCE_GROUPING — CONDITIONAL, 已归档)
+- **提案**: SLOT_LEN 10→11, 加 instance_id token (g_idx, 32 bins)
+- **Critic 判决**: 方向正确, 需解决 4 个问题 (编码方案/序列扩展/评估语义/Loss 权重)
+- **决策**: 不纳入 P5b, 列入 P6+ 路线图。优先级低于 P5b 三项修复和 BEV PE
+- **BUG-18**: 评估时 GT instance 未跨 cell 关联 (设计层, Critic 发现)
+
 ## BUG 跟踪
 | BUG | 严重性 | 状态 |
 |-----|--------|------|
 | BUG-2~12 | — | 全部 FIXED |
 | BUG-13 | LOW | UNPATCHED |
 | BUG-14 | MEDIUM | 架构层面 |
-| BUG-15 | HIGH | P5 正在解决 |
+| BUG-15 | HIGH | P5b 解决 (双层投影) |
 | BUG-16 | MEDIUM | NOT BLOCKING |
-| **BUG-17** | **HIGH** | **CONFIRMED** — milestone 相对值 + per_class_balance 极不均衡振荡 (Critic 升级) |
+| **BUG-17** | **HIGH** | P5b 解决 (milestones + sqrt balance) |
+| **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
 | ORCH_008 | P5 DINOv3 集成 | **COMPLETED** (P5 已完成) |
 | ORCH_009 | 旋转多边形 Grid 分配可视化 | PENDING (Admin 未开始) |
-| ORCH_010 | P5b 三项修复 | **Phase 2 签发** |
+| **ORCH_010** | **P5b 三项修复** | **SIGNED — milestones+sqrt+双层投影, 从 P5@4000** |
 | AUDIT_P5_MID | P5 中期审计 | VERDICT RECEIVED — P5b 必要 |
-| AUDIT_INSTANCE_GROUPING | Instance ID 提案 | **VERDICT RECEIVED (CONDITIONAL)** — Phase 2 处理 |
+| AUDIT_INSTANCE_GROUPING | Instance ID 提案 | **VERDICT PROCESSED** — CONDITIONAL, 列入 P6+ 路线图 |
 
 ## 红线监控
 | 指标 | 红线 | P5@4000 (P5b起点) | P5@6000 (最终) | 状态 |
@@ -194,6 +201,12 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | avg_P | ≥ 0.20 | 0.066 | 0.050 | 差距大, P5b 解决 |
 
 ## 历史决策
+### [2026-03-07 23:30] 循环 #53 Phase 2 — ORCH_010 签发! VERDICT_INSTANCE_GROUPING 处理
+- **ORCH_010 签发**: P5b 三项修复 (milestones+sqrt+双层投影), 从 P5@4000, HIGH 优先级
+- **VERDICT_INSTANCE_GROUPING 处理**: CONDITIONAL — 接受但不纳入 P5b, 列入 P6+ 路线图
+- **BUG-18 记录**: 评估时 GT instance 未跨 cell 关联
+- **路线图修正 (CEO)**: 3D Anchor (P7b) 早于 V2X (P8), 历史 occ box (P7) 为 planning 做准备
+
 ### [2026-03-07 23:25] 循环 #53 Phase 1 — ★ P5 完成! @6000 最终数据, VERDICT_INSTANCE_GROUPING
 - **P5 训练完成**: 6000/6000, GPU 0,2 释放
 - **P5@6000**: trailer_R=0.500 恢复, truck_R=0.228 止跌, offset_th=0.192 仍达标, bus_R=0.011 未恢复
