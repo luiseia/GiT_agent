@@ -1,58 +1,73 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-07 18:30 (循环 #43)
+> 最后更新: 2026-03-07 19:05 (循环 #44)
 
-## 当前阶段: P5 训练已启动! ORCH_008 验收通过, DINOv3 Layer 16 集成完成
+## 当前阶段: P5 训练中 — DINOv3 类别恢复开始但 bg_FA 危机!
 
-### P5 训练状态 — RUNNING (warmup 初期)
+### P5 Val 轨迹
+
+| 指标 | P5@500 | P5@1000 | **P5@1500** | P4@4000 | 红线 |
+|------|--------|---------|-------------|---------|------|
+| car_R | 0.932 | 0.952 | 0.955 | 0.592 | — |
+| car_P | 0.055 | 0.052 | 0.057 | 0.081 | — |
+| truck_R | 0.025 | 0.000 | **0.418** | 0.410 | <0.08 |
+| truck_P | 0.027 | 0.000 | 0.037 | 0.175 | — |
+| bus_R | 0.000 | 0.000 | 0.000 | 0.752 | — |
+| bus_P | 0.000 | 0.000 | 0.000 | 0.129 | — |
+| trailer_R | 0.000 | 0.056 | 0.000 | 0.750 | — |
+| trailer_P | 0.000 | 0.000 | 0.000 | 0.044 | — |
+| bg_FA | 0.320 | 0.354 | **0.442** | 0.194 | >0.25 **严重!** |
+| offset_cx | 0.189 | 0.059 | **0.053** | 0.057 | ≤0.05 |
+| offset_cy | 0.291 | 0.156 | **0.119** | 0.103 | ≤0.10 |
+| offset_th | 0.216 | 0.225 | **0.201** | 0.207 | ≤0.20 |
+
+### P5@1500 分析
+
+**积极面: DINOv3 Layer 16 学习正在起效**
+1. **truck_R: 0→0.418 爆发** — 投影层在 @1000-@1500 间学会了 truck 类别判别
+2. **Offset 全面优秀** — cx=0.053 (接近红线), th=0.201 (接近红线), DINOv3 空间信息极好
+3. car_R=0.955 证明语义特征让 car 检测几乎完美
+
+**危机: bg_FA=0.442 历史最高**
+- 超红线 76%, P4 峰值 (0.239) 的近 2 倍
+- 轨迹: 0.320→0.354→0.442 (加速恶化)
+- 距 LR decay @4000 还有 2500 iter
+- **根因**: DINOv3 语义特征让前景检测太容易, bg_balance_weight=2.5 不足以约束
+
+### 干预计划
+
+**当前决策: 等 @2000 (下一 val) 再决定**
+- truck_R 刚爆发, bus/trailer 可能即将恢复, 不宜立即中断
+
+**干预阈值: bg_FA > 0.50 @2000 → 触发干预**
+
+**干预方案 (如触发):**
+- 停止 P5, 从 P5@1500 (或 @2000) 重启
+- **bg_balance_weight: 2.5 → 5.0** (DINOv3 特征需要更强背景约束)
+- **milestones: [4000,5500] → [2000,3500]** (更早 LR decay)
+- 保持其他参数不变
+- 理由: 投影层已学到有用信息 (truck + offset), 只需调整分类约束
+
+**@2000 val 预计**: ~19:25
+
+---
+
+### P5 训练状态 — RUNNING
 - **PID**: 1572
-- **GPU**: 0,2 (RTX A6000) | 显存 20.4 GB/GPU (低于 P4 的 22 GB)
-- **Config**: `plan_h_dinov3_layer16.py`
-- **起点**: P4@500
-- **进度**: iter ~50 / 6000 (warmup 阶段, 极早期)
-- **ETA 完成**: ~22:40 (3月7日)
-- **首次 val**: P5@500
-- **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260307/plan_h_dinov3_layer16/`
-
-### ORCH_008 验收: PASS
-| 任务 | 结果 | 判定 |
-|------|------|------|
-| PreextractedFeatureEmbed | .pt 加载 + Linear(4096,768) kaiming init + 缓存 | PASS |
-| Dataset 适配 | sample_idx via PackOccInputs | PASS |
-| P5 Config | 全参数匹配规格 | PASS |
-| BUG-16 评估 | **NOT BLOCKING** — pipeline 无图像增强 | PASS |
-| P5 训练启动 | PID 1572, GPU 0,2, 无 NaN/OOM | PASS |
-| 特征验证 | (B, 4900, 768) shape 正确 | PASS |
-
-### P5 早期信号 (iter 10-50) — 符合预期
-- **Loss 极高**: 16-17 (P4 初期 ~0.5) — 随机投影初始化导致特征分布剧变
-- **grad_norm 极高**: 140-257, **100% clipping** (max_norm=10.0)
-- **iter 40 loss 降至 11.6** — 投影层开始适应
-- 1000 步 warmup 提供充分适应时间
-- 无 NaN/OOM
-
-### P5 Config (vs P4)
-| 参数 | P4 | **P5** | 变化原因 |
-|------|----|----|---------|
-| load_from | P3@3000 | **P4@500** | Critic: 最浅适应 |
-| 特征输入 | Conv2d PatchEmbed | **预提取 Layer 16** | Phase 2 集成 |
-| use_dinov3_patch_embed | True | **False** | 被预提取替代 |
-| max_iters | 4000 | **6000** | 新特征需更多训练 |
-| warmup | 500 | **1000** | 分布差异大 |
-| milestones | [2500,3500] | **[4000,5500]** | 适配 6000 |
-| bg_balance_weight | 2.0 | **2.5** | Critic: 防 bg_FA 偏高 |
-
-### BUG-16: NOT BLOCKING
-- train_pipeline 无图像增强 (无 flip/rotation/color jitter)
-- 预提取特征直接兼容
+- **GPU**: 0,2 | 20.4 GB/GPU
+- **进度**: iter 1510 / 6000 (25%)
+- **下次 val**: P5@2000 (~19:25) — 关键决策点!
+- **ETA 完成**: ~22:42
 
 ---
 
 ### P4 最终成绩 (存档)
-- 7/9 关键指标历史最佳
-- car_R=0.667, truck_R=0.463, trailer_R=0.806, bus_R=0.773 (ATH)
-- bg_FA=0.176 (ATL), offset_cx=0.047 (首破红线)
-- avg_P=0.107 (Precision 瓶颈 → P5 解决)
+- 7/9 指标历史最佳
+- avg_P=0.107 (Precision 瓶颈)
+
+### DINOv3 特征 — 已集成
+- Layer 16 预提取, 24.15 GB, 323 files
+- PreextractedFeatureEmbed + Linear(4096,768) 投影
 
 ---
 
@@ -63,16 +78,14 @@
 
 ### 架构/标签优化
 - [x] AABB → 旋转多边形 → P4 验证
-- [x] DINOv3 离线预提取 → ORCH_007 完成
-- [x] **DINOv3 集成到模型** → **ORCH_008 COMPLETED, P5 RUNNING**
-- [ ] Score 区分度改进 (Critic #2 优先级)
+- [x] DINOv3 离线预提取 + 集成 → P5 RUNNING
+- [ ] Score 区分度改进
 - [ ] BUG-14: Grid token 冗余
-- [x] BUG-16: NOT BLOCKING (无增强)
 
-### 3D 空间编码路线图 (VERDICT_3D_ANCHOR, 循环 #43 纳入)
-- [ ] **P6 第一步**: BEV 坐标 PE — grid_reference 从 2D 图像坐标→BEV 物理坐标 + MLP(2→768)。0.5 天，风险极低
-- [ ] **P6 第二步**: 3D Anchor — BEV grid 中心沿 z 轴采样 + 相机投影。2-3 天
-- [ ] **P7+**: V2X 融合 — sender occ box → BEV feature map + cross-attention。需多车数据集
+### 3D 空间编码路线图 (VERDICT_3D_ANCHOR)
+- [ ] P6 第一步: BEV 坐标 PE (0.5 天, 极低风险)
+- [ ] P6 第二步: 3D Anchor (2-3 天)
+- [ ] P7+: V2X 融合
 
 ## BUG 跟踪
 | BUG | 严重性 | 状态 |
@@ -80,51 +93,35 @@
 | BUG-2~12 | — | 全部 FIXED |
 | BUG-13 | LOW | UNPATCHED |
 | BUG-14 | MEDIUM | 架构层面 |
-| BUG-15 | HIGH | **P5 正在解决** (DINOv3 Layer 16 集成) |
-| BUG-16 | MEDIUM | **NOT BLOCKING** (无增强) |
+| BUG-15 | HIGH | P5 正在解决 |
+| BUG-16 | MEDIUM | NOT BLOCKING |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| ORCH_005-007 | P4 + DINOv3 提取 | COMPLETED |
-| **ORCH_008** | **P5: DINOv3 集成 + 训练** | **COMPLETED (验收通过, P5 RUNNING)** |
+| ORCH_008 | P5 DINOv3 集成 | COMPLETED (P5 RUNNING) |
 
-## 下一步计划
-1. **P5@500 首次 val**: DINOv3 语义特征对 Precision 的首次验证!
-   - 关键看: avg_P 是否开始上升? car_P 是否显著改善?
-   - 注意: loss 从 16 起步, @500 时模型可能还在适应, 数据可能不佳
-2. **P5 warmup 观察**: loss 和 grad_norm 是否在 1000 步内稳定
-3. **P5 全程**: @500→@1000→...→@6000
-
-## 红线
-| 指标 | 红线 | P4 Best | 说明 |
+## 红线监控
+| 指标 | 红线 | P5@1500 | 状态 |
 |------|------|---------|------|
-| truck_R | < 0.08 | 0.463 | — |
-| bg_FA | > 0.25 | 0.176 | — |
-| offset_th | ≤ 0.20 | 0.200 | — |
-| offset_cy | ≤ 0.10 | 0.089 | — |
-| avg_P | ≥ 0.20 | 0.107 | **P5 核心目标** |
+| truck_R | < 0.08 | 0.418 | SAFE (刚恢复!) |
+| bg_FA | > 0.25 | **0.442** | **严重超标!** |
+| offset_th | ≤ 0.20 | 0.201 | 差 0.001 |
+| offset_cy | ≤ 0.10 | 0.119 | 接近 |
+| avg_P | ≥ 0.20 | ~0.024 | 差距极大 |
 
 ## 历史决策
-### [2026-03-07 18:30] 循环 #43 — VERDICT_3D_ANCHOR 处理, 路线图更新
-- Critic 主动审计 3D Anchor + V2X 融合方向
-- 判决 CONDITIONAL: DINOv3 (P5) >> 3D Anchor (P6) >> V2X (P7+)
-- P6 最小实验: BEV 坐标 PE (0.5 天, 极低风险)
-- 纳入 MASTER_PLAN 架构路线图
-- P5 仍在 warmup, @500 val 即将到来
+### [2026-03-07 19:05] 循环 #44 — P5@1500 分析, bg_FA 危机应对
+- truck_R 从 0 爆发至 0.418 — 类别学习突破
+- bg_FA=0.442 历史最高 — DINOv3 特征让前景预测过于激进
+- 决策: 等 @2000, 设干预阈值 bg_FA>0.50
+- 干预方案: bg_balance_weight 2.5→5.0 + milestones 提前
+- offset 全面优秀: cx=0.053, th=0.201 均接近红线
 
-### [2026-03-07 18:00] 循环 #42 — ORCH_008 验收通过, P5 训练已启动
-- ORCH_008 全部 6 项检查 PASS
-- P5 PID 1572, GPU 0,2, 显存 20.4 GB/GPU
-- 早期 loss 16-17 + grad_norm 140-257 (100% clipping) — 预期行为
-- BUG-16 NOT BLOCKING
-- 无需审计, 等待 P5@500 首次 val
-
-### [2026-03-07 17:30] 循环 #41 — 审计归档
+### [2026-03-07 18:30] 循环 #43 — VERDICT_3D_ANCHOR, 路线图更新
+### [2026-03-07 18:00] 循环 #42 — ORCH_008 验收, P5 启动
 ### [2026-03-07 17:05] 循环 #40 — VERDICT_P4_FINAL, ORCH_008 签发
 ### [2026-03-07 16:55] 循环 #39 — P4 COMPLETED
-### [2026-03-07 16:05] 循环 #38 — P4@2000 + ORCH_007 完成
 ### [2026-03-07 05:10] 循环 #37 — CEO 指令 #7, ORCH_007 签发
 ### [2026-03-07 03:10] 循环 #33 — P4 启动
-### [2026-03-07 01:50] 循环 #31 — P3 完成
 ### [2026-03-06 00:57] 循环 #1 — 签发 ORCH_001
