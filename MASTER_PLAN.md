@@ -232,7 +232,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | BUG-16 | MEDIUM | NOT BLOCKING |
 | **BUG-17** | **HIGH** | P5b 解决 (milestones + sqrt balance) |
 | **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
-| **BUG-19** | **HIGH** | 标签遗漏 — CEO 从 polygon_viz 发现正样本覆盖不足。v1 修复 (valid_mask→全True) 不充分, v2 调查 z+=h/2 投影偏移 |
+| **BUG-19** | **HIGH** | **FIXED** — z+=h/2 把 box 中心移到顶部, 导致投影只覆盖上半身。移除后多边形覆盖完整车辆。GiT commit `965b91b` |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -242,7 +242,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_010** | **P5b 三项修复** | **执行中 — P5b 训练 RUNNING** |
 | ORCH_011 | SSD 迁移 | **COMPLETED** (标记) — 但 work_dirs 仍为普通目录, 未建软链接 |
 | ORCH_012 | BUG-19: proj_z0 grid 分配修复 | COMPLETED — valid_mask→全True, 但 CEO 反馈修复不充分 |
-| **ORCH_013** | **BUG-19 v2: z+=h/2 box 投影修复** | **DELIVERED — URGENT, CEO 指令** |
+| **ORCH_013** | **BUG-19 v2: z+=h/2 box 投影修复** | **COMPLETED — z是中心非底部, 移除z+=h/2, commit 965b91b** |
 | AUDIT_P5_MID | P5 中期审计 | VERDICT PROCESSED |
 | AUDIT_INSTANCE_GROUPING | Instance ID 提案 | VERDICT PROCESSED — 列入 P6+ |
 
@@ -258,6 +258,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 **红线达标 1/5**, 从 @1000 的 3/5 显著退步。等 @2500 LR decay 验证。
 
 ## 历史决策
+### [2026-03-08 01:55] 循环 #58 Phase 2 — BUG-19 v2 FIXED! z+=h/2 是高度截断根因
+- **BUG-19 根因确认**: z 在 pkl 中是 box 中心 (nuScenes 约定), `z += h/2` 把它移到顶部
+- **结果**: `_get_corners_lidar` 角点范围 [center, center+h] 而非 [center-h/2, center+h/2], 底部一半被截断
+- **验证**: 近距离 truck z=center 时 bottom≈-1.84m=地面高度 ✓
+- **修复**: 移除两处 `z += h/2` (训练 + 可视化), GiT commit `965b91b`
+- **可视化确认**: 10 张图重新生成, 多边形完整覆盖车辆全身 (包括车轮), 覆盖面积显著增大
+- **影响**: P5b 不受影响 (代码已在内存), P6+ 生效。这将显著增加正样本数量
+- ORCH_013 COMPLETED, 无 pending VERDICT
+
 ### [2026-03-08 01:48] 循环 #58 Phase 1 — P5b@1500 类别振荡回归, BUG-19 v2 ORCH_013 签发
 - **P5b@1500**: bus 坍塌 0.368→0, car 回到 0.924 主导, truck_R 下降 31%, sqrt 权重优势消退
 - **P5b@1500 ≈ P5@1500**: 两者指标趋同, 暗示 sqrt 权重在 full LR 下无法维持类别均衡
