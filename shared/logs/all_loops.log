@@ -3300,3 +3300,6 @@ nohup: ignoring input
 [2026-03-08 05:35:10] all_loops: → supervisor: 仍在工作... 1/10 分钟
 [2026-03-08 05:36:10] all_loops: → supervisor: 已完成（等待 2 分钟）
 [2026-03-08 05:36:10] all_loops: → ops: 执行 save_tmux.sh
+[2026-03-08 06:04:16] all_loops: → supervisor: 仍在工作... 1/10 分钟
+[2026-03-08 06:05:16] all_loops: → supervisor: 已完成（等待 2 分钟）
+[2026-03-08 06:05:16] all_loops: → ops: 执行 save_tmux.sh
