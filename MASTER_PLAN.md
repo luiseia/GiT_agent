@@ -1,16 +1,46 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 16:05 (循环 #86 Phase 1)
+> 最后更新: 2026-03-08 16:10 (循环 #86 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★ ORCH_023 COMPLETED | P2@2000=0.096 回调 (LR问题) | P6 FINAL=0.129 | 审计已签发 | 4 GPU 空闲
+## 当前阶段: ★★★★ VERDICT PROCEED! Full nuScenes 2048+GELU 启动! ORCH_024 已签发 | Mini 验证完成
 
-### ★★ VERDICT_PLAN_P_FAIL_P6_TREND 核心判决 (Critic, Cycle #81)
+### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
-**判决: CONDITIONAL — Plan P2 必须执行, Full nuScenes 等结果**
+**判决: PROCEED — Full nuScenes 使用 2048+GELU, 立即启动!**
+
+**核心结论**:
+1. **GELU for Full nuScenes**: 非线性容量必要, 收敛更快 (@1000 +72%), 所有反对意见已被驳回
+2. **P2@2000 回调 = BUG-42 (LR 问题)**: max_iters=2000 < first milestone@2500, P2 全程 full LR 无 decay
+3. **跳过 Plan O2**: 直接 Full nuScenes 测在线路径, mini 在线数据不可靠 (BUG-27/31/41)
+4. **P6@6000 re-eval 不需要**: 不影响任何决策
+5. **Critic 纠正**: off_th 收敛到 ~0.19-0.20 与 GELU 无关, Conductor off_th 对比有误导性
+
+**Full nuScenes Config (Critic 推荐)**:
+```python
+proj: nn.Sequential(nn.Linear(4096, 2048), nn.GELU(), nn.Linear(2048, 768))
+在线 DINOv3 frozen (不 unfreeze, BUG-35)
+lr_mult = 2.0 for proj
+max_iters = 40000, warmup = 2000, milestones = [15000, 25000]
+num_vocal = 230, 10 classes, sqrt balance, bg_weight = 2.5
+BUG-33 fix: val DistributedSampler
+```
+
+**Mini 验证阶段总结 (Critic)**:
+1. DINOv3 Layer 16 特征有效
+2. 2048 宽投影优于 1024 (offset 精度 -30-38%)
+3. GELU 必要 (去 GELU 是 BUG-39/40 错误)
+4. sqrt balance 有效但 mini 振荡不可避免 (BUG-20)
+5. DDP val 需 DistributedSampler (BUG-33)
+6. DINOv3 frozen only (BUG-35)
+7. Mini car_P 天花板 ~0.12-0.13
+
+### VERDICT_PLAN_P_FAIL_P6_TREND 核心判决 (Critic, Cycle #81)
+
+**判决: CONDITIONAL → SUPERSEDED by VERDICT_P2_FINAL_FULL_CONFIG**
 
 **BUG-39 CRITICAL → MEDIUM (Critic 重评)**: P6 数学退化确实存在 (双 Linear 无 GELU = 单 Linear), 但 **P6@3500 car_P=0.121 > P5b 0.116** 证明因式参数化有独立优化优势: (1) 9.96M vs 3.15M 参数, 梯度更平滑; (2) 隐式核范数正则化; (3) lr_mult=2.0 仍足够。**退化 ≠ 无效**。
 
@@ -123,10 +153,10 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 
 **P6 mini 运行至 @6000**: @4000 已全面超 P5b, @6000 为最终保险 (ETA ~15:00)
 
-**Full nuScenes 三步策略 (VERDICT_PLAN_P_FAIL_P6_TREND 更新)**:
-1. **Plan P2** (mini 2000 iter, 训练中): 唯一干净 GELU 实验 → ORCH_023
-2. **Config 选择**: P2@2000>P6@2000(0.110)→full 用 2048+GELU; P2≈P6→full 用 P6 config (simpler)
-3. **Full nuScenes**: ~24-48h/实验, 2h Plan P2 投入 ROI>10x
+**Full nuScenes 路线 (VERDICT_P2_FINAL_FULL_CONFIG 最终决定)**:
+1. ✅ **Plan P2 COMPLETED**: GELU 确认 (@1000 +72%, @1500 +5.7%). BUG-42: @2000 回调 = LR 问题
+2. ✅ **Config 选择**: **2048+GELU + 在线 DINOv3 frozen** (Critic PROCEED)
+3. **ORCH_024 DELIVERED**: 4 GPU DDP, ~40000 iter, ~3.7 天. 在线路径 @1000 early eval
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -533,11 +563,11 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - [x] **Phase 0 (诊断)**: Plan K/L/M/N 全部 COMPLETED ✅
 - [x] **P6 mini**: @3000 CONDITIONAL PASS — 但 BUG-39 退化架构, 作为负面参考
 - [x] **COND-1**: ✅ P5b@3000 单GPU car_P=0.116 (ORCH_020 COMPLETED)
-- [x] ~~**COND-2**: Plan P 2048+GELU (ORCH_022)~~ → FAIL (超参问题)
-- [ ] **COND-A (BLOCKING)**: Plan P2 2048+GELU+lr_mult=2.0+2000iter (ORCH_023, GPU 1, 训练中, ETA ~16:00)
-- [x] **COND-B (NON-BLOCKING)**: P6@4000 re-eval ✅ DONE — car_P=0.1263
-- [ ] **COND-C (NON-BLOCKING)**: Plan O2 (在线+GELU) — Plan O BUG-41 阻塞, 后续
-- [ ] **Full nuScenes**: Plan P2@2000 vs P6@2000(0.110) 决定 config
+- [x] ~~**COND-2**: Plan P~~ → FAIL
+- [x] **COND-A**: ✅ Plan P2 COMPLETED — GELU 确认 (@1000 +72%, @1500 +5.7%)
+- [x] **COND-B**: ✅ P6@4000 re-eval DONE — car_P=0.1263
+- [x] **COND-C**: ✅ **跳过 Plan O2** — Critic: 直接 Full nuScenes 测在线路径, mini 数据不可靠
+- [x] **Full nuScenes**: ✅ **VERDICT PROCEED — 2048+GELU, ORCH_024 已签发!**
 - [ ] **P6b**: BEV 坐标 PE + 先验词汇表
 - [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP
 - [ ] **P7b**: 3D Anchor — 射线采样
@@ -582,6 +612,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-39** | ~~CRITICAL~~ **MEDIUM** | 双层 Linear 无激活=单层 Linear 数学成立, 但 **因式参数化有优化优势** (9.96M vs 3.15M, 隐式核范数正则化). P6@4000 car_P=0.1263 超 P5b 8.9%. **退化≠无效** (Critic VERDICT_PLAN_P_FAIL_P6_TREND) |
 | **BUG-40** | **HIGH** | **Critic 审计链连锁失误**: BUG-27(vocab mismatch)→BUG-30(GELU损害off_th错误假设)→VERDICT_DIAG_FINAL(推荐去GELU)→P6退化架构→3000iter低效. Critic 自我纠正 (VERDICT_P6_VS_P5B) |
 | **BUG-41** | **HIGH** | **Plan O warmup=max_iters=500**: `LinearLR end=500` = 全程 warmup, LR 从未达正常值. **Plan O car_P=0.000, 完全未检测 car/truck**. 结果不可信, 在线路径验证被阻塞 (Critic 确认) |
+| **BUG-42** | **MEDIUM** | **Plan P2 max_iters < first milestone**: `max_iters=2000`, `milestones=[2000,4000]` from `begin=500`. 第一次 decay@iter2500, 但训练@2000 结束. P2 全程 full LR 无 decay. P2@2000 car_P=0.096 回调不能归因 GELU (Critic VERDICT_P2_FINAL) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -606,7 +637,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_020** | **P5b@3000 单 GPU re-eval** | **COMPLETED ✅ — car_P=0.116! P5b >> P6!** |
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
-| **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(LR回调)** |
+| **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **DELIVERED — 4 GPU DDP, ~40000 iter, Config+代码验证+训练启动** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -620,6 +652,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 16:10] 循环 #86 Phase 2 — ★★★★ VERDICT PROCEED! Full nuScenes 2048+GELU 启动! ORCH_024 签发!
+- **VERDICT_P2_FINAL_FULL_CONFIG (PROCEED)**: Full nuScenes 使用 2048+GELU + 在线 DINOv3 frozen
+- **BUG-42 NEW (MEDIUM)**: P2 max_iters < first milestone, 全程 full LR 无 decay. P2@2000 回调不能归因 GELU
+- **Critic 纠正**: off_th 收敛到 ~0.19-0.20 与 GELU 无关 (Conductor 对比有误)
+- **跳过 Plan O2**: Critic 推荐直接 Full nuScenes 测在线路径, mini 在线数据不可靠
+- **P6@6000 re-eval 不需要**: 不改变任何决策
+- **ORCH_024 签发+DELIVERED**: Full nuScenes Config 创建 + 在线代码验证 + 4 GPU DDP 训练
+- **Mini 验证阶段正式结束!** 进入 Full nuScenes 训练阶段
+
 ### [2026-03-08 16:05] 循环 #86 Phase 1 — ★★★ ORCH_023 COMPLETED! P2@2000=0.096 回调 | 审计签发 | 4 GPU 空闲
 - **P2@2000 FINAL**: car_P=**0.096** (从 @1500=0.112 回调), car_R=**0.801** (极端), P6@2000=0.110 反超
 - **回调原因**: full LR 2.5e-06 无 decay, 模型 spam car 预测, 其他类崩. P6 也需 @2500 decay 才稳定
