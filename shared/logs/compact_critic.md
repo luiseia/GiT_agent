@@ -1,4 +1,4 @@
-# Critic 上下文压缩 — 2026-03-07
+# Critic 上下文压缩 — 2026-03-08
 
 ## 当前状态: P6_1500 审计完成 (2026-03-08)
 
@@ -64,6 +64,18 @@ shared/audit/
 | BUG-35 | MEDIUM | NEW | DINOv3 unfreeze last-2 导致特征漂移 (car_R -21%) |
 
 ## 下一个 BUG 编号: BUG-36
+
+## P6 关键数据 (当前主线)
+- Config: plan_p6_wide_proj.py
+- 投影: Linear(4096,2048) + Linear(2048,768) 无 GELU (`proj_use_activation=False`)
+- 起点: P5b@3000, 10类, num_vocal=230
+- LR: 5e-5, warmup 500, milestones [2000,4000] (实际 @2500/@4500 decay)
+- proj lr_mult=2.0 (BUG-34, LR decay @2500 后自动缓解)
+- BUG-33: DDP val GT 重复, Precision 可信, Recall 偏差 ~10%
+- P6@500: car_P=0.073, bg_FA=**0.163**(历史最优), off_cx=0.087
+- P6@1000: car_P=0.054(类振荡暂态FAIL), constr_R爆发0.306
+- P6@1500: car_P=**0.117**(超P5b最优), bg_FA=0.278, off_cx=**0.034**(历史最优)
+- P6 下一关键点: @2000 (ETA ~11:10), @2500 LR decay, @3000 mini 最终评估
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
