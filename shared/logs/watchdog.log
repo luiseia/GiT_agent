@@ -2303,3 +2303,26 @@ baseline comparison" completed (exit code 0)
 [2026-03-08 17:40:02] watchdog: ⚠️ agent-critic context 剩余 4%
 [2026-03-08 17:40:02] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
 [2026-03-08 17:40:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 17:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 17:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 17:50:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 17:50:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 17:50:01] watchdog: ⚠️ agent-supervisor context 剩余 7%
+[2026-03-08 17:50:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 17:51:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 17:51:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 17:51:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:00:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:00:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:00:01] watchdog: ⚠️ agent-supervisor context 剩余 1%
+[2026-03-08 18:00:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 18:01:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 18:01:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 18:01:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:10:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:10:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:10:01] watchdog: ✅ 用量正常，无需休眠
