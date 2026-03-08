@@ -1,39 +1,61 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 12:38 (循环 #78 Phase 2)
+> 最后更新: 2026-03-08 13:06 (循环 #79 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★ P6 @3000 CONDITIONAL PASS — COND-1(P5b re-eval) + COND-2(Plan O) BLOCKING full nuScenes
+## 当前阶段: ★★ BUG-39 CRITICAL — P6 架构退化! Plan P (2048+GELU) 是最高优先级实验
 
-### VERDICT_DIAG_FINAL 核心判决 (Critic, Cycle #70)
+### ★★ VERDICT_P6_VS_P5B 核心判决 (Critic, Cycle #79) — P6 架构退化!
 
-**判决: CONDITIONAL — 宽投影 2048 获批, 但投影层必须是纯双 Linear (无 GELU 无 LayerNorm!)**
+**判决: CONDITIONAL — P6 架构方向需修正, BUG-39 CRITICAL**
 
-**P6 Config 定稿 (Critic 批准)**:
+**BUG-39 致命发现**: P6 的 `Sequential(Linear(4096,2048), Linear(2048,768))` **无激活函数**, 数学上等价于单个 `Linear(4096,768)`。2048 中间维度不增加任何表达能力。证明: y=W2*(W1*x+b1)+b2 = (W2*W1)*x + (W2*b1+b2)。rank(W_eff) ≤ min(768,2048) = 768。
+
+**P5b car_P=0.116 >> P6 car_P=0.106**: P6 落后 P5b 约 10%, 原因是退化架构。
+
+**BUG-40**: Critic 审计链连锁失误: BUG-27→BUG-30→去GELU推荐→P6退化架构→3000iter低效训练
+
+**BUG-30 INVALID**: GELU 不损害 off_th。P5b off_th=0.195 ≈ P6 off_th=0.196 (差异 0.5%)。原假设基于 BUG-27 污染的 Plan K 数据。
+
+**修正方向**: 恢复 GELU, 保留 2048 宽度。Plan P (2048+GELU) 验证。
+
+**P6 Config 定稿 (~~Critic 批准~~ → BUG-39 退化, 已废弃)**:
+```python
+# ⚠️ P6 架构已确认退化 (BUG-39) — 此 config 仅做负面参考
+classes = 10 类 (num_vocal=230)
+load_from = P5b@3000
+proj 层: nn.Sequential(nn.Linear(4096, 2048), nn.Linear(2048, 768))  # 无 GELU = 退化为 Linear(4096,768)!
+backbone.patch_embed.proj lr_mult = 2.0
+balance_mode = 'sqrt'
+bg_balance_weight = 2.5
+max_iters = 6000 (mini), warmup = 500, milestones = [2000, 4000] (相对 begin=500)
+```
+
+**Plan P Config (正确架构, 待验证)**:
 ```python
 classes = 10 类 (num_vocal=230)
 load_from = P5b@3000
-proj 层: nn.Sequential(nn.Linear(4096, 2048), nn.Linear(2048, 768))  # 无 GELU, 无 LN!
-backbone.patch_embed.proj lr_mult = 2.0  # 加速投影层收敛
-balance_mode = 'sqrt'
-bg_balance_weight = 2.5 (bg_FA @1000 > 0.30 则提到 3.0)
-数据: nuScenes-mini (前 3000 iter 验证)
-max_iters = 6000 (mini)
-warmup = 500
-milestones = [2000, 4000] (相对 begin=500)
-val_interval = 500
+proj 层: nn.Sequential(nn.Linear(4096, 2048), nn.GELU(), nn.Linear(2048, 768))  # 非线性, 严格更强
+backbone.patch_embed.proj lr_mult = 1.0  # 不用 2.0
+balance_mode = 'sqrt', bg_balance_weight = 2.5
+max_iters = 500 (mini 快速验证)
 ```
 
-**P6 监控红线 (VERDICT_P6_3000 更新)**:
+**BLOCKING 条件 (修正后)**:
+- **COND-1**: ✅ **已满足** — P5b@3000 单GPU re-eval 完成, car_P=0.116, bg_FA=0.189
+- **COND-2 (修正)**: Plan P (2048+GELU+lr_mult=1.0) 500 iter mini → car_P@500>0.073, bg_FA<0.200
+- **COND-3 (修正)**: Plan O (在线+2048+GELU) 500 iter mini → car_P@500>0.05 = 在线可行
+- **COND-4 (新)**: P6 是否终止 → Conductor 决策 (GPU 0+2 释放给更有价值实验)
+
+**P6 历程 (作为负面参考保留)**:
 - @1000: ❌ 双 FAIL — 类振荡暂态
 - @1500: ✅ PASS — 假说 B 完全验证
 - @2500: ✅ LR decay 生效 — off_th=0.201
-- **@3000: CONDITIONAL PASS** — car_P=0.106 ≈ P5b, off_th=0.205 达标, bg_FA=0.309 改善中
-- **car_P 平台化 0.106-0.111 @1500-3000** — mini 数据天花板 (Critic: 继续训练不会突破)
-- **Full nuScenes BLOCKING**: COND-1 (P5b re-eval) + COND-2 (Plan O 在线+2048+无GELU)
+- **@3000: CONDITIONAL PASS** — 但被 BUG-39 颠覆
+- **car_P 平台化 0.106-0.111 @1500-3000** — 部分原因是退化架构 (BUG-39)
 
 ### VERDICT_P6_1500 核心判决 (Critic, Cycle #74)
 
@@ -53,18 +75,19 @@ val_interval = 500
 7. **bg_FA 与 car_R 负相关**: 类振荡的另一表现, 非独立恶化
 8. **Full nuScenes 预期**: car_P 0.20-0.35, 类振荡大幅缓解, 试错成本高 (~24-48h/实验)
 
-**BLOCKING 条件 (full nuScenes 前必须满足)**:
-- **COND-1**: P5b@3000 单 GPU re-eval → 获取可信 car_P 基线 (~10 min, GPU 1/3)
-- **COND-2**: Plan O (在线 frozen + 2048 + 无 GELU + 10 类 + P5b@3000) → 500 iter mini, car_P>0.05=在线可行 (~1h, GPU 1/3)
-- **COND-3** (non-blocking): P6 @5000 单 GPU eval — 确认 LR decay 收敛
+**BLOCKING 条件 (修正后, full nuScenes 前必须满足)**:
+- **COND-1**: ✅ **DONE** — P5b@3000 单GPU car_P=**0.116**, bg_FA=**0.189**; P5b@6000 car_P=0.115
+- **COND-2 (修正)**: Plan P (2048+**GELU**+lr_mult=1.0) 500 iter → ORCH_022, GPU 1
+- **COND-3 (修正)**: Plan O (在线+2048+**GELU**) 500 iter → Plan O 当前运行版本是 noGELU (BUG-39), 需后续 GELU 版本验证
 
 **P6 @3500 预测 (Critic)**: car 回弹结束, 小类回摆, car_R~0.40, car_P~0.11, 不超 0.115
 
 **P6 mini 继续到 @6000**: 保险确认, 但不投入决策权重 (mini 价值 @3000 已耗尽)
 
-**Full nuScenes 路线决策 (取决于 Plan O)**:
-- Plan O car_P@500 > 0.05 → 在线路径可行 → full 用在线 DINOv3 frozen (0 存储)
-- Plan O car_P@500 < 0.05 → 在线路径不行 → full 用预提取 175GB fp16
+**Full nuScenes 三步策略 (VERDICT_P6_VS_P5B)**:
+1. **Plan P** (mini 500 iter): 验证 2048+GELU 真实价值 → ORCH_022
+2. **Plan O** (mini 500 iter): 验证在线 vs 预提取 (需 GELU 版本)
+3. **Full config 选择**: Plan P>P5b→2048+GELU; Plan P≈P5b→1024+GELU; Plan O≈Plan P→在线; Plan O<<Plan P→预提取 175GB
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -119,18 +142,31 @@ val_interval = 500
 > **预提取 > 在线** (car_P/car_R/bg_FA 全面领先); 在线唯一优势: off_cy
 > 在线路径 car_P 始终 ~0.05, 不达标. 均有 BUG-31 (vocab mismatch)
 
-**car_P 完整趋势对比 (P6 使用 ORCH_019 单 GPU 校正值)**:
-| Iter | Plan K (1类) | Plan L (10类+宽) | P5b (10类) | **P6 (宽+无GELU)** |
-|------|-------------|------------------|-----------|-------------------|
-| @500 | 0.064 | 0.054 | 0.080 | 0.073 |
-| @1000 | 0.047 | **0.140** | 0.089 | 0.058 |
-| @1500 | 0.060 | 0.103 | 0.091 | **0.106** |
-| @2000 | 0.063 | **0.111** | 0.094 | **0.110** |
-| @2500 | — | — | 0.094 | **0.111** |
-| @3000 | — | — | 0.107⚠️ | **0.106** ✅ |
+**car_P 完整趋势对比 (P5b 单GPU可信值, P6 单GPU可信值)**:
+| Iter | Plan K (1类) | Plan L (10类+宽+GELU) | **P5b (1024+GELU)** | **P6 (2048+noGELU=退化)** |
+|------|-------------|---------------------|---------------------|--------------------------|
+| @500 | 0.064 | 0.054 | 0.080 (DDP) | 0.073 |
+| @1000 | 0.047 | **0.140** | 0.089 (DDP) | 0.058 |
+| @1500 | 0.060 | 0.103 | 0.091 (DDP) | 0.106 |
+| @2000 | 0.063 | **0.111** | 0.094 (DDP) | 0.110 |
+| @2500 | — | — | 0.094 (DDP) | 0.111 |
+| @3000 | — | — | **0.116 ✅** | 0.106 |
+| @6000 | — | — | **0.115 ✅** | (待) |
 
-> **car_P 平台化**: P6 @1500-3000 在 0.106-0.111 范围, ≈ P5b@3000 (0.107⚠️ DDP 不可信 BUG-37)
-> **P6@3000 单GPU re-eval**: bg_FA=0.297 (<0.30✅), off_th=0.196 (<0.20✅) — 比 DDP 数据更好
+> **P5b@3000/6000 为单GPU可信值** (ORCH_020). P5b 其他为 DDP (±10% 偏差). P6 全部单GPU可信.
+> **P5b car_P=0.116 >> P6 car_P=0.106 (-8.6%)**: P6 退化架构 (BUG-39) 导致
+> **Plan L 2048+GELU car_P@1000=0.140**: 证明 GELU 是决定性因素 (vs P6@1000=0.058, 2.4x 差距)
+
+**★ P5b vs P6 可信对比 (均为单GPU, ORCH_020)**:
+| 指标 | P5b@3000 | P6@3000 | P6 vs P5b | 原因 |
+|------|----------|---------|-----------|------|
+| **car_P** | **0.116** | 0.106 | **-8.6% ❌** | BUG-39 退化 |
+| **car_R** | 0.675 | 0.617 | -8.6% ❌ | 同上 |
+| **bg_FA** | **0.189** | 0.297 | **+57% ❌❌** | 线性变换无法判别 bg/fg |
+| off_th | 0.195 | 0.196 | ≈ | GELU 不影响 (BUG-30 INVALID) |
+| **off_cx** | 0.063 | **0.039** | **-38% ✅✅** | 可能来自 lr_mult=2.0 |
+| **off_cy** | 0.105 | **0.073** | **-30% ✅✅** | 同上 |
+| truck_P | 0.043 | 0.054 | +26% ✅ | — |
 
 **四路诊断最终结论 (Plan K/L COMPLETED, Plan M/N @1500 done)**:
 1. **宽投影有轻微帮助**: Plan L car_P=0.111 > P5b@2000=0.094 (+18% 同 iter)
@@ -432,19 +468,20 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 
 **训练策略**: 50% 概率清除所有先验 (prior_tokens 全设 NO_PRIOR), 防止模型过度依赖外部信息。
 
-**P6 核心方向 (VERDICT_DIAG_FINAL 定稿)**:
-- **架构**: 宽投影 2048 + 纯双 Linear (无 GELU 无 LN) — Critic 批准
+**P6 核心方向 (~~VERDICT_DIAG_FINAL~~ → VERDICT_P6_VS_P5B 修正)**:
+- **架构**: ~~宽投影 2048 + 纯双 Linear (无 GELU 无 LN)~~ **BUG-39 退化!** → 修正: 2048 + **GELU** (Plan P)
 - **从 P5b@3000 启动**: backbone+head+vocab 完整, 仅 proj 随机初始化
-- **投影层 LR 2x**: `backbone.patch_embed.proj lr_mult=2.0`
-- **先 mini 验证**: 3000 iter, @1000 car_P≥0.10 且 bg_FA≤0.30 → 切 full
-- **GPU**: 0+2 (双卡 DDP), 1+3 仍跑 Plan M/N
+- **投影层 LR**: ~~2.0~~ → Plan P 用 **1.0** (分离变量)
+- **P6 已废弃**: 作为负面参考继续到 @6000, 但不做决策依据
+- **Plan P 是最高优先级**: 2048+GELU, 500 iter mini, GPU 1 (ORCH_022)
 
 **分阶段验证 (VERDICT_DIAG_FINAL 更新)**:
 - [x] **Phase 0 (诊断)**: Plan K/L/M/N 全部 COMPLETED ✅
-- [x] **P6 mini**: @3000 CONDITIONAL PASS — car_P=0.106 平台化, off_th=0.205 达标, 架构验证通过
-- [ ] **COND-1**: P5b@3000 单 GPU re-eval (ORCH_020, BLOCKING)
-- [ ] **COND-2**: Plan O 在线+2048+无GELU (ORCH_021, BLOCKING)
-- [ ] **P6 full**: mini 通过后切 full nuScenes (需提取 DINOv3 ~175GB)
+- [x] **P6 mini**: @3000 CONDITIONAL PASS — 但 BUG-39 退化架构, 作为负面参考
+- [x] **COND-1**: ✅ P5b@3000 单GPU car_P=0.116 (ORCH_020 COMPLETED)
+- [ ] **COND-2 (修正)**: Plan P 2048+GELU (ORCH_022, GPU 1, BLOCKING)
+- [ ] **COND-3 (修正)**: Plan O 在线+2048+GELU (需 GELU 版本, 当前 noGELU 版仅作参考)
+- [ ] **Full nuScenes**: Plan P 结果决定 config (2048+GELU or 1024+GELU)
 - [ ] **P6b**: BEV 坐标 PE + 先验词汇表
 - [ ] **P7**: 历史 occ box (t-1) — CEO 批准单时刻 MVP
 - [ ] **P7b**: 3D Anchor — 射线采样
@@ -468,7 +505,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
 | **BUG-19** | **HIGH** | **FIXED** — z+=h/2 把 box 中心移到顶部, 导致投影只覆盖上半身。移除后多边形覆盖完整车辆。GiT commit `965b91b` |
 | **BUG-20** | **HIGH** | bus 振荡根因: nuScenes-mini 数据量不足 (~120 bus 标注/40 张图), sqrt 加权无法根治。数据集天花板, 非模型 bug (Critic VERDICT_P5B_3000) |
-| **BUG-21** | **MEDIUM** | off_th 退化: P5@4000=0.142 → P5b@3000=0.200 (+40.8%)。可能原因: 双层投影 GELU 非线性损害方向信息。P6 考虑 A/B test 单层 vs 双层 |
+| **BUG-21** | **MEDIUM** | off_th 退化: P5@4000=0.142 → P5b@3000=0.200 (+40.8%)。原假设 GELU 损害方向信息 → **BUG-30 INVALID, GELU 无影响** (P5b=0.195≈P6=0.196)。真因: 双层投影结构差异 |
 | **BUG-22** | **HIGH** | 10 类 ckpt 兼容性: Admin 验证无障碍, vocab 动态索引无 shape mismatch ✅ |
 | **BUG-23** | **HIGH** | GPU 显存信息错误: 实际 A6000 48GB (非 24GB), 所有显存约束大幅放松 (Critic VERDICT_P6_ARCHITECTURE) |
 | **BUG-24** | **MEDIUM** | 缺少单类诊断 config: 需创建 `plan_k_car_only_diag.py` (Critic VERDICT_P6_ARCHITECTURE) |
@@ -477,15 +514,17 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-27** | **CRITICAL** | Plan K vocab 不兼容 (230→221), vocab_embed 随机初始化, Plan K "类竞争否定"结论无效 (Critic VERDICT_DIAG_RESULTS) |
 | **BUG-28** | **HIGH** | Plan L 双变量混淆: 投影宽度+vocab 保留同时变化, 无法干净归因 (Critic VERDICT_DIAG_RESULTS) |
 | **BUG-29** | **LOW** | Plan K sqrt balance 对单类无意义, 不影响结果 (Critic VERDICT_DIAG_RESULTS) |
-| **BUG-30** | **MEDIUM** (降级) | GELU ~0.05 一致性惩罚 (非致命). Plan K@2000 off_th=0.191 达标. P6 仍去 GELU (Critic VERDICT_DIAG_FINAL) |
+| **BUG-30** | ~~MEDIUM~~ **INVALID** | ~~GELU ~0.05 惩罚~~。**假设不成立**: P5b off_th=0.195 ≈ P6 off_th=0.196, GELU 对 off_th 无影响。原假设基于被 BUG-27 污染的 Plan K 数据 (Critic VERDICT_P6_VS_P5B) |
 | **BUG-31** | **HIGH** | Plan M/N 继承 BUG-27 vocab mismatch (num_vocal=221). M vs N 对比仍有效, 绝对性能受拖累 (Critic VERDICT_DIAG_FINAL) |
 | **BUG-32** | **MEDIUM** | Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化. P6 LR milestones 需关注 (Critic VERDICT_DIAG_FINAL) |
 | **BUG-33** | **MEDIUM** (降级) | gt_cnt DDP inflation 根因确认: 缺 DistributedSampler. **ORCH_019 完成**: car_P 有小幅偏差 (最大 -9%@1500), car_R 偏差最大 (-27%@1500), 方向不一致. 修复已应用 (sampler config) |
 | **BUG-34** | **LOW** (降级) | proj lr_mult=2.0, LR decay @2500 后 proj LR 1e-4→1e-5 自动缓解. 无需 P6b (Critic VERDICT_P6_1500) |
 | **BUG-35** | **MEDIUM** | DINOv3 unfreeze last-2 导致特征漂移: Plan M car_R 0.699→0.489 (-21%). 在线路径必须 frozen (Critic VERDICT_P6_1500) |
 | **BUG-36** | **HIGH** | Plan M/N vs P6 对比条件不一致: Plan M/N proj_dim=1024, P6 proj_dim=2048. CEO 基于不公平对比否决在线路径. 需 Plan O 验证 (Critic VERDICT_P6_3000) |
-| **BUG-37** | **HIGH** | P5b 基线不可信: 全部 eval 来自 DDP (无 DistributedSampler), car_P=0.107 可能偏差 ±10%. 必须单 GPU re-eval (Critic VERDICT_P6_3000) |
-| **BUG-38** | **MEDIUM** | Critic 自我纠正: car_P @3000 预测 0.12-0.13 实际 0.106. LR decay 稳定了 off_th 但未提升 car_P. mini 天花板 ~0.11 (Critic VERDICT_P6_3000) |
+| **BUG-37** | **HIGH** | P5b 基线不可信 → **ORCH_020 完成**: P5b@3000 单GPU car_P=**0.116** (非 DDP 的 0.107), DDP 低估 8%. **P6 落后 P5b!** |
+| **BUG-38** | **MEDIUM** | Critic car_P 预测偏乐观. **根因补充**: Critic 未意识到 P6 是退化架构 (BUG-39), 2048+GELU 的预测可能准确 |
+| **BUG-39** | **CRITICAL** | **双层 Linear 无激活函数数学退化**: `Sequential(Linear(4096,2048), Linear(2048,768))` 无 GELU = `Linear(4096,768)`. 2048 中间维度无效. P6 全部 3000 iter 基于退化架构. 代码: `vit_git.py:L238-244` (Critic VERDICT_P6_VS_P5B) |
+| **BUG-40** | **HIGH** | **Critic 审计链连锁失误**: BUG-27(vocab mismatch)→BUG-30(GELU损害off_th错误假设)→VERDICT_DIAG_FINAL(推荐去GELU)→P6退化架构→3000iter低效. Critic 自我纠正 (VERDICT_P6_VS_P5B) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -507,8 +546,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_017** | **P6 宽投影 mini 验证** | **@3000 CONDITIONAL PASS — car_P=0.106 平台化, 继续到 @6000 (保险)** |
 | **ORCH_018** | **BUG-33 gt_cnt 调查** | **COMPLETED ✅** |
 | **ORCH_019** | **BUG-33 P6 单 GPU re-eval** | **COMPLETED ✅** |
-| **ORCH_020** | **P5b@3000 单 GPU re-eval** | **PENDING — COND-1 BLOCKING, ~10 min, GPU 1/3** |
-| **ORCH_021** | **Plan O 在线+2048+无GELU 验证** | **PENDING — COND-2 BLOCKING, 500 iter ~1h, GPU 1/3** |
+| **ORCH_020** | **P5b@3000 单 GPU re-eval** | **COMPLETED ✅ — car_P=0.116! P5b >> P6!** |
+| **ORCH_021** | **Plan O 在线+2048+无GELU 验证** | **IN PROGRESS — GPU 3, ETA ~13:45. ⚠️ 使用退化架构 (BUG-39), 仅作 online vs preextract 对比** |
+| **ORCH_022** | **Plan P 2048+GELU 验证** | **签发中 — GPU 1, 500 iter, 最高优先级** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -522,6 +562,18 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 13:06] 循环 #79 Phase 2 — ★★★ BUG-39 CRITICAL! P6 架构退化! Plan P 签发!
+- **VERDICT_P6_VS_P5B (CONDITIONAL)**: P6 架构方向需修正, BUG-39 致命
+- **BUG-39 CRITICAL**: `Sequential(Linear(4096,2048), Linear(2048,768))` 无 GELU = `Linear(4096,768)`. 2048 维度无效
+- **BUG-40 HIGH**: Critic 审计链连锁失误 → BUG-27→BUG-30→去GELU推荐→P6退化
+- **BUG-30 INVALID**: GELU 不损害 off_th (P5b=0.195≈P6=0.196), 原假设基于 BUG-27 污染数据
+- **ORCH_020 COMPLETED**: P5b@3000 car_P=**0.116**, bg_FA=**0.189** — P5b >> P6
+- **ORCH_021 IN PROGRESS**: Plan O (online+noGELU) GPU 3, ETA ~13:45. ⚠️ 退化架构, 仅作 online vs preextract 参考
+- **ORCH_022 签发**: Plan P (2048+GELU+lr_mult=1.0) GPU 1, 500 iter — **最高优先级实验**
+- **Plan P 判定**: car_P@500>0.073(P6@500) + bg_FA<0.200 → 2048+GELU 是 full config
+- **P6 继续到 @6000**: 作为负面参考, 不投入决策权重
+- **三步策略**: Plan P → Plan O (GELU版) → Full nuScenes config 选择
+
 ### [2026-03-08 12:38] 循环 #78 Phase 2 — ★★ P6 @3000 CONDITIONAL PASS! ORCH_020+021 签发
 - **P6 @3000 DDP val**: car_P=0.106, off_th=0.205, bg_FA=0.309, truck_P=0.061 历史最高
 - **VERDICT_P6_3000 (CONDITIONAL)**: 架构验证通过, 精度验证不充分 (car_P 平台化 0.106-0.111)
