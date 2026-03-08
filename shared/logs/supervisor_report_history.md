@@ -3254,3 +3254,19 @@ Loss 飙升: iter 1460 loss=8.61, grad_norm 高位
 
 🆕 ORCH_018 (DELIVERED): BUG-33 gt_cnt 不一致调查, P6 @2000 前完成 (~11:10)
 Plan M: 1640/2000, Plan N: 1610/2000, @2000 ~11:32-11:35
+
+---
+## Cycle #156 | 2026-03-08 11:24
+**P6 @1500 反弹 car_P=0.117 > P5b | BUG-33 RESOLVED | P6 @2000 val 中**
+
+P6 @1500 val: car_P=**0.117** (可信, >P5b 0.107!), car_R=0.681⚠️, bg_FA=0.278⚠️, off_th=0.259⚠️
+→ @1000 FAIL 是类振荡暂时压制, @1500 反弹超越 P5b
+→ P6 car_P 轨迹: 0.073→0.054→**0.117** (V 字恢复)
+
+BUG-33 RESOLVED (ORCH_018):
+- 根因: DDP val_dataloader 缺 sampler → SequentialSampler → GT 偏差
+- 影响: Recall/GT/bg_FA 不可信 (DDP), **car_P 跨实验对比有效**
+- 修复: sampler 已添加, 当前进程仍用旧配置
+
+P6 @2000 val 进行中. Plan M: 1920/2000, Plan N: 1890/2000
+Next: P6 @2000 + M/N @2000 final (~11:30-11:33)
