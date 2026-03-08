@@ -1,6 +1,6 @@
 # Critic 上下文压缩 — 2026-03-07
 
-## 当前状态: DIAG_FINAL 审计完成 (2026-03-08)
+## 当前状态: P6_1000 审计完成 (2026-03-08)
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit | 位置 |
@@ -17,6 +17,7 @@
 | VERDICT_P5B_3000 (re-issue) | CONDITIONAL | 4cfc0d1 | pending/ |
 | VERDICT_DIAG_RESULTS | CONDITIONAL | f457807 | pending/ |
 | VERDICT_DIAG_FINAL | CONDITIONAL | 3f3c1ec | pending/ |
+| VERDICT_P6_1000 | CONDITIONAL | afbd4e8 | pending/ |
 
 ## 审计目录结构 (已重组)
 ```
@@ -57,8 +58,10 @@ shared/audit/
 | BUG-30 | **MEDIUM** (降级) | OPEN | GELU ~0.05 一致性惩罚 (Plan K@2000 达标 0.191) |
 | BUG-31 | HIGH | 记录 | Plan M/N 继承 BUG-27 vocab mismatch |
 | BUG-32 | MEDIUM | 记录 | Plan K @1500 off_cy 跳变 (LR decay 后退化) |
+| BUG-33 | HIGH | NEW | gt_cnt 跨实验不一致 (truck GT +95%), 需 Admin 调查 |
+| BUG-34 | MEDIUM | NEW | proj lr_mult=2.0 过激 (Critic DIAG_FINAL 失误) |
 
-## 下一个 BUG 编号: BUG-33
+## 下一个 BUG 编号: BUG-35
 
 ## P5 关键数据 (供后续审计参考)
 - Config: plan_h_dinov3_layer16.py
@@ -75,8 +78,9 @@ P1 (plan_d) → P2 (plan_e, BUG-9 fix) → P3 (plan_f, BUG-8+10 fix)
 → P4 (plan_g, AABB fix + BUG-11) → P5 (plan_h, DINOv3 Layer 16)
 → P5b (plan_i, 双层投影+sqrt+LR fix, P5@4000起点)
 → P6 诊断: K(单类,BUG-27) + L(宽2048,car_P=0.140) + M/N(在线DINOv3)
-→ P6 定稿: 宽投影2048 + 10类 + 纯Linear无GELU + P5b@3000 (VERDICT_DIAG_FINAL)
-→ P6 Phase 1: 根据诊断选择 全量nuScenes / LoRA
+→ P6 定稿: 宽投影2048 + 10类 + 纯Linear无GELU + P5b@3000
+→ P6 @1000 双FAIL (car_P=0.054, bg_FA=0.323), 假说B(类振荡+LR过激)最可能
+→ P6 继续到@2000, 如仍FAIL则启动P6b (加回GELU/ReLU, lr_mult=1.0)
 → P7 (待定: 历史 occ box t-1)
 ```
 
