@@ -3050,3 +3050,14 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **ORCH_013 COMPLETED**: BUG-19 v2, z+=h/2导致投影只覆盖车辆上半身, 删除后正样本覆盖显著增大, commit 965b91b, P6+生效
 **DST**: 02:00→03:00系统时钟跳变, 训练无中断
 **关键下一步**: @2500 LR decay(~03:18), lr应从2.5e-06→2.5e-07, 训练稳定性转折点
+
+---
+
+## Cycle #140 | 2026-03-08 03:38 | P5b@2500里程碑! LR decay验证通过, bus/trailer爆发, 三项修复全部验证
+
+**P5b进度**: iter2820/6000(47%), **LR=2.5e-07(decay已触发!从2.5e-06降10x)**, ETA~06:16
+**LR milestones验证通过**: iter2500→2510, base_lr 5e-05→5e-06, lr 2.5e-06→2.5e-07 ✅ 三项修复全部验证!
+**P5b@2500 val**: car_R=0.831, truck_R=0.287, bus_R=**0.470**(↑5.5x!超P5全程最优0.315), trailer_R=**0.444**(↑16x!), bg_FA=0.283, off_cx=0.073(↑回退), off_cy=0.112, off_th=0.212
+**四类全>0.28**: 最均衡checkpoint! P5b@2500 vs P5@2500: car(+5%), truck(3.6x!), bus(+15%), bg_FA(-12%), 仅trailer_R略低
+**Offset回退**: cx(0.055→0.073), 与类别分布剧变(bus/trailer爆发)相关, 预期LR decay后改善
+**第二次decay**: @4000(lr→2.5e-08), 下次val @3000(~03:47)
