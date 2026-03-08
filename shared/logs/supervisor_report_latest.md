@@ -1,65 +1,66 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-08 00:14
-> Cycle: #135
+> 时间: 2026-03-08 00:42
+> Cycle: #136
 
-## ===== P5b (plan_i) 训练已启动! 三项修复就位, iter 330/6000, warmup 阶段 =====
+## ===== P5b@500 首次 val 完成! truck_R 6x 提升, offset 精度继承 P5@4000 =====
 
 ### 训练状态
 - 当前实验: **P5b (plan_i_p5b_3fixes)**
-- 进度: iter 330 / 6000 (**5.5%**)
-- 启动时间: 23:56:39
-- LR: warmup 阶段, base_lr=3.30e-05 (爬升中), lr=1.65e-06
-- warmup 结束: iter 500 (~00:22)
+- 进度: iter **820** / 6000 (**13.7%**)
+- LR: **2.5000e-06** (warmup 结束, full LR)
 - GPU: 0 (20.5GB, 100%) + 2 (21.0GB, 100%)
-- ETA 完成: ~05:00
+- Memory: 15867 MB/GPU
+- ETA 完成: ~05:01
+- Checkpoint: iter_500.pth 已保存 (1.96 GB)
+- 下次 val: @1000 (~00:47)
 
-### P5b 三项修复验证
+### P5b@500 vs P5@500 首次 Val 对比 (关键!)
 
-**修复 1: 双层投影 — ✓ 已生效**
-```
-unexpected key: backbone.patch_embed.proj.weight, proj.bias (旧单层)
-missing keys: backbone.patch_embed.proj.0.weight, proj.0.bias, proj.2.weight, proj.2.bias (新双层)
-```
-旧 Linear(4096,768) 权重被丢弃, Sequential(Linear(4096,1024), GELU, Linear(1024,768)) 随机初始化。
+| 指标 | P5b@500 | P5@500 | 变化 | 分析 |
+|------|---------|--------|------|------|
+| car_R | **0.856** | 0.932 | ↓8% | car 不再过度主导, **类别均衡改善** |
+| car_P | 0.080 | 0.055 | ↑45% | 精度提升 |
+| truck_R | **0.153** | 0.025 | **↑6.0x** | **sqrt 权重效果显著!** |
+| truck_P | 0.039 | 0.027 | ↑44% | |
+| bus_R | 0.014 | 0.000 | ↑ | 微弱改善, 仍接近 0 |
+| trailer_R | 0.000 | 0.000 | = | 样本太少(72), 需更多 iter |
+| bg_FA | **0.235** | 0.320 | **↓27%** | 继承 P5@4000 基础 |
+| off_cx | **0.068** | 0.189 | **↓64%** | 继承 P5@4000 offset 精度 |
+| off_cy | **0.085** | 0.291 | **↓71%** | 继承 P5@4000 offset 精度 |
+| off_th | 0.210 | 0.216 | ↓3% | 基本持平 |
 
-**修复 2: LR Milestones — 待验证 @2500**
-- warmup=500, begin=500, milestones=[2000,3500]
-- 预期 decay: iter 2500 (相对 milestone 2000 + begin 500) 和 iter 4000
-- 验证点: iter 2500 的 lr 应从 ~2.5e-06 降至 ~2.5e-07
+### 核心发现
 
-**修复 3: sqrt 类别权重 — 待验证 (需查看权重日志或代码)**
+1. **sqrt 类别权重初见成效**: truck_R 从 P5@500 的 0.025 → P5b@500 的 0.153, 提升 6 倍。car_R 相应下降 (0.932→0.856), 说明类别竞争向均衡方向移动。
+2. **offset 精度完美继承**: P5b 从 P5@4000 加载, offset_cx/cy 在首次 val 即继承了良好精度, 尽管双层投影随机初始化。这说明 offset 回归主要依赖后端 head, 不受特征投影层影响。
+3. **bg_FA 从 0.320→0.235**: 也是继承效应, 起点就比 P5 好得多。
+4. **bus_R 仍接近 0**: P5@500 也是 0, 需观察后续是否改善。P5 的 bus 在 @2500 才出现 (0.409)。
 
-### P5b 前 330 iter 指标
+### 训练动态 (iter 510-820)
+- Loss: 0.29 - 4.19, 波动较大但正常
+- grad_norm: 8.4 - 39.3, 稳定 (远低于 P5 早期的 247)
+- LR 已稳定在 2.5e-06
 
-| 指标 | P5b 前 330 iter | P5 前 330 iter (对照) |
-|------|----------------|---------------------|
-| Memory | 15867 MB | 15757 MB (+110 MB, 双层投影开销) |
-| Loss 范围 | 0.97 - 4.92 | 类似高波动 |
-| grad_norm 峰值 | 70.2 | 247.8 (P5更高) |
-| LR@300 | 1.50e-06 | 1.50e-06 (相同) |
-
-grad_norm 峰值从 P5 的 247 降至 70, 可能与双层投影的渐进压缩有关。
-
-### 代码变更
-GiT/ 无新 commit。Admin 创建了独立可视化脚本 `scripts/visualize_polygon_vs_aabb.py`。
+### 三项修复验证状态
+| 修复 | 状态 | 证据 |
+|------|------|------|
+| 双层投影 | ✅ 已生效 | checkpoint key mismatch, 显存 +110 MB |
+| sqrt 类别权重 | ✅ **初步验证** | truck_R 6x 提升, car_R 适度下降 |
+| LR milestones | ⏳ 待验证 @2500 | lr 应从 2.5e-06 → 2.5e-07 |
 
 ## ORCH 指令状态
 
 | 指令 | 状态 | 备注 |
 |------|------|------|
 | ORCH_001-008 | COMPLETED | 历史指令 |
-| **ORCH_009** | **COMPLETED** | 旋转多边形可视化完成, 10 张图保存到 `/mnt/SSD/GiT_Yihao/polygon_viz/` |
-| **ORCH_010** | **执行中** | P5b 训练已启动 (plan_i_p5b_3fixes) |
-| **ORCH_011** | **DELIVERED** | SSD 迁移 — work_dirs 仍为普通目录 (非软链接), 待确认执行状态 |
+| **ORCH_009** | **COMPLETED** | 旋转多边形可视化, 10 张图 |
+| **ORCH_010** | **COMPLETED** (文件标记) | P5b 配置+启动完成; 训练仍在进行 (iter 820/6000) |
+| **ORCH_011** | **COMPLETED** (文件标记) | SSD 迁移 — 但 work_dirs 仍为普通目录(非软链接), 实际未完整执行 |
 
-### ORCH_009 完成详情
-Admin 在 00:06 完成, 独立脚本实现, 未修改训练代码。代表性统计:
-- car: AABB 12→Poly 10 (排除 2 cell)
-- car: AABB 16→Poly 12 (排除 4 cell, 最大差异)
-- bus: AABB 4→Poly 3 (排除 1 cell)
+> ⚠️ ORCH_011 备注: work_dirs (808K) 和 work_dirs_12 (164K) 仍为普通目录, 内容已基本清空但未创建到 SSD 的软链接。
 
 ## Agent 状态
-全 5 agent tmux UP。
+全 5 agent tmux UP。无新 ORCH 指令。
 
 ## GPU 状态
 | GPU | Used | Util | Task |
@@ -69,10 +70,20 @@ Admin 在 00:06 完成, 独立脚本实现, 未修改训练代码。代表性统
 | 2 | 21.0 GB | 100% | **P5b 训练** |
 | 3 | 15 MB | 0% | 空闲 |
 
+## 红线指标追踪
+| 指标 | 红线 | P5b@500 | P5 最优 | 状态 |
+|------|------|---------|---------|------|
+| truck_R | ≥0.08 | **0.153** ✅ | 0.679 (@3500) | **达标** |
+| bg_FA | ≤0.25 | **0.235** ✅ | 0.160 (@5000) | **达标** |
+| offset_th | ≤0.20 | 0.210 | 0.142 (@4000) | 接近, 差 0.01 |
+| offset_cx | ≤0.05 | 0.068 | 0.051 (@4000) | 差 0.018 |
+| offset_cy | ≤0.10 | **0.085** ✅ | 0.091 (@4000) | **达标** |
+
 ## 告警
-1. **[RUNNING] P5b 训练已启动**: plan_i_p5b_3fixes, 从 P5@4000 加载, 三项修复就位
-2. **[VERIFIED] 双层投影生效**: 4096→1024→768, 显存 +110 MB
-3. **[COMPLETED] ORCH_009**: 旋转多边形可视化完成
-4. **[PENDING VERIFY] LR milestones**: 需在 iter 2500 确认 decay 触发
-5. **[UNCLEAR] ORCH_011 SSD 迁移**: work_dirs 仍为普通目录, 未见软链接
-6. **[WATCH] 首次 val @500 (~00:22)**: P5b 首次评估, warmup 刚结束
+1. **[VAL DONE] P5b@500 首次 val**: truck_R=0.153 (6x P5@500), bg_FA=0.235, offset 精度继承良好
+2. **[POSITIVE] sqrt 权重效果**: 类别均衡方向正确, car 下降+truck 上升
+3. **[WATCH] bus_R=0.014**: 仍接近 0, 需观察 @1000 和 @2500
+4. **[WATCH] trailer_R=0.000**: 样本少(72), 可能需更多 iter
+5. **[PENDING] LR milestones 验证**: iter 2500 需确认 decay 触发
+6. **[NOTE] ORCH_011**: 文件标记 COMPLETED 但实际未建软链接
+7. **[NEXT VAL] @1000 (~00:47)**: 观察 full LR 下类别动态
