@@ -2108,3 +2108,6 @@ baseline comparison" completed (exit code 0)
 [2026-03-08 06:32:37] watchdog: → agent-admin: 已发送 /compact，等待 30 秒
 [2026-03-08 06:33:07] watchdog: → agent-admin: 已发送恢复指令
 [2026-03-08 06:33:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 08:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 08:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 08:00:02] watchdog: ✅ 用量正常，无需休眠
