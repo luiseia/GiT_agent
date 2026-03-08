@@ -2931,3 +2931,14 @@ ORCH_001-005,007,008 COMPLETED，ORCH_006 DELIVERED。无新指令。
 **P5已超P4指标**: car_R(+32%), car_P(+15%), truck_R(+66%), offset_th(首破红线)
 **类别振荡**: truck强时trailer弱(零和竞争), LR decay@4000(~25min后)预期稳定振荡
 **bg_FA**: 0.260→0.290小幅反弹, 可能与truck_R跳升相关
+
+---
+
+## Cycle #129 | 2026-03-07 21:25 | P5@4000 全面突破! bg_FA+offset_cy+offset_th三红线破! 类别振荡首次收敛!
+
+**P5@4000 Val**: car_R=0.569 car_P=0.090 truck_R=0.421 **truck_P=0.130**(+81%!) **bus_R=0.315**(+163%!) bus_P=0.037 **trailer_R=0.472**(从0恢复!) **bg_FA=0.213**(首破红线!) cx=0.051 **cy=0.091**(首破红线!) **th=0.142**(深度达标!)
+**三大红线突破**: bg_FA=0.213<0.25, offset_cy=0.091<0.10, offset_th=0.142<<0.20
+**类别收敛**: 首次四类Recall全>0.3 (car=0.569, truck=0.421, bus=0.315, trailer=0.472), 零和竞争正在解决
+**P5超P4指标**: car_P(+11%), truck_R(+3%), offset_cx(+11%), offset_cy(+12%), **offset_th(+31%!)**
+**⚠️LR未衰减**: iter4010-4030仍lr=2.5e-06, milestones可能是相对于begin=1000的步数, 实际decay可能在iter5000
+**bg_FA**: 0.290→0.213大幅下降(-27%), 新历史低点, 首次<0.25红线
