@@ -123,6 +123,8 @@
 | ID | 目标 | 状态 |
 |----|------|------|
 | ORCH_008 | P5 DINOv3 集成 | COMPLETED (P5 RUNNING) |
+| ORCH_009 | 旋转多边形 Grid 分配可视化 | PENDING (CEO 请求) |
+| AUDIT_P5_MID | P5 中期审计 | REQUEST SENT (等 Critic) |
 
 ## 红线监控
 | 指标 | 红线 | P5@4000 (最优) | P5@4500 (最新) | 状态 |
