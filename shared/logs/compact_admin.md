@@ -1,6 +1,6 @@
 # Admin Agent Context Snapshot
-**Timestamp**: 2026-03-08 15:59
-**Reason**: P6@6000 + Plan P2@2000 全部完成, GELU 效果确认
+**Timestamp**: 2026-03-08 16:45
+**Reason**: ORCH_024 Full nuScenes 训练已启动, 4 GPU DDP 运行中
 
 ---
 
@@ -8,11 +8,10 @@
 
 | Experiment | GPU | Iter | Status |
 |-----------|-----|------|--------|
-| **P6** (2048, no GELU) | 0+2 DDP | 6000/6000 | **COMPLETED** DDP car_P=0.129 |
-| **Plan P2** (2048+GELU) | 1 | 2000/2000 | **COMPLETED** car_P轨迹: 0.069→0.100→0.112→0.096 |
-| Plan P (lr_mult=1.0) | - | 500/500 | FAILED — car_P=0.0035 |
-| Plan O (online) | 3 | 500/500 | INVALID — BUG-40 |
-| Plan M/N/K/L | - | 2000/2000 | ALL COMPLETED |
+| **Full nuScenes** (2048+GELU+Online) | **0+1+2+3 DDP** | **30/40000** | **RUNNING** ~6.3 s/iter, ETA 3月11日 |
+| P6 (2048, no GELU) | - | 6000/6000 | COMPLETED — car_P=0.143 (新纪录) |
+| Plan P2 (2048+GELU) | - | 2000/2000 | COMPLETED — car_P轨迹: 0.069→0.100→0.112→0.096 |
+| Plan P/O/M/N/K/L | - | - | ALL COMPLETED |
 
 ---
 
@@ -20,142 +19,75 @@
 
 | ORCH | Status | Summary |
 |------|--------|---------|
-| 015 | COMPLETED | Diagnostic: class competition REJECTED, wide proj CONFIRMED |
-| 016 | COMPLETED | Online DINOv3: online可行但不优于预提取, M≈N |
-| 017 | EXECUTED | P6 wide proj: training @4200/6000 |
-| 018 | EXECUTED | BUG-33: DDP val sampler fix |
-| 019 | EXECUTED | P6 7 ckpts 单GPU re-eval → Precision 偏差 ±10% |
-| 020 | COMPLETED | P5b re-eval: car_P=0.116 (非0.107!) |
-| 021 | COMPLETED — 无效 | Plan O car_P=0.000, BUG-40 全程 warmup, 不能判定在线路径 |
-| 022 | COMPLETED — 异常 | Plan P car_P=0.0035, lr_mult=1.0+warmup=100 导致收敛失败 |
-| **023** | **COMPLETED** | P6@4000=0.1263, P2: GELU 避免@1000低谷但@2000回调, P6@6000 DDP=0.129 |
+| 015-020 | COMPLETED | Mini 诊断实验全部完成 |
+| 021 | COMPLETED — 无效 | Plan O BUG-40, 全程 warmup |
+| 022 | COMPLETED — 异常 | Plan P lr_mult=1.0 导致收敛失败 |
+| 023 | COMPLETED | P6@6000=0.143, P2 GELU 确认有效 |
+| **024** | **IN PROGRESS** | Full nuScenes: 2048+GELU+在线 DINOv3, 4 GPU DDP |
 
 ---
 
-## 3. P5b 真实基线 (ORCH_020)
+## 3. Full nuScenes 训练详情 (ORCH_024)
 
-| Ckpt | car_R | car_P | truck_P | bus_P | bg_FA | off_th |
-|------|-------|-------|---------|-------|-------|--------|
-| **P5b@3000** | 0.675 | **0.116** | 0.043 | 0.032 | **0.189** | **0.195** |
-| **P5b@6000** | 0.639 | **0.115** | 0.037 | 0.043 | **0.188** | **0.194** |
+**Config**: `configs/GiT/plan_full_nuscenes_gelu.py`
+**Work dir**: `/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu`
+**Log**: `launch.log`
 
----
+| 参数 | 值 |
+|------|-----|
+| 架构 | 2048+GELU proj (4096→2048→GELU→768) |
+| 特征源 | 在线 DINOv3 ViT-7B frozen FP16 |
+| 数据 | Full nuScenes: train 28130, val 6019 |
+| GPU | 4× A6000 DDP, 36.4-37.0 GB / 48 GB |
+| 速度 | ~6.3 s/iter |
+| Batch | 2/GPU × 4 GPU × accum 4 = effective 32 |
+| LR | AdamW 5e-5, warmup 2000, milestones [15000,25000]+2000 |
+| max_iters | 40000 |
+| Val | 每 2000 iter, Full nuScenes val split |
+| Load from | P5b@3000 |
+| ETA | ~2天21小时 (~3月11日 13:00) |
 
-## 4. CRITICAL: Plan P @500 结果 (ORCH_022)
+**早期 Loss:**
 
-| 指标 | Plan P @500 | P6 @500 | Plan L @500 | 判定阈值 |
-|------|------------|---------|-------------|---------|
-| car_R | **0.0015** | 0.231 | - | - |
-| car_P | **0.0035** | 0.073 | 0.054 | > 0.073 |
-| truck_P | 0.0400 | 0.019 | - | - |
-| bus_P | 0.0445 | 0.008 | - | - |
-| ped_P | 0.0231 | 0.021 | - | - |
-| bg_FA | **0.1645** | 0.173 | 0.237 | < 0.200 |
-| off_th | 0.3247 | 0.259 | - | - |
+| Iter | Loss | cls_loss | reg_loss | grad_norm |
+|------|------|----------|----------|-----------|
+| 10 | 6.28 | 3.85 | 2.43 | 37.9 |
+| 20 | 8.34 | 5.40 | 2.95 | 57.2 |
+| 30 | 5.55 | 2.74 | 2.81 | 65.9 |
 
-**按 ORCH_022 标准: car_P=0.0035 << 0.073 → FAIL**
-
-**但 Admin 分析认为这是超参数问题, 不是架构问题:**
-1. lr_mult=1.0 (P6 用 2.0) — 随机初始化的 2048 proj 以一半 lr 训练, 500 iter 内严重不足
-2. warmup=100 太短 — GELU + 随机权重 + 短 warmup = 早期训练不稳定
-3. Plan L (同为 2048+GELU) @500=0.054 (15x better), @1000 飙升到 0.140
-4. truck/bus/bg_FA 指标反而好于 P6@500 — 不是完全不工作, 是类别权重极端偏移
-
-**建议 Conductor**: Plan P 需要延长训练或用 P6 的 lr_mult=2.0 重跑. 不应据此否决 2048+GELU.
-
----
-
-## 5. P6 vs P5b — P6@3500 首次超越!
-
-| 指标 | P5b@3000 | P6@3000 | P6@3500 | **P6@4000** | P6@4000 vs P5b |
-|------|----------|---------|---------|------------|----------------|
-| car_P | 0.116 | 0.106 | 0.121 | **0.1263** | **+8.9%** |
-| bg_FA | **0.189** | 0.297 | 0.287 | **0.2741** | +45% ⚠️ |
-| off_th | **0.195** | 0.196 | 0.196 | **0.1907** | -2.2% ✅ |
-| truck_P | 0.043 | 0.054 | 0.069 | **0.0749** | **+74%** |
-| bus_P | 0.032 | 0.027 | 0.029 | **0.0351** | +10% |
-| car_R | 0.675 | 0.617 | 0.577 | **0.5459** | -19% (P/R) |
-
-**P6@4000 单 GPU re-eval 已完成** (ORCH_023 Task 1)。全面改善持续中。
+**监控节点:**
+- @500 val: ETA ~17:22 (确认方向正确)
+- @1000 val: ETA ~18:15 (car_P > 0.02 判定)
+- @2000 val: ETA ~20:00 (完整指标报告)
 
 ---
 
-## 6. P6 单 GPU Re-eval 完整轨迹
+## 4. Mini 阶段关键基线
 
-| Ckpt | car_R | car_P | truck_P | bus_P | bg_FA | off_th |
-|------|-------|-------|---------|-------|-------|--------|
-| @500 | 0.231 | 0.073 | 0.019 | 0.008 | 0.173 | 0.259 |
-| @1000 | 0.252 | 0.058 | 0.027 | 0.010 | 0.352 | 0.220 |
-| @1500 | 0.499 | 0.106 | 0.000 | 0.017 | 0.250 | 0.246 |
-| @2000 | 0.376 | 0.110 | 0.032 | 0.018 | 0.300 | 0.234 |
-| @2500 | 0.516 | 0.111 | 0.047 | 0.022 | 0.336 | 0.201 |
-| @3000 | 0.617 | 0.106 | 0.054 | 0.027 | 0.297 | 0.196 |
-| @3500 | 0.577 | 0.121 | 0.069 | 0.029 | 0.287 | 0.196 |
-| @4000 | 0.5459 | 0.1263 | 0.0749 | 0.0351 | 0.2741 | 0.1907 |
-| **@6000** | **0.4669** | **0.1425** | **0.0746** | **0.0347** | **0.2653** | **0.1903** |
+**P5b (1024+GELU, baseline):**
+| Ckpt | car_P | bg_FA | off_th |
+|------|-------|-------|--------|
+| @3000 | 0.116 | 0.189 | 0.195 |
+
+**P6 (2048, no GELU, 新纪录):**
+| Ckpt | car_P | bg_FA | off_th | truck_P |
+|------|-------|-------|--------|---------|
+| @6000 | **0.143** | 0.265 | 0.190 | 0.075 |
 
 ---
 
-## 7. Plan O @500 结果 (ORCH_021) — **无效 (BUG-40)**
-
-| 指标 | Plan O @500 | P6 @500 | 备注 |
-|------|------------|---------|------|
-| car_P | **0.0000** | 0.073 | 完全未检测 |
-| truck_P | 0.0000 | 0.019 | 完全未检测 |
-| bg_FA | **0.0645** | 0.173 | 模型几乎全输出 bg |
-
-**BUG-40: scheduler warmup=500 = max_iters=500, lr 在最后一个 iter 才达到目标值。全程都在热身。结果不能作为在线路径判定依据。**
-
----
-
-## 8. Plan P2 完整轨迹 (2048+GELU, ORCH_023)
-
-| Ckpt | car_R | car_P | truck_P | bus_P | bg_FA | off_th |
-|------|-------|-------|---------|-------|-------|--------|
-| @500 | 0.202 | 0.069 | 0.004 | 0.021 | 0.256 | 0.252 |
-| @1000 | 0.299 | **0.100** | 0.031 | 0.030 | 0.328 | 0.227 |
-| @1500 | 0.513 | **0.112** | 0.017 | **0.073** | 0.279 | 0.251 |
-| @2000 | **0.801** | 0.096 | 0.027 | 0.035 | 0.295 | 0.208 |
-
-**GELU 效果**: 避免了 P6@1000 的类振荡低谷 (P6: 0.058, P2: 0.100). 但 @2000 出现 car_P 回调 (P/R tradeoff, car_R 飙升到 0.80).
-
-## 9. P6 DDP 完整轨迹 (供参考, 未 re-eval)
-
-| Ckpt | car_P (DDP) | truck_P | bus_P | bg_FA | off_th |
-|------|-------------|---------|-------|-------|--------|
-| @3500 (DDP) | 0.115 | 0.075 | 0.036 | 0.278 | 0.198 |
-| @4000 (DDP) | 0.123 | 0.077 | 0.052 | 0.285 | 0.202 |
-| @4500 (DDP) | 0.126 | 0.073 | 0.044 | 0.277 | 0.194 |
-| @5000 (DDP) | 0.128 | 0.078 | 0.045 | 0.275 | 0.197 |
-| @5500 (DDP) | 0.128 | 0.075 | 0.047 | 0.273 | 0.199 |
-| @6000 (DDP) | 0.129 | 0.076 | 0.048 | 0.274 | 0.200 |
-
-P6 在 @4000+ 进入 plateau. 需要单 GPU re-eval @6000 获得真实值.
-
-## 10. P6@6000 单 GPU 真实值 (新纪录!)
-
-**P6@6000 car_P=0.1425 — 大幅超越 P5b baseline 0.116 (+22.8%)!**
-- car_R=0.467 (P/R tradeoff 更偏 precision)
-- bg_FA=0.2653 (持续下降, 但仍高于 P5b 0.189)
-- off_th=0.1903 (优于 P5b 0.195)
-- truck_P=0.0746 (稳定在 P5b 0.043 的 +73%)
-
-## 11. Next Actions
-
-1. **Full nuScenes config 决策**: 等 Conductor — 2048+GELU vs 2048 无 GELU?
-   - P6 (无 GELU) @6000: car_P=0.143, bg_FA=0.265
-   - P2 (有 GELU) @2000: car_P=0.096 (但仅训练 2000 iter, 如扩展到 6000 可能追上/超过)
-   - GELU 的优势: 更稳定的早期训练 (避免 @1000 低谷)
-2. **所有 GPU 空闲**: 等待下一步指令
-
----
-
-## 8. Known Issues / Bugs
+## 5. Known Issues / Bugs
 
 | Bug | Status | Description |
 |-----|--------|-------------|
-| BUG-33 | FIXED + ALL RE-EVAL | DDP Precision偏差最高±10%, 所有关键ckpt已单GPU re-eval |
-| BUG-37 | CONFIRMED | P5b DDP underestimate car_P, P6 DDP偏差不一致 |
-| BUG-39 | TESTING | P6 无 GELU = 退化为单层 Linear, Plan P 修复但 @500 未收敛 |
-| **BUG-40** | **CONFIRMED** | Plan O scheduler warmup=500 = max_iters, 全程在 warmup 中, car_P=0.000 |
-| BUG-16 | NOT BLOCKING | Preextracted features vs augmentation |
+| BUG-33 | FIXED | DDP val sampler — Full config 已加 explicit sampler |
+| BUG-39 | RESOLVED | Plan P2 验证 GELU 有效, Full config 已用 GELU |
+| BUG-40 | CONFIRMED | Plan O warmup 问题, Full config warmup=2000 (远小于 40000) |
+
+---
+
+## 6. Next Actions
+
+1. **监控 Full nuScenes @500 val** — ETA ~17:22
+2. **@2000 后做单 GPU re-eval** — BUG-33 DDP 偏差教训
+3. **定期报告** — 每 2000 iter 一次

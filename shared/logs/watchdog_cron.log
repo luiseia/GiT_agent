@@ -398,3 +398,93 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-08 13:20:01] watchdog: === 用量检查开始 ===
 [2026-03-08 13:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-08 13:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 13:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 13:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 13:30:02] watchdog: ⚠️ agent-admin context 剩余 0%
+[2026-03-08 13:30:02] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 13:30:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 13:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 13:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 13:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 13:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 13:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 13:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 14:00:01] watchdog: ⚠️ agent-conductor context 剩余 7%
+[2026-03-08 14:00:01] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-08 14:01:01] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-08 14:01:31] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-08 14:01:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:10:07] watchdog: 用量: 3%  |  Resets 7pm (America/Chicago)
+[2026-03-08 14:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:20:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 14:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:30:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 14:30:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 14:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 14:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 14:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 14:50:01] watchdog: ⚠️ agent-supervisor context 剩余 7%
+[2026-03-08 14:50:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 14:51:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 14:51:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 14:51:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 15:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:00:01] watchdog: ⚠️ agent-supervisor context 剩余 0%
+[2026-03-08 15:00:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 15:01:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 15:01:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 15:01:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 15:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:20:01] watchdog: === 用量检查开始 ===
+[2026-03-08 15:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:30:02] watchdog: === 用量检查开始 ===
+[2026-03-08 15:30:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:30:02] watchdog: ⚠️ agent-admin context 剩余 11%
+[2026-03-08 15:30:02] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 15:30:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 15:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:40:01] watchdog: ⚠️ agent-admin context 剩余 10%
+[2026-03-08 15:40:01] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 15:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 15:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 15:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 15:50:01] watchdog: ⚠️ agent-admin context 剩余 9%
+[2026-03-08 15:50:01] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 15:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 16:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 16:00:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 16:00:02] watchdog: ⚠️ agent-admin context 剩余 7%
+[2026-03-08 16:00:02] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 16:00:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 16:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 16:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 16:10:01] watchdog: ⚠️ agent-admin context 剩余 1%
+[2026-03-08 16:10:01] watchdog: → agent-admin: 已发送保存指令，等待 60 秒
+[2026-03-08 16:11:01] watchdog: → agent-admin: 已发送 /compact，等待 30 秒
+[2026-03-08 16:11:31] watchdog: → agent-admin: 已发送恢复指令
+[2026-03-08 16:11:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 16:20:01] watchdog: === 用量检查开始 ===
+[2026-03-08 16:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 16:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 16:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 16:30:07] watchdog: 用量: 12%  |  Resets 7pm (America/Chicago)
+[2026-03-08 16:30:07] watchdog: ⚠️ agent-conductor context 剩余 4%
+[2026-03-08 16:30:07] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-08 16:31:07] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-08 16:31:37] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-08 16:31:37] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 16:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 16:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 16:40:01] watchdog: ✅ 用量正常，无需休眠
