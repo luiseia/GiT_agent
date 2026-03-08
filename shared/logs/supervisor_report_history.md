@@ -3539,3 +3539,14 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - GPU: 4卡 36.4-37.0 GB, 100% util
 - 无新 ORCH 指令
 - 首次 val @2000 ETA ~20:10
+
+---
+
+## Cycle #172 | 2026-03-08 18:40
+- **Full nuScenes**: iter 1160/40000 (2.9%), 训练正常
+- Speed: ~6.27-6.54 s/iter, Mem: 28849 MB/GPU, LR: 1.45e-06 (warmup 5.8%)
+- Loss @1160: 5.54 (cls=3.43, reg=2.10), loss 趋势略降 (2.3-6.3)
+- 已过 iter 1000 里程碑
+- GPU: 4卡 36.4-37.0 GB, 100% util
+- 无新 ORCH 指令
+- 首次 val @2000 ETA ~20:10
