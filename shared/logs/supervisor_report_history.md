@@ -3390,3 +3390,25 @@ iter 500/500 完成, val 在 GPU 3 运行中 (在线 DINOv3 eval 慢)
 ### P6 训练: iter 4450/6000, LR decay @4500 即将
 
 ### GPU: 0+2 P6, 1 空闲, 3 Plan O val
+
+---
+## Cycle #162 | 2026-03-08 14:19
+
+### P6@4000 单GPU真实 (ORCH_023)
+car_P=**0.126** (+8.9% vs P5b), truck_P=0.075, bg_FA=0.274, off_th=**0.191** (优于P5b!)
+
+### P6@4500 DDP Val (13:55:54)
+car_P=0.126, bg_FA=0.277, off_th=**0.194** (首次<0.20!)
+**LR decay @4500 已生效**: 2.5e-07→2.5e-08
+
+### Plan O @500 — 无效 (BUG-40)
+car_P=0.000, car_R=0.000 — warmup=500=max_iters, LR从未达标
+ORCH_021 COMPLETED (结果不可用)
+
+### ORCH_023 Plan P2 运行中
+iter 350/2000, GPU 1, 唯一改动=加GELU
+@500 ~14:32, 完成 ~15:40
+
+### P6 训练: iter 4950/6000, LR=2.5e-08, @6000 ~15:12
+
+### GPU: 0+2 P6, 1 Plan P2, 3 空闲
