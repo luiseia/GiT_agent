@@ -3191,3 +3191,20 @@ Plan N @500 (NEW): car_R=0.618, car_P=0.050, bg_FA=0.219, off_cx=0.088, off_cy=0
 
 ORCH_015: IN_PROGRESS → **COMPLETED** | GPU 0+2 空闲
 Plan M: 770/2000, Plan N: 760/2000, @1000 val ~09:22
+
+---
+## Cycle #152 | 2026-03-08 09:28
+**ORCH_017 P6 启动! | Plan M/N @1000 val 中 | GPU 全满**
+
+🆕 ORCH_017: P6 宽投影 mini 验证 (DELIVERED → 执行中)
+- Config: Linear(4096,2048)→Linear(2048,768), 无 GELU, LR mult 2.0
+- load_from P5b@3000, proj 层 shape mismatch → 随机初始化 ✅
+- GPU 0+2 DDP, ~3.1 s/iter, 内存 16 GB/GPU
+- iter 90/6000, loss 11.4→3.8 快速下降, warmup 中
+- @500 ~09:48, @1000 ~10:14 (car_P≥0.10 且 bg_FA≤0.30 → PASS)
+
+Plan M: @1000 val 60/162 (~09:34 完成)
+Plan N: @1000 val 50/162 (~09:37 完成)
+→ @1000 是 unfreeze vs frozen 关键分化点
+
+GPU: 全满 (0+2: P6, 1: Plan M, 3: Plan N)
