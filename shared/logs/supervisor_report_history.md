@@ -3342,3 +3342,31 @@ GPU: 0+2 P6, 1+3 空闲. P6 @3000 ~12:24 (ORCH_017 full nuScenes 决策点)
 **P6 训练**: iter 3460/6000, 3.0 s/iter, LR=2.5e-07
 
 **GPU**: 0+2 P6, 1 ORCH_020, 3 空闲→待 Plan O
+
+---
+## Cycle #160 | 2026-03-08 13:21
+
+### P6 @3500 Val (单GPU真实)
+
+car_P=**0.121** (首次超越P5b 0.116! +4.5%), truck_P=0.069 (+60% vs P5b), bg_FA=0.287 (>>P5b 0.189), off_th=0.196 (≈P5b 0.195)
+
+P6 DDP @3500: car_P=0.116(DDP低估), bg_FA=0.304, off_th=0.205
+
+### ORCH_020 COMPLETED — P5b 真实基线
+
+P5b@3000 true: car_P=**0.116**, bg_FA=0.189, off_th=0.195
+P5b@6000 true: car_P=0.115, bg_FA=0.188, off_th=0.194
+DDP car_P=0.107 低估8%!
+
+### BUG-39 CRITICAL
+
+P6 无GELU: Linear(4096,2048)→Linear(2048,768) 数学等价于 Linear(4096,768), 2048维度无额外表达力。
+
+### 新ORCH
+
+**ORCH_022** (IN PROGRESS): Plan P — 2048+GELU 验证, GPU 1, ~13:39
+**ORCH_021** (IN PROGRESS): Plan O — 在线+2048+noGELU, GPU 3, iter 220/500, ~13:45
+
+### P6 训练: iter 3960/6000, LR=2.5e-07, @4000 val 即将
+
+### GPU: 4卡满载 — P6(0+2), Plan P(1), Plan O(3)
