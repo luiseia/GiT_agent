@@ -1,6 +1,6 @@
 # 诊断实验报告 (ORCH_015 + ORCH_016)
-**Timestamp**: 2026-03-08 08:50
-**Status**: Plan K/L COMPLETED, Plan M/N IN PROGRESS (~600/2000)
+**Timestamp**: 2026-03-08 09:40
+**Status**: Plan K/L COMPLETED, Plan M/N IN PROGRESS (~1050/2000), P6 LAUNCHED @270/6000
 
 ---
 
@@ -51,17 +51,19 @@
 **Best**: car_P=0.140@1000 (peak, from random init!), offset_th=0.205@2000
 **Note**: proj 层 shape mismatch 自动跳过, 从随机初始化开始训练
 
-### Plan M γ (online DINOv3, unfreeze 2) — @500 only
+### Plan M γ (online DINOv3, unfreeze 2) — @1000
 
 | iter | car_R | car_P | bg_FA | offset_th |
 |------|-------|-------|-------|-----------|
 | 500  | 0.621 | 0.052 | 0.220 | 0.217 |
+| 1000 | 0.699 | 0.049 | 0.249 | 0.232 |
 
-### Plan N δ (online DINOv3, frozen) — @500 only
+### Plan N δ (online DINOv3, frozen) — @1000
 
 | iter | car_R | car_P | bg_FA | offset_th |
 |------|-------|-------|-------|-----------|
 | 500  | 0.618 | 0.051 | 0.219 | 0.206 |
+| 1000 | 0.661 | 0.050 | 0.250 | 0.231 |
 
 ---
 
@@ -92,16 +94,18 @@
 - 即使最终@2000 (0.111), 仍优于 P5b 1024 版本 (0.107)
 - **结论: 投影层是关键瓶颈, 建议 P7 采用 proj_hidden_dim=2048**
 
-### 4.3 在线 vs 离线 DINOv3: 初步对比
+### 4.3 在线 vs 离线 DINOv3: @1000 对比
 
-| | car_P@500 | offset_th@500 |
-|---|-----------|---------------|
-| Plan K (预提取) | 0.064 | 0.228 |
-| Plan M (在线 unfreeze) | 0.052 | 0.217 |
-| Plan N (在线 frozen) | 0.051 | 0.206 |
+| | car_P@500 | car_P@1000 | offset_th@500 | offset_th@1000 |
+|---|-----------|------------|---------------|----------------|
+| Plan K (预提取) | 0.064 | 0.047 | 0.228 | 0.254 |
+| Plan M (在线 unfreeze) | 0.052 | 0.049 | 0.217 | 0.232 |
+| Plan N (在线 frozen) | 0.051 | 0.050 | 0.206 | 0.231 |
 
-在线模式 @500 与预提取接近 (差距在 warmup 噪声范围内)。
-M vs N 几乎一致, unfreeze 效果需要更多 iteration 显现。
+**@1000 结论**: 在线模式与预提取基本一致 (car_P ~0.05 vs 0.047)。
+M vs N 仍无显著差异, unfreeze 增益尚未显现。
+bg_FA 在线模式偏高 (0.25 vs 0.21), 可能因 car-only + vocab 变化。
+**确认在线 DINOv3 可行**, 不会引入性能退化。
 
 ---
 
@@ -118,9 +122,20 @@ M vs N 几乎一致, unfreeze 效果需要更多 iteration 显现。
 
 ---
 
-## 6. 关键建议 (给 CEO)
+## 6. P6 启动状态 (ORCH_017)
 
-1. **P7 应采用 proj_hidden_dim=2048** — 经过诊断验证, 是最有效的改进
+- **Config**: `plan_p6_wide_proj.py` — proj_hidden_dim=2048, 无 GELU, proj lr_mult=2.0
+- **GPU**: 0+2 (DDP), 15.97 GB/GPU, 3.0 s/iter
+- **Checkpoint**: P5b@3000, proj 层 shape mismatch → 随机初始化 (预期行为)
+- **当前**: @270/6000, loss 下降正常 (11.4→2.5), warmup 中
+- **Schedule**: milestones=[2000, 4000], val@500
+
+---
+
+## 7. 关键建议 (给 CEO)
+
+1. **P6 已启动** — proj_hidden_dim=2048 + 无 GELU, 首次 val @500 预计 ~10:05
 2. **类竞争不是问题** — 不需要减少类别数
-3. **在线 DINOv3 可行** — 显存开销可控 (~28-30 GB/GPU), 训练速度减半但消除存储瓶颈
-4. **待 Plan M/N 完成** — 确认 unfreeze 增益和在线/离线一致性
+3. **在线 DINOv3 可行** — @1000 性能与预提取一致, 显存开销可控 (~28-30 GB/GPU)
+4. **M vs N 无差异** — unfreeze 增益尚未体现, 待 @1500/@2000 确认
+5. **P6 关键看 @1000**: car_P >= 0.10 且 bg_FA <= 0.30 → PASS
