@@ -3208,3 +3208,21 @@ Plan N: @1000 val 50/162 (~09:37 完成)
 → @1000 是 unfreeze vs frozen 关键分化点
 
 GPU: 全满 (0+2: P6, 1: Plan M, 3: Plan N)
+
+---
+## Cycle #153 | 2026-03-08 09:57
+**Plan M/N @1000 + P6 @500 | Unfreeze≈Frozen, P6 bg_FA=0.163 亮眼**
+
+Plan M @1000 (unfreeze): car_R=**0.699**, car_P=0.049, bg_FA=0.249, off_cy=0.090, off_th=0.232
+Plan N @1000 (frozen): car_R=0.661, car_P=0.050, bg_FA=0.250, off_cy=**0.078**, off_th=0.231
+→ Unfreeze vs Frozen 差异极小, 不建议 DINOv3 微调
+→ M_car_P=0.049 < 0.077 判定阈值, 在线路径精度未达标
+→ 在线 car_R (0.66-0.70) >> 预提取 K (0.507), 但 car_P/bg_FA 均劣于预提取
+
+P6 @500 (宽投影 2048, 无 GELU, 10 类):
+- car_R=0.252, car_P=**0.073**, bg_FA=**0.163**, off_cy=**0.077**, off_th=0.236
+- bg_FA=0.163 全实验最低! car_P=0.073 同期最优
+- ⚠️ gt_cnt 与其他实验不同 (car=7232 vs 6720), 需确认 val set 配置
+
+进度: P6 iter 550/6000, Plan M 1200/2000, Plan N 1180/2000
+Next: P6 @1000 ~10:18, Plan M/N @1500 ~10:28
