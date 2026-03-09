@@ -1,11 +1,11 @@
-# Critic 上下文压缩 — 2026-03-08
+# Critic 上下文压缩 — 2026-03-09
 
-## 当前状态: 休眠中，等待 ORCH_024 @2000 eval 或新审计请求
+## 当前状态: 休眠中，等待 ORCH_024 @6000/@8000 eval 或新审计请求
 
 ## 正在进行
 - ORCH_024: Full nuScenes 2048+GELU+在线DINOv3 frozen, 4GPU DDP, 40000 iter, ETA 3/11
-- @2000 eval ETA ~20:00 今天 — 第一个有意义的 Full nuScenes 评估点
-- Mini 验证阶段已完成，所有 mini 实验结束
+- @4000 eval 已完成, 下一个 eval @6000
+- accumulative_counts=4, 实际优化步数 = iter/4
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit |
@@ -17,6 +17,7 @@
 | VERDICT_CEO_STRATEGY_NEXT | CONDITIONAL | 83bc425 |
 | VERDICT_CEO_ARCH_QUESTIONS | CONDITIONAL | dd215af |
 | VERDICT_AR_SEQ_REEXAMINE | CONDITIONAL | 5b2c714 |
+| VERDICT_FULL_4000 | CONDITIONAL | 887508d |
 
 ## 历史判决 (前几次会话)
 P2_FINAL, ARCH_REVIEW, P3_FINAL, P4_FINAL, 3D_ANCHOR, P5_MID,
@@ -45,8 +46,14 @@ DIAG_FINAL, P6_1000, P6_1500 — 全部 CONDITIONAL 或 PROCEED
 | BUG-43 | MEDIUM | 确认 | Conductor 未查代码即估算 deep supervision 实现难度 |
 | BUG-44 | LOW | 理论层 | Deep supervision 各层共享 vocab embedding |
 | BUG-45 | MEDIUM | OPEN | OCC head 推理 attn_mask=None, 训练/推理不一致 |
+| BUG-46 | LOW | 信息 | accumulative_counts=4, 实际优化步数=iter/4 |
 
-## 下一个 BUG 编号: BUG-46
+## 下一个 BUG 编号: BUG-47
+
+## BUG-17 状态升级: CRITICAL (Full nuScenes 实证确认)
+- bicycle: 154K FP (P=0.001, R=0.191, GT=812)
+- sqrt balance 给 bicycle ~11x car 的 loss 权重
+- 可能间接拖累 car_P
 
 ## CEO 架构问题审计结论 (VERDICT_CEO_ARCH_QUESTIONS)
 - **Q1 (30 Token AR)**: 非主要瓶颈, 低优先级. 但 Conductor 误称"原始 GiT 序列更长"
@@ -56,13 +63,24 @@ DIAG_FINAL, P6_1000, P6_1500 — 全部 CONDITIONAL 或 PROCEED
 - **优先级修正**: Deep Supervision(零成本) >> 评判标准 >> 方案D >> Attention Mask >> LoRA >> 解码长度
 - **AR 序列复核**: 维持"非主要瓶颈"但上调为 contributing factor. 关键新发现: finished_mask 缩短实际序列, exposure bias 是合法担忧但非首要. 零成本验证: per-slot 指标分析
 
-## ORCH_024 @2000 决策矩阵
+## Full nuScenes 训练数据
+| 指标 | @2000 | @4000 | 趋势 |
+|------|-------|-------|------|
+| car_P | 0.079 | 0.078 | → 持平 |
+| car_R | 0.627 | 0.419 | ↓ 再平衡 |
+| truck_P | 0 | 0.057 | ↑ 新类 |
+| bg_FA | 0.222 | 0.199 | ↓ ✅ |
+| off_cx | 0.056 | 0.039 | ↓ ✅ |
+| off_cy | 0.069 | 0.097 | ↑ ❌ 需监控 |
+| off_th | 0.174 | 0.150 | ↓ ✅ |
+
+## ORCH_024 @8000 决策矩阵
 | 结果 | 行动 |
 |------|------|
-| car_P > 0.15 | 架构正确, 继续训练, 排队方案D |
-| car_P 0.08-0.15 | 方向正确, 继续 |
-| car_P 0.03-0.08 | 需调参, 不中断 |
-| car_P < 0.03 | 在线DINOv3可能有根本问题, 切预提取175GB |
+| car_P > 0.12 | 架构验证, 继续到 @17000 看 LR decay |
+| car_P 0.08-0.12 | 方向正确, 继续 |
+| car_P 0.05-0.08 | 调参: 考虑关闭 per_class_balance 或调低 bg_balance_weight |
+| car_P < 0.05 | 严重问题, 需架构级修改 |
 
 ## 训练代际谱系 (精简)
 ```
