@@ -98,3 +98,8 @@ CEO 指出: Conductor 说"错误不跨 cell 传播"是对的, 但同一 cell 内
 ## [2026-03-09 ~04:50] CEO 指令 (Val 数据集调查)
 问题: 训练 val 用的是跟 train 一样的数据集吗?
 **执行结果**: 不同。Train 28,130 samples (700 scenes) vs Val 6,019 samples (150 scenes), 零重叠, 标准 nuScenes 官方分割. 报告写入 shared/logs/val_dataset.md. (Cycle #111)
+
+---
+## [2026-03-09 ~07:45] CEO 指令 (选项 A + OOM 风险)
+CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
+**执行结果**: OOM 报告写入 shared/logs/oom.log. GPU 1 实际未 OOM, Plan Q ~5h 后正常完成退出. (Cycle #117)
