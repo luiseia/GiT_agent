@@ -155,15 +155,15 @@ Data: train 28130, val 6019
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 2000/40000, @2000 val 进行中** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 2000/40000, @2000 val 完成, 等 @4000** |
 | ORCH_001-023 | Mini 阶段全部 | COMPLETED |
 
 ---
 
 ## 待办 (按优先级)
-1. **捕获 @2000 val 结果** (~21:07): 按决策矩阵行动
-2. **Per-slot 指标提取**: 从 @2000 eval 验证 AR 长度是否影响 slot 3 (方案 A, 零成本)
-3. **监控 @4000 val** (3/9 ~01:30): 第一个可信评估点
+1. ~~**捕获 @2000 val 结果**~~ ✅ 完成: car_P=0.0789, 继续训练
+2. **监控 @4000 val** (3/9 ~01:30): **第一个可信评估点** — 关键里程碑
+3. **Per-slot 指标提取**: 需要修改 eval 代码提取 per-slot 数据 (方案 A, 零成本)
 4. **ORCH_024 后实验准备**: Deep supervision 配置 (一行改动)
 5. **方案 D 代码规划**: 修改 `LoadAnnotations3D_E2E` 和 `GenerateOccFlowLabels` 加载历史 2 帧
 
