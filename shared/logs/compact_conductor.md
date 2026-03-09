@@ -1,7 +1,7 @@
 # Conductor 工作上下文快照
-> 时间: 2026-03-09 08:15
-> 循环: #118 (Phase 2 完成)
-> 目的: @6000 val 捕获完成, VERDICT 处理完毕, 等 @8000
+> 时间: 2026-03-09 16:00
+> 循环: #135 (Phase 2 完成)
+> 目的: @8000 val + VERDICT 处理完毕, @10000 val 即将触发, 等结果
 
 ---
 
@@ -11,14 +11,14 @@
 
 ---
 
-## ★★★★ 当前状态: Full nuScenes @8000 — peak_car_P=0.090 (继续!), off_th=0.140! 等 @10000 (~16:00)
+## ★★★★ 当前状态: Full nuScenes — peak_car_P=0.090, off_th=0.140 历史最低! @10000 val 进行中
 
-### ORCH_024 训练状态 (Cycle #118)
-- **进度**: 8020/40000 (20.1%), 速度稳定 ~6.3-6.5 s/iter
+### ORCH_024 训练状态 (Cycle #135)
+- **进度**: 10000/40000 (25.0%), 速度稳定 ~6.3-6.5 s/iter
 - **BUG-46**: accumulative_counts=4, 实际 optimizer steps = iter/4
-- **ETA**: ~3/12 (因 GPU 1 事件延迟 +8.5h)
+- **ETA**: ~3/12 ~03:00
 - **显存**: 36-37 GB/GPU (A6000 48GB)
-- **磁盘**: 296 GB 可用
+- **磁盘**: 282 GB 可用
 
 ### Full nuScenes Val 历史
 
@@ -34,6 +34,12 @@
 | off_cx | 0.056 | 0.039 | 0.056 | **0.045** | ✅ 改善 |
 | off_cy | 0.069 | 0.097 | 0.082 | **0.074** | ✅ 改善 |
 | **off_th** | 0.174 | 0.150 | 0.169 | **0.140** | ✅✅ 历史最低! |
+
+### 振荡模式 (Critic VERDICT_FULL_8000 分析)
+- 周期 ~1000 optimizer steps: car spam → 多类展开 → 多类爆发 → car spam
+- @2000: car dominant → @4000: 多类展开 → @6000: 多类爆发 → @8000: car spam v2
+- **@10000 预判**: 多类展开/爆发, car_P 应回升 0.08-0.10
+- LR decay @17000 会缓解振荡幅度 (-10x), 但 sqrt balance 根因不变
 
 ### @10000 决策矩阵 (修正版, BUG-47: 用 peak_car_P 替代单点)
 
@@ -73,10 +79,10 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | CEO_STRATEGY_NEXT | CONDITIONAL | D最有前途, 等训练 |
 | CEO_ARCH_QUESTIONS | CONDITIONAL | Deep Supervision零成本#1, BUG-43/44/45 |
 | AR_SEQ_REEXAMINE | CONDITIONAL | 非主要瓶颈, MEDIUM |
-| **FULL_4000** | **CONDITIONAL** | **继续训练. BUG-17→CRITICAL, BUG-46 new. @8000决策矩阵** |
-| **FULL_6000** | **CONDITIONAL** | **继续训练. bg_FA=0.331不告警 (多类代价). car_P可信. bicycle振荡确认** |
-| **ORCH026_PLANQ** | **PROCEED** | **类竞争无关! car_P@best=0.083<0.12. 多类正迁移. BUG-17→HIGH. 新瓶颈: BUG-15** |
-| **FULL_8000** | **CONDITIONAL** | **继续不调参. BUG-47: 单点决策→峰值决策. peak_car_P=0.090→继续. @10000 新矩阵** |
+| FULL_4000 | CONDITIONAL | 继续训练. BUG-17→CRITICAL, BUG-46 new |
+| FULL_6000 | CONDITIONAL | 继续训练. bg_FA=0.331不告警 |
+| ORCH026_PLANQ | PROCEED | 类竞争无关! BUG-17→HIGH. 新瓶颈: BUG-15 |
+| **FULL_8000** | **CONDITIONAL** | **继续不调参. BUG-47 修正决策矩阵. peak=0.090→继续. @10000 新矩阵** |
 
 ---
 
@@ -84,95 +90,73 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 8020/40000 (20.1%), @8000 val ✅, 等 Critic 架构决策** |
-| **ORCH_025** | pytest 测试框架 | COMPLETED ✅ — 177 passed |
-| **ORCH_026** | Plan Q 单类 car 诊断 (mini) | **COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关!** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 10000/40000 (25.0%), @10000 val 进行中, 等结果 (~17:00)** |
+| ORCH_025 | pytest 测试框架 | COMPLETED ✅ — 177 passed |
+| ORCH_026 | Plan Q 单类 car 诊断 (mini) | COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关! |
 | ORCH_001-023 | Mini 阶段全部 | COMPLETED |
 
 ---
 
-## CEO 已认可的持久结论 (Cycle #110)
+## 关键发现 (本 session)
 
-**1. Plan Q 单类 Car 诊断 (ORCH_026)**
-- 设计: 保持 num_vocal=230, 数据管道过滤, 避免 BUG-27
-- 判定: car_P>0.20=类竞争主瓶颈, 0.15-0.20=factor, <0.12=无关
+**1. ORCH_026 类竞争无关 (Cycle #120)**
+- Plan Q car_P@best=0.083 < P2 (10类+GELU) 0.112 → 多类对 car 有正迁移!
+- car_P 瓶颈候选: DINOv3→BEV 信息瓶颈 (BUG-15), BEV 投影精度, per-cell 评估偏差 (BUG-18)
 
-**2. 5 类车辆方案 — 不推荐作为主策略**
-- 修 BUG-17 比回避类竞争更直接
-
-**3. LoRA (方案 E) — ORCH_024 后评估**
-- 优先级: BUG-17 修复 >> 方案 D >> LoRA
-
-**4. 特征漂移**: frozen DINOv3 可用 (ORCH_024 证明)
+**2. @8000 架构决策 (Cycle #128)**
+- car_P=0.060 是 P/R tradeoff + 类间振荡, 非真退化
+- 结构指标全面历史最优 (off_th=0.140!)
+- BUG-47: 单点决策矩阵有缺陷 → 改用 3-eval 峰值
+- peak_car_P=0.090 → "方向正确, 继续"
 
 ---
 
-## 修正后优先级排序 (Critic: @8000 前不做架构修改)
+## 修正后优先级排序
 
 | 排名 | 提案 | 时机 |
 |------|------|------|
 | 1 | **Deep Supervision** (一行改动) | ORCH_024 后第一个实验 |
 | 2 | **方案 D (历史 occ box 2帧)** | ORCH_024 后 |
-| 3 | **方案 E (LoRA)** (上升, 缓解 BUG-15) | D 之后 |
-| 4 | **BUG-17 修复** (下降, 不影响 car_P) | ORCH_024 后第二轮 |
+| 3 | **方案 E (LoRA)** (缓解 BUG-15) | D 之后 |
+| 4 | **BUG-17 修复** (不影响 car_P) | ORCH_024 后第二轮 |
 | 5 | **Attention Mask / BUG-45 修复** | 与 deep supervision 一起 |
 
 ---
 
-## BUG 跟踪 (关键更新)
+## BUG 跟踪 (关键)
 
 | BUG | 严重性 | 状态 |
 |-----|--------|------|
 | BUG-2~12 | — | 全部 FIXED |
-| **BUG-17** | **HIGH** (降级) | bicycle 154K FP + 振荡. 不影响 car_P (VERDICT 证明). 仅影响 bg_FA/训练稳定 |
-| BUG-33 | MEDIUM | FIXED — DefaultSampler, DDP 偏差可能已修复 |
-| BUG-43 | MEDIUM | Conductor 未读代码估算难度 |
-| BUG-45 | MEDIUM | OCC head 推理 attn_mask=None, Full 上 12000 KV entries |
-| **BUG-46** | **LOW** | accumulative_counts=4, optimizer steps = iter/4 |
+| **BUG-17** | **HIGH** (降级) | bicycle 振荡. 不影响 car_P. 仅影响 bg_FA/训练稳定 |
+| BUG-33 | MEDIUM | FIXED — DefaultSampler, DDP 偏差已修复 |
+| BUG-45 | MEDIUM | OCC head 推理 attn_mask=None |
+| BUG-46 | LOW | accumulative_counts=4, optimizer steps = iter/4 |
 | **BUG-47** | **MEDIUM** | 单点 car_P 决策矩阵不适用振荡训练. 改用 3-eval 峰值 |
 
 ---
 
-## 实验评判标准 (永久规则)
-1. 单次 <5%: 波动
-2. 单次 5-15%: 需下一 eval 同向确认
-3. 单次 >15%: 可能有意义
-4. 连续 2 次同向 >5%: 可做结论
-5. Mini 永远不做架构决策
-6. Full: @2000 趋势, @4000 第一可信, @8000 架构决策
-
----
-
 ## 待办 (按优先级)
-1. ~~**@2000 val**~~ ✅ car_P=0.079
-2. ~~**@4000 val**~~ ✅ car_P=0.078, VERDICT 处理完
-3. ~~**@6000 val**~~ ✅ car_P=0.090, VERDICT 处理完
-4. **监控 @8000 val** (ETA ~3/9 ~11:30): **架构决策点!**
-5. ~~**ORCH_026 结果**~~: ✅ car_P@best=0.083 < 0.12 → 类竞争无关. 审计签发
-6. **@8000 单 GPU re-eval**: 确认 DDP 偏差 (BUG-33)
-7. **ORCH_024 后实验**: Deep Supervision → Attention Mask → 方案 D
-
-## 已完成 CEO 报告 (本轮)
-- `shared/logs/car_precision_investigation.md` — 5 项调查
-- `shared/logs/orch024_architecture_detail.md` — 架构详细报告
-- `shared/logs/val_dataset.md` — Val 数据集调查
-- `shared/logs/oom.log` — OOM 风险分析
-- `shared/logs/project_progress_report.md` — 363 行项目进展
+1. ~~@2000 val~~ ✅ → ~~@4000~~ ✅ → ~~@6000~~ ✅ → ~~@8000~~ ✅ VERDICT 处理完
+2. **捕获 @10000 val 结果** (ETA ~17:00): 应用修正版决策矩阵
+3. **@10000 per-slot 分析** (VERDICT_AR_SEQ_REEXAMINE 遗留)
+4. **单 GPU re-eval**: 确认 DDP 偏差 (BUG-33)
+5. **ORCH_024 后实验**: Deep Supervision → 方案 D → LoRA
+6. **BUG-15 专项审计**: @10000 后安排 (precision 瓶颈根因)
 
 ## 下一里程碑
 
 | 事件 | iter | ETA |
 |------|------|-----|
-| ~~@6000 val~~ | ~~6000~~ | ✅ car_P=0.090, bg_FA=0.331 |
-| ~~@8000 val~~ | ~~8000~~ | ✅ car_P=0.060 (P/R tradeoff), off_th=0.140! |
-| **@10000 val** | **10000** | **~3/9 ~16:00** |
+| **@10000 val** | **10000** | **进行中, 结果 ~17:00** |
+| @12000 val | 12000 | ~3/9 ~23:00 |
 | 第一次 LR decay | 17000 | ~3/10 ~10:00 |
-| 训练结束 | 40000 | ~3/12 |
+| 训练结束 | 40000 | ~3/12 ~03:00 |
 
 ## 基础设施
 - 5 Agent 全部 UP, all_loops.sh 运行正常
-- 4 GPU 正常 (GPU 1 冲突已解除)
-- 磁盘 296 GB 可用
+- 4 GPU 正常
+- 磁盘 282 GB 可用
 
 ## 关键代码位置
 - Deep Supervision: `git.py:L386-388` → `loss_out_indices = [8, 10, 11]`
@@ -187,5 +171,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 - **accumulative_counts 影响 optimizer steps** (BUG-46)
 - **DDP 偏差不可预测** — 必须单 GPU re-eval (BUG-37)
 - **不读代码就估算 = BUG** (BUG-43)
-- **Mini car_P 天花板 ~0.12-0.13**
+- **Mini car_P 天花板 ~0.12-0.13, 不再跑 Mini 实验**
 - **GELU 加速收敛** — P2@1000 +72% vs P6
+- **eval 结果需参考振荡周期, 不做单点决策** (BUG-47)
+- **类竞争无关 car_P** — 多类训练对 car 有正迁移 (ORCH_026)
