@@ -2387,3 +2387,17 @@ baseline comparison" completed (exit code 0)
 [2026-03-08 20:40:01] watchdog: === 用量检查开始 ===
 [2026-03-08 20:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-08 20:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 20:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 20:50:08] watchdog: 用量: 9%  |  Resets 12am (America/Chicago)
+[2026-03-08 20:50:08] watchdog: ⚠️ agent-conductor context 剩余 12%
+[2026-03-08 20:50:08] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-08 20:51:08] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-08 20:51:38] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-08 20:51:38] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 21:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 21:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 21:00:01] watchdog: ⚠️ agent-conductor context 剩余 6%
+[2026-03-08 21:00:01] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-08 21:01:01] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-08 21:01:31] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-08 21:01:31] watchdog: ✅ 用量正常，无需休眠
