@@ -19,6 +19,7 @@
 | VERDICT_AR_SEQ_REEXAMINE | CONDITIONAL | 5b2c714 |
 | VERDICT_FULL_4000 | CONDITIONAL | 887508d |
 | VERDICT_FULL_6000 | CONDITIONAL | 32fa6ef |
+| VERDICT_ORCH026_PLANQ | **PROCEED** | e086e84 |
 
 ## BUG 状态总表
 | BUG | 严重性 | 状态 | 描述 |
@@ -27,7 +28,7 @@
 | BUG-13 | LOW | 暂不修 | slot_class bg clamp |
 | BUG-14 | MEDIUM | 架构层 | grid token 与 image patch 冗余 |
 | BUG-15 | HIGH | OPEN | Precision 瓶颈 |
-| BUG-17 | **CRITICAL** | **Full确认** | per_class_balance sqrt 振荡, bicycle 0→0.191→0 周期~2000iter |
+| BUG-17 | **HIGH** | Full确认 | per_class_balance sqrt 振荡, 但Plan Q证明不影响car_P. 降级CRITICAL→HIGH |
 | BUG-18 | MEDIUM | 设计层 | 评估未跨 cell 关联 GT instance |
 | BUG-27 | CRITICAL | 教训 | 改 num_vocal = 实验无效 |
 | BUG-33 | MEDIUM | 可能已修 | DDP val DefaultSampler, 待 @8000 单GPU验证 |
@@ -63,7 +64,8 @@
 - Deep Supervision: 已在代码中, `git.py:L388` 改一行启用
 - Attention Mask: CEO 硬 mask > Conductor 软权重, BUG-45 待修
 - AR 序列: 非主要瓶颈, contributing factor, per-slot 分析待做
-- 优先级: Deep Supervision >> 方案D >> Attention Mask >> LoRA
+- 优先级: Deep Supervision >> 方案D >> LoRA >> BUG-17修复 >> Attention Mask
+- Plan Q: 类竞争无关car_P (单类0.083 < 10类0.112). car_P瓶颈候选: BUG-15投影层/BUG-18评估方法
 
 ## 恢复指引
 1. git pull 两个仓库
