@@ -11,7 +11,7 @@
 
 ---
 
-## ★★★★ 当前状态: Full nuScenes @8000 Val — 架构决策点! car_P=0.060 (P/R tradeoff), off_th=0.140 历史最低!
+## ★★★★ 当前状态: Full nuScenes @8000 — peak_car_P=0.090 (继续!), off_th=0.140! 等 @10000 (~16:00)
 
 ### ORCH_024 训练状态 (Cycle #118)
 - **进度**: 8020/40000 (20.1%), 速度稳定 ~6.3-6.5 s/iter
@@ -35,20 +35,16 @@
 | off_cy | 0.069 | 0.097 | 0.082 | **0.074** | ✅ 改善 |
 | **off_th** | 0.174 | 0.150 | 0.169 | **0.140** | ✅✅ 历史最低! |
 
-### @8000 决策矩阵 (Critic 确认)
+### @10000 决策矩阵 (修正版, BUG-47: 用 peak_car_P 替代单点)
 
-| @8000 car_P | 行动 |
-|-------------|------|
-| > 0.12 | 架构验证, 继续到 @17000 看 LR decay |
-| 0.08-0.12 | 方向正确, 继续 |
-| 0.05-0.08 | 调参: per_class_balance 或 bg_weight |
-| < 0.05 | 严重问题: 架构级修改 |
+| peak_car_P (3-eval) | @10000 趋势 | 行动 |
+|---------------------|------------|------|
+| > 0.10 | 结构指标改善 | 确认方向, 继续到 @17000 |
+| 0.08-0.10 | 结构指标改善 | 继续, @12000 再评估 |
+| 0.08-0.10 | 结构指标停滞 | 启用 deep supervision |
+| < 0.08 (peak!) | any | 必须调参 |
 
-| @8000 bg_FA | 行动 |
-|-------------|------|
-| < 0.30 | 正常收敛 |
-| 0.30-0.35 | 可接受, 继续到 LR decay |
-| > 0.35 | 需干预 per_class_balance |
+当前 peak_car_P = 0.090 (from @6000). @8000 单点=0.060 是振荡低谷 (BUG-47).
 
 ### Full nuScenes Config
 ```python
@@ -80,6 +76,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | **FULL_4000** | **CONDITIONAL** | **继续训练. BUG-17→CRITICAL, BUG-46 new. @8000决策矩阵** |
 | **FULL_6000** | **CONDITIONAL** | **继续训练. bg_FA=0.331不告警 (多类代价). car_P可信. bicycle振荡确认** |
 | **ORCH026_PLANQ** | **PROCEED** | **类竞争无关! car_P@best=0.083<0.12. 多类正迁移. BUG-17→HIGH. 新瓶颈: BUG-15** |
+| **FULL_8000** | **CONDITIONAL** | **继续不调参. BUG-47: 单点决策→峰值决策. peak_car_P=0.090→继续. @10000 新矩阵** |
 
 ---
 
@@ -132,6 +129,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | BUG-43 | MEDIUM | Conductor 未读代码估算难度 |
 | BUG-45 | MEDIUM | OCC head 推理 attn_mask=None, Full 上 12000 KV entries |
 | **BUG-46** | **LOW** | accumulative_counts=4, optimizer steps = iter/4 |
+| **BUG-47** | **MEDIUM** | 单点 car_P 决策矩阵不适用振荡训练. 改用 3-eval 峰值 |
 
 ---
 

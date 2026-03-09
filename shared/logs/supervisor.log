@@ -395,3 +395,7 @@
 [08:43:38] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: ORCH026_PLANQ
 [08:43:53] → Critic 已重启并发送审计指令: ORCH026_PLANQ
 [08:44:54] 🔔 通知 Critic: REQUEST_ORCH026_PLANQ
+[12:36:21] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: FULL_8000
+[12:36:36] → Critic 已重启并发送审计指令: FULL_8000
+[12:37:36] 🔔 通知 Critic: REQUEST_FULL_8000
+[12:38:36] 🔔 通知 Critic: REQUEST_FULL_8000

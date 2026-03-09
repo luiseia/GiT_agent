@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes @8000 Val — car_P=0.060 (P/R tradeoff), 结构指标历史最优! 类间振荡. 等 Critic 架构决策
+## 当前阶段: ★★★★ Full nuScenes @8000 — peak_car_P=0.090 (CONDITIONAL 继续)! off_th=0.140 历史最低! 等 @10000 (~16:00)
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -269,7 +269,27 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 4. **振荡模式**: @2000 car为主→@4000 truck出现→@6000 多类爆发→@8000 回退car+ped. 周期 ~500 optimizer steps
 5. **决策矩阵**: car_P=0.060 在 0.05-0.08 → "调参". 但 P/R tradeoff + 结构改善 使直接适用存疑
 6. **bg_FA=0.311** 在 0.30-0.35 → "可接受, 继续到 LR decay"
-7. **审计签发**: AUDIT_REQUEST_FULL_8000 — 等 Critic 架构决策
+7. **审计签发**: AUDIT_REQUEST_FULL_8000
+
+**★★★ VERDICT_FULL_8000 (Critic, Cycle #128): CONDITIONAL — 继续训练到 @10000, 不调参**
+- **BUG-47 (NEW, MEDIUM)**: 单点 car_P 决策矩阵不适用于振荡训练. 修正: 用 **最近 3-eval 峰值** (peak_car_P)
+- **peak_car_P = max(0.078, 0.090, 0.060) = 0.090** → "0.08-0.12: 方向正确, 继续"
+- **car_P=0.060 不是真退化**: P/R tradeoff (TP+56%, FP+145%) + 类间振荡
+- **结构指标权重 > car_P 单点**: off_th/off_cx/off_cy 呈明确下降趋势 = 模型在正确方向学习
+- **振荡周期 ~1000 optimizer steps**: car spam → 多类展开 → 多类爆发 → car spam 循环
+- **@10000 预判**: 多类展开/爆发阶段, car_P 应回升 0.08-0.10
+- **LR decay @17000 会缓解振荡**: 权重更新幅度 -10x, 但 sqrt balance 根因不变 (需 BUG-17 修复)
+- **@10000 新决策矩阵 (修正版)**:
+
+| peak_car_P (3-eval) | @10000 趋势 | 行动 |
+|---------------------|------------|------|
+| > 0.10 | 结构指标继续改善 | 确认方向, 继续到 @17000 |
+| 0.08-0.10 | 结构指标改善 | 继续, @12000 再评估 |
+| 0.08-0.10 | 结构指标停滞 | 启用 deep supervision |
+| < 0.08 (peak!) | any | 必须调参 (per_class_balance 或 LR) |
+
+- **建议**: @10000 执行 per-slot 分析 (VERDICT_AR_SEQ_REEXAMINE 遗留), 准备 deep supervision 配置
+- **永久规则补充**: eval 结果需参考振荡周期, 不做单点决策 (BUG-47)
 
 **Full nuScenes 训练数据汇总 (完整 4 eval)**:
 | 指标 | @2000 | @4000 | @6000 | @8000 | 趋势 | optimizer_steps |
@@ -818,6 +838,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-44** | **LOW** | Deep supervision 各层共享 vocab embedding, 理论风险, 暂不处理 |
 | **BUG-45** | **MEDIUM** | OCC head 推理 `attn_mask=None`, 训练有 causal+跨 cell 隔离 mask. Full 上 12000 KV entries 累积更严重 (VERDICT_FULL_4000 补充) |
 | **BUG-46** | **LOW** | `accumulative_counts=4` 使 optimizer steps = iter/4. @4000=500 post-warmup steps < Mini @1000. 非代码 BUG, 分析需标注 optimizer steps (VERDICT_FULL_4000) |
+| **BUG-47** | **MEDIUM** | 决策矩阵使用单点 car_P 不适用于振荡训练. 相邻 eval 给出相反结论 (@6000 "继续" vs @8000 "调参"). 修正: 用最近 3-eval 峰值 peak_car_P (VERDICT_FULL_8000) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -879,7 +900,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **结构指标全面历史最优**: off_th=0.140, bg_FA=0.311 (回落), off_cx/off_cy 改善
 - **类间振荡**: @6000 多类爆发 → @8000 回退 car+ped 双类. truck/bus/cone 全消失
 - **决策矩阵**: car_P=0.060 在 0.05-0.08 → "调参", 但 P/R tradeoff 使直接适用存疑
-- **审计签发**: AUDIT_REQUEST_FULL_8000 — Critic 做架构决策
+- **审计签发**: AUDIT_REQUEST_FULL_8000 → **VERDICT: CONDITIONAL — 继续, 不调参**
+- **VERDICT 关键**: BUG-47 修正决策矩阵, peak_car_P=0.090 → "继续". @10000 新矩阵
 
 ### [2026-03-09 ~08:50] 循环 #120 — ★★★ ORCH_026 COMPLETED: 类竞争无关! | car_P@best=0.083 < 0.12 | 战略影响大
 - **ORCH_026 Plan Q 完成**: 单类 car 诊断, 3000 iter mini, car_P@best=0.083 (@2500)

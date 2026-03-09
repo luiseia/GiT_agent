@@ -2754,3 +2754,8 @@ baseline comparison" completed (exit code 0)
 [2026-03-09 12:30:01] watchdog: ⚠️ agent-critic context 剩余 11%
 [2026-03-09 12:30:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
 [2026-03-09 12:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-09 12:40:01] watchdog: === 用量检查开始 ===
+[2026-03-09 12:40:07] watchdog: 用量: 4%  |  Resets 3pm (America/Chicago)
+[2026-03-09 12:40:07] watchdog: ⚠️ agent-critic context 剩余 3%
+[2026-03-09 12:40:07] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-09 12:40:07] watchdog: ✅ 用量正常，无需休眠
