@@ -3670,3 +3670,11 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - 磁盘: 322G 可用 (ckpt -14 GB)
 - 进程: 38 (train+val workers)
 - **Val ETA: ~01:35 完成**
+
+---
+
+## Cycle #184 | 2026-03-09 01:25 | @4000 val 610/753 (81%)
+- Val 稳定 ~4.6 s/batch, ETA ~01:36 完成
+- 显存 23653 MB/GPU (val 模式)
+- 进程: 38, 磁盘: 322G
+- **下一轮应捕获完整 val 结果**
