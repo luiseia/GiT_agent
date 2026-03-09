@@ -16,6 +16,7 @@
 | VERDICT_P2_FINAL_FULL_CONFIG | **PROCEED** | df2d2a4 |
 | VERDICT_CEO_STRATEGY_NEXT | CONDITIONAL | 83bc425 |
 | VERDICT_CEO_ARCH_QUESTIONS | CONDITIONAL | dd215af |
+| VERDICT_AR_SEQ_REEXAMINE | CONDITIONAL | 5b2c714 |
 
 ## 历史判决 (前几次会话)
 P2_FINAL, ARCH_REVIEW, P3_FINAL, P4_FINAL, 3D_ANCHOR, P5_MID,
@@ -53,6 +54,7 @@ DIAG_FINAL, P6_1000, P6_1500 — 全部 CONDITIONAL 或 PROCEED
 - **Q3 (Attention Mask)**: CEO 硬 mask 方案优于 Conductor 软权重方案. 发现 BUG-45 (训练/推理 mask 不一致)
 - **Q4 (评判标准)**: 基本合理, 补充规则5(不从mini做架构决策)和规则6(Full首次有意义eval需1epoch后)
 - **优先级修正**: Deep Supervision(零成本) >> 评判标准 >> 方案D >> Attention Mask >> LoRA >> 解码长度
+- **AR 序列复核**: 维持"非主要瓶颈"但上调为 contributing factor. 关键新发现: finished_mask 缩短实际序列, exposure bias 是合法担忧但非首要. 零成本验证: per-slot 指标分析
 
 ## ORCH_024 @2000 决策矩阵
 | 结果 | 行动 |
