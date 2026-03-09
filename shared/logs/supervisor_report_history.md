@@ -3561,3 +3561,17 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - 进程: 4 DDP workers 全部存活
 - 无新 ORCH, 无 PENDING
 - **@2000 首次 val ETA ~20:08** — warmup 结束后首次 eval, CRITICAL
+
+---
+
+## Cycle #174 | 2026-03-08 20:35
+- **Full nuScenes**: iter **2000/40000** (5.0%) — ⚡ WARMUP 完成!
+- LR 到达目标: base=5.0e-05, lr=2.5e-06
+- Loss @2000: 5.53 (cls=3.81, reg=1.72)
+- Checkpoint @2000 已保存
+- **@2000 Val 正在进行**: 340/753 (45%), ETA ~21:07
+- Val 显存: 23653 MB (低于训练 28849 MB)
+- 磁盘: 336 GB 可用 (ckpt 占 ~15 GB)
+- 进程: 38 个存活, GPU 97-100%
+- 无新 ORCH, 无 PENDING
+- **下轮 (~21:10) 应捕获完整 @2000 val 指标**
