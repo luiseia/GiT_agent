@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~17:00 (循环 #138 Phase 2)
+> 最后更新: 2026-03-09 ~18:20 (循环 #139 Phase 2)
 
 ## ✅ 告警已解除 (2026-03-09 07:43)
 > ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes @10000 val 进行中 | BUG-48/49/50 发现! Layer 16 待验证 | 分阶段阈值已建立
+## 当前阶段: ★★★★ Full nuScenes @10000 完成! peak_car_P=0.090 未突破 | bg_FA=0.407 最差 | 等 LR decay @15000 (@17000 硬性 deadline)
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -279,28 +279,45 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 - **振荡周期 ~1000 optimizer steps**: car spam → 多类展开 → 多类爆发 → car spam 循环
 - **@10000 预判**: 多类展开/爆发阶段, car_P 应回升 0.08-0.10
 - **LR decay @17000 会缓解振荡**: 权重更新幅度 -10x, 但 sqrt balance 根因不变 (需 BUG-17 修复)
-- **@10000 新决策矩阵 (修正版)**:
+- **@10000 决策矩阵命中**: peak=0.090 (0.08-0.10) + 结构停滞 → "启用 deep supervision"
+- **VERDICT_FULL_10000 修正**: 推迟到 LR decay 后, @17000 为硬性 deadline
 
-| peak_car_P (3-eval) | @10000 趋势 | 行动 |
-|---------------------|------------|------|
-| > 0.10 | 结构指标继续改善 | 确认方向, 继续到 @17000 |
-| 0.08-0.10 | 结构指标改善 | 继续, @12000 再评估 |
-| 0.08-0.10 | 结构指标停滞 | 启用 deep supervision |
-| < 0.08 (peak!) | any | 必须调参 (per_class_balance 或 LR) |
+**★★★ @10000 Val 结果 (2026-03-09 17:24)**:
+- car_P=0.069 (↑ from 0.060, 但未恢复 peak 0.090)
+- car_R=0.726 (✅ 历史最高)
+- **CV=0.287, moto=0.126 首次出现!** 6 类车辆激活
+- **ped=0.000 彻底消失** (from 0.276)
+- **bg_FA=0.407 历史最差** (连续恶化 0.199→0.331→0.311→0.407)
+- off_th=0.160 (回弹, 未保持 0.140)
+- **振荡模式**: 广泛(5类)→窄(2类)→车辆(6类), 3 种模式轮转
 
-- **建议**: @10000 执行 per-slot 分析 (VERDICT_AR_SEQ_REEXAMINE 遗留), 准备 deep supervision 配置
+**★★★ VERDICT_FULL_10000 (Critic, Cycle #139): CONDITIONAL — 继续到 LR decay, @17000 硬性 deadline**
+- **继续 ORCH_024 不中断**, LR decay @15000 是"免费"干预
+- **@17000 硬性 deadline** (不可再推迟!):
+
+| @17000 条件 | 行动 |
+|-------------|------|
+| peak_car_P > 0.12 且 bg_FA < 0.40 | 继续 ORCH_024 到 @25000 |
+| peak_car_P < 0.12 或 bg_FA > 0.40 | **立即启动 ORCH_025 (deep supervision)** |
+
+- **Deep supervision resume 风险**: 辅助 loss 默认 1.0 权重会导致 ~4× loss 跳变 → **必须降权 aux_weight=0.4**
+- **立即准备 ORCH_025 config**: 不等 @17000
+- **car_P 0.090 非硬天花板**, 但当前配置难超 0.12. 需要结构改变 (layer/deep supervision/unfreeze)
+- **@40000 估计**: 仅 LR decay 0.10-0.12; +deep supervision 0.12-0.16; +layer 24 0.15-0.22; +unfreeze 0.18-0.25
+- **bg_FA 阈值**: <0.30 健康, 0.30-0.45 关注, 0.45-0.50 警告, >0.50 必须干预
+
 - **永久规则补充**: eval 结果需参考振荡周期, 不做单点决策 (BUG-47)
 
-**Full nuScenes 训练数据汇总 (完整 4 eval)**:
-| 指标 | @2000 | @4000 | @6000 | @8000 | 趋势 | optimizer_steps |
-|------|-------|-------|-------|-------|------|----------------|
-| car_P | 0.079 | 0.078 | 0.090 | 0.060 | 振荡 (P/R tradeoff) | 500→1000→1500→2000 |
-| car_R | 0.627 | 0.419 | 0.455 | 0.718 | 振荡 (与 P 反向) | — |
-| bg_FA | 0.222 | 0.199 | 0.331 | 0.311 | ↓ 趋势+振荡 | — |
-| off_th | 0.174 | 0.150 | 0.169 | 0.140 | ↓ ✅ 持续改善 | — |
-| off_cx | 0.056 | 0.039 | 0.056 | 0.045 | ↓ ✅ 改善 | — |
-| off_cy | 0.069 | 0.097 | 0.082 | 0.074 | ↓ ✅ 改善 | — |
-| off_th | 0.174 | 0.150 | ↓ ✅ | — |
+**Full nuScenes 训练数据汇总 (完整 5 eval)**:
+| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | peak | 趋势 |
+|------|-------|-------|-------|-------|--------|------|------|
+| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | **0.090** | 振荡, peak 未突破 |
+| car_R | 0.627 | 0.419 | 0.455 | 0.718 | **0.726** | 0.726 | ✅ 持续攀升 |
+| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | **0.407** | — | ⚠️ 系统性恶化 |
+| off_th | 0.174 | **0.150** | 0.169 | **0.140** | 0.160 | **0.140** | 振荡, @8000 最优 |
+| off_cx | 0.056 | **0.039** | 0.056 | 0.045 | — | **0.039** | 振荡 |
+| off_cy | 0.069 | 0.097 | 0.082 | 0.074 | — | — | 振荡 |
+| 模式 | car spam | 收敛 | 广泛(5类) | 窄(2类) | **车辆(6类)** | — | 3 种模式轮转 |
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
@@ -867,7 +884,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 10000/40000 (25.0%), @10000 val 进行中 (~17:00 完成), peak_car_P=0.090** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 10230/40000 (25.6%), @10000 val ✅ (car_P=0.069, bg_FA=0.407), 等 LR decay @15000, @17000 硬性 deadline** |
 | **ORCH_025** | **pytest 测试框架** | **COMPLETED ✅ — 177 passed, 12 skipped, 3 xfailed** |
 | **ORCH_026** | **Plan Q 单类 car 诊断 (mini)** | **COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关!** |
 
@@ -897,6 +914,17 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **任务 2**: orch024_architecture_detail.md 撰写 — 完整数据流、参数统计、LR 层次、显存分析
 - **ORCH_026 IN PROGRESS**: Plan Q 在 GPU 1 执行, 导致 ORCH_024 减速 2.7x
 - **GPU 冲突**: GPU 1 显存 97.4%, 等 CEO 决策或 Plan Q 自然完成
+
+### [2026-03-09 ~18:20] 循环 #139 — ★★★★ @10000 Val! car_P=0.069 (未恢复 peak) | bg_FA=0.407 最差 | @17000 硬性 deadline
+- **@10000 val 结果**: car_P=0.069, car_R=0.726(新高), bg_FA=0.407(最差), off_th=0.160
+- **新类首次出现**: CV=0.287, motorcycle=0.126; pedestrian=0.000 消失
+- **决策矩阵**: peak 0.08-0.10 + 结构停滞 → deep supervision
+- **VERDICT_FULL_10000**: CONDITIONAL — 等 LR decay @15000, @17000 为硬性 deadline
+  - peak < 0.12 或 bg_FA > 0.40 → 启动 ORCH_025 (deep supervision + aux_weight=0.4)
+  - peak > 0.12 且 bg_FA < 0.40 → 继续到 @25000
+- **立即准备 ORCH_025 config** (不等 @17000)
+- **car_P 当前配置天花板 ~0.12**, 需结构改变 (layer/deep supervision/unfreeze)
+- **bg_FA 阈值**: <0.30 健康, 0.30-0.45 关注, 0.45-0.50 警告, >0.50 干预
 
 ### [2026-03-09 ~17:00] 循环 #138 — ★★★★ CEO_CMD: BUG-48/49/50 发现! DINOv3 解冻+Layer 审查 | 分阶段阈值
 - **CEO 调查 1: 决策矩阵**: @10000 阈值合理不改. **新增分阶段目标** (Critic 修正):
