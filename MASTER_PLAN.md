@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 ~21:10 (循环 #95 Phase 2)
+> 最后更新: 2026-03-08 ~21:40 (循环 #96 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
@@ -212,6 +212,7 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 - **Exposure bias**: 训练用 teacher forcing (GT input), 推理用自身预测. 30 token 的 train/inference gap 确实比 5 token 更大
 - **验证方案**: 方案 A (per-slot 指标提取, 零成本) >> C (仅评估 Slot 1) >> B (1-slot 实验, 不推荐). ORCH_024 @2000 eval 时应提取 per-slot 数据
 - **归因确认**: "GiT 序列更长" 的错误说法是 Conductor 的, 不是 Critic 的. CEO 的事实理解完全正确
+- **CEO 补充 (Cycle #96)**: cell 内 Slot 1→2→3 是串行 AR, 错误从近层累积到远层. "不跨 cell" 掩盖了 within-cell exposure bias. per-slot 验证将确认 Slot 3 是否显著差于 Slot 1
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -707,6 +708,12 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~21:40] 循环 #96 — CEO slot 错误传播观察 | 训练 2250/40000 正常 | 无需审计
+- **CEO_CMD**: cell 内 Slot1→2→3 串行 AR 错误累积, per-slot 验证将确认. CEO 观察正确
+- **训练进度**: 2250/40000, loss 下降中, @4000 ETA 3/9 ~02:30
+- **Supervisor 新信息**: off_th=0.174 远优于 mini (0.25+), 数据多样性效应显著
+- **建议**: @4000 后安排单 GPU re-eval (BUG-33 DDP 偏差)
+
 ### [2026-03-08 ~21:10] 循环 #95 — ★★★ @2000 Val 完成! car_P=0.079, car_R=0.627 | 继续训练 | 无需审计
 - **@2000 val 结果**: car_P=0.0789, car_R=0.627, bg_FA=0.222, cx=0.056, cy=0.069, th=0.174
 - **决策矩阵**: car_P=0.0789 (0.03-0.08 边界) → 不中断, 继续训练
