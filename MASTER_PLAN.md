@@ -6,7 +6,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes iter 2000 到达! Warmup 完成! @2000 Val 进行中 (340/753, ETA ~21:07)
+## 当前阶段: ★★★★ Full nuScenes @2000 Val 完成! car_P=0.079, car_R=0.627 — 方向正确, 继续训练
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -156,7 +156,24 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 **Full nuScenes 路线 (VERDICT_P2_FINAL_FULL_CONFIG 最终决定)**:
 1. ✅ **Plan P2 COMPLETED**: GELU 确认 (@1000 +72%, @1500 +5.7%). BUG-42: @2000 回调 = LR 问题
 2. ✅ **Config 选择**: **2048+GELU + 在线 DINOv3 frozen** (Critic PROCEED)
-3. **ORCH_024 IN PROGRESS**: 2000/40000, **warmup 完成!** LR=2.5e-06 达目标. @2000 val 进行中 (340/753, ETA ~21:07). iter_2000.pth 已保存. Loss@2000=5.53
+3. **ORCH_024 IN PROGRESS**: 2000/40000, **warmup 完成!** LR=2.5e-06 达目标. **@2000 val 完成!** iter_2000.pth 已保存. Loss@2000=5.53
+
+**★★★ Full nuScenes @2000 Val 结果 (21:06:10)**:
+| 类别 | Recall | Precision | GT Count |
+|------|--------|-----------|----------|
+| **car** | **0.627** | **0.0789** | 100454 |
+| pedestrian | 0.067 | 0.001 | 16135 |
+| barrier | 0.003 | 0.001 | 15569 |
+| truck/bus/trailer/CV/moto/bicycle/cone | 0.0 | 0.0 | — |
+| **bg** | **R=0.778** | **FA=0.222** | — |
+| **回归** | cx=0.056 | cy=0.069 | w=0.020, h=0.006, th=0.174 |
+
+**@2000 决策矩阵判定**: car_P=0.0789 落在 0.03-0.08 边界 → "不中断, 继续训练"
+- 仅 0.57 epochs, 规则 #6: @2000 仅趋势参考, @4000 才可信
+- car_R=0.627 极高 → DINOv3 特征有效, 模型已学会定位 car
+- bg_FA=0.222 < 0.25 ✓ 合格
+- 仅 car+ped+barrier 有信号, 其他类尚未启动 → 预期内 (0.57 epochs)
+- **结论: 方向正确, 继续训练到 @4000 (ETA 3/9 ~01:30)**
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
@@ -690,6 +707,14 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~21:10] 循环 #95 — ★★★ @2000 Val 完成! car_P=0.079, car_R=0.627 | 继续训练 | 无需审计
+- **@2000 val 结果**: car_P=0.0789, car_R=0.627, bg_FA=0.222, cx=0.056, cy=0.069, th=0.174
+- **决策矩阵**: car_P=0.0789 (0.03-0.08 边界) → 不中断, 继续训练
+- **规则 #6**: @2000 仅趋势参考 (0.57 epochs), @4000 第一可信点
+- **积极信号**: car_R=0.627 (模型定位能力强), bg_FA=0.222 (前景/背景判别合格)
+- **下一里程碑**: @4000 (ETA 3/9 ~01:30) — 第一个可做条件性结论的评估点
+- **无审计签发**: 结果在预期范围内, 无需 Critic 介入
+
 ### [2026-03-08 ~20:40] 循环 #94 Phase 2 — VERDICT_AR_SEQ_REEXAMINE | iter 2000 warmup 完成 | @2000 val 进行中
 - **VERDICT 处理**: AR 30 token 上调为 contributing factor (MEDIUM), finished_mask 缓解, per-slot 验证方案 A 零成本
 - **ORCH_024 里程碑**: iter 2000, warmup 完成, LR 到达目标, @2000 val 进行中 (ETA ~21:07)
