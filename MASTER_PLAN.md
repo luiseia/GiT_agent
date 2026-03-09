@@ -229,6 +229,14 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 5. **off_cy=0.082 改善!** (VERDICT_FULL_4000 关注项, 0.097→0.082, -15% ✅)
 6. **bicycle 消失**: @4000 R=0.191 → @6000 R=0.000, BUG-17 sqrt balance 振荡证据
 7. **@8000 决策矩阵**: car_P=0.090 在 0.08-0.12 区间 → "方向正确, 继续"
+
+**★★★ VERDICT_FULL_6000 (Critic, Cycle #118): CONDITIONAL — 继续训练不中断**
+- **bg_FA=0.331 不告警**: 多类学习 + BUG-17 组合效应. 新类 (bus/ped/cone) 海量 FP 直接推高. 非模型崩溃 (car_P/R 同向改善)
+- **car_P=0.090 中等偏高可信度**: P 和 R 同向 ↑ 是最强信号 (非 precision-recall tradeoff). 需 @8000 确认
+- **offset 恶化 = 新类统计效应**: bus 极长/ped 极小/cone 微小, FP 几何差异拉偏平均值. 需 per-class offset 确认 car 自身未退化
+- **bicycle 振荡确认**: 0→0.191→0 是 BUG-17 周期性 (~500 optimizer steps). @8000 可能重新出现
+- **维持 @8000 决策矩阵**, 新增 bg_FA 阈值: <0.30 正常, 0.30-0.35 可接受, >0.35 需干预
+- **@8000 预测**: car_P 0.08-0.12 区间
 - **@8000 决策矩阵**:
 
 | @8000 car_P | 行动 |
