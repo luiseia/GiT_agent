@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~01:40 (循环 #104 Phase 2)
+> 最后更新: 2026-03-09 ~02:10 (循环 #105 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes @4000 Val 完成! 第一个可信评估点 — 类别再平衡中, 审计进行中
+## 当前阶段: ★★★★ Full nuScenes @4000 Val + VERDICT 完成! 继续到 @8000 | BUG-17 升级 CRITICAL | BUG-46 新发现
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -188,7 +188,34 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 | off_w | 0.020 | **0.016** | -20% ✅ |
 
 **Conductor 分析**: 典型类别再平衡 (类似 mini P6@1000 振荡). car_P 持平<1% = 波动 (规则#1). truck/bicycle 新出现 = 积极. bg_FA/off_th/off_cx 大幅改善. off_cy 恶化需关注.
-**AUDIT_REQUEST_FULL_4000 已签发**, 等 Critic 评估.
+
+**★★★ VERDICT_FULL_4000 (Critic, Cycle #105): CONDITIONAL — 继续训练不中断**
+- **BUG-46 (NEW, LOW)**: `accumulative_counts=4` 使实际优化步数 = iter/4. @4000 = 500 post-warmup optimizer steps. **Full @4000 实际训练量 < Mini @1000!** 解释 car_P 低于 mini 参考值
+- **BUG-17 升级 CRITICAL**: bicycle 154,845 FP (R=0.191, P=0.001). sqrt balance 给 bicycle ~11x car 的 per-sample loss 权重. Full nuScenes 实证确认有害
+- **car_P 持平符合预期**: 500 post-warmup optimizer steps 远不够. LR decay @17000. Mini 突破在 LR decay 后
+- **off_cy 恶化可解释**: 单目深度估计固有困难 + 多类引入新深度分布 + proj_z0=-0.5m 对不同类别精度不同. @6000 观察趋势
+- **DDP BUG-33**: DefaultSampler 可能已修复, @8000 单 GPU re-eval 确认
+- **BUG-45 补充**: Full 上 400 cells × 30 tokens = 12000 KV entries 累积, 远超 mini 信噪比
+- **Critic 建议**: @8000 前不做任何架构修改 (包括 deep supervision/attention mask)
+- **@8000 决策矩阵**:
+
+| @8000 car_P | 行动 |
+|-------------|------|
+| > 0.12 | 架构验证, 继续到 @17000 看 LR decay 效果 |
+| 0.08-0.12 | 方向正确, 继续 |
+| 0.05-0.08 | 调参: 考虑关闭 per_class_balance 或调低 bg_balance_weight |
+| < 0.05 | 严重问题: 需架构级修改 |
+
+**Full nuScenes 训练数据汇总 (经 Critic 校正)**:
+| 指标 | @2000 | @4000 | 趋势 | optimizer_steps |
+|------|-------|-------|------|----------------|
+| car_P | 0.079 | 0.078 | → (持平) | 500 → 1000 |
+| car_R | 0.627 | 0.419 | ↓ (再平衡) | — |
+| truck_P | 0 | 0.057 | ↑ (新类) | — |
+| bg_FA | 0.222 | 0.199 | ↓ ✅ | — |
+| off_cx | 0.056 | 0.039 | ↓ ✅ | — |
+| off_cy | 0.069 | 0.097 | ↑ ❌ | — |
+| off_th | 0.174 | 0.150 | ↓ ✅ | — |
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
@@ -658,7 +685,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | BUG-14 | MEDIUM | 架构层面 |
 | BUG-15 | HIGH | P5b 解决 (双层投影) |
 | BUG-16 | MEDIUM | NOT BLOCKING |
-| **BUG-17** | **HIGH** | P5b 解决 (milestones + sqrt balance) |
+| **BUG-17** | **CRITICAL** | ~~P5b 解决~~ Full nuScenes 实证: bicycle 154K FP (P=0.001), sqrt balance 给稀有类 ~11x 权重. 建议: balance_mode='log' 或 weight cap=3.0 或关闭 (VERDICT_FULL_4000) |
 | **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
 | **BUG-19** | **HIGH** | **FIXED** — z+=h/2 把 box 中心移到顶部, 导致投影只覆盖上半身。移除后多边形覆盖完整车辆。GiT commit `965b91b` |
 | **BUG-20** | **HIGH** | bus 振荡根因: nuScenes-mini 数据量不足 (~120 bus 标注/40 张图), sqrt 加权无法根治。数据集天花板, 非模型 bug (Critic VERDICT_P5B_3000) |
@@ -684,6 +711,10 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-40** | **HIGH** | **Critic 审计链连锁失误**: BUG-27(vocab mismatch)→BUG-30(GELU损害off_th错误假设)→VERDICT_DIAG_FINAL(推荐去GELU)→P6退化架构→3000iter低效. Critic 自我纠正 (VERDICT_P6_VS_P5B) |
 | **BUG-41** | **HIGH** | **Plan O warmup=max_iters=500**: `LinearLR end=500` = 全程 warmup, LR 从未达正常值. **Plan O car_P=0.000, 完全未检测 car/truck**. 结果不可信, 在线路径验证被阻塞 (Critic 确认) |
 | **BUG-42** | **MEDIUM** | **Plan P2 max_iters < first milestone**: `max_iters=2000`, `milestones=[2000,4000]` from `begin=500`. 第一次 decay@iter2500, 但训练@2000 结束. P2 全程 full LR 无 decay. P2@2000 car_P=0.096 回调不能归因 GELU (Critic VERDICT_P2_FINAL) |
+| **BUG-43** | **MEDIUM** | Conductor 未读代码估算 Deep Supervision "1-2天", 实际一行 `loss_out_indices=[8,10,11]` |
+| **BUG-44** | **LOW** | Deep supervision 各层共享 vocab embedding, 理论风险, 暂不处理 |
+| **BUG-45** | **MEDIUM** | OCC head 推理 `attn_mask=None`, 训练有 causal+跨 cell 隔离 mask. Full 上 12000 KV entries 累积更严重 (VERDICT_FULL_4000 补充) |
+| **BUG-46** | **LOW** | `accumulative_counts=4` 使 optimizer steps = iter/4. @4000=500 post-warmup steps < Mini @1000. 非代码 BUG, 分析需标注 optimizer steps (VERDICT_FULL_4000) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -709,7 +740,8 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 60/40000, 4 GPU DDP, loss 正常 (4.00@60), ETA 3/11** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — ~4200/40000 (10.5%), @4000 VERDICT CONDITIONAL, 等 @6000 (~05:30) → @8000 做决策** |
+| **ORCH_025** | **pytest 测试框架** | **COMPLETED ✅ — 177 passed, 12 skipped, 3 xfailed** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -723,6 +755,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-09 ~02:10] 循环 #105 — VERDICT_FULL_4000 处理 | BUG-17→CRITICAL | BUG-46 new | @8000 决策矩阵
+- **VERDICT_FULL_4000**: CONDITIONAL — 继续训练不中断
+- **BUG-46**: accumulative_counts=4 → @4000=500 post-warmup optimizer steps (< Mini @1000). 解释 car_P 偏低
+- **BUG-17 升级 CRITICAL**: bicycle 154K FP 实证. sqrt balance 给 bicycle ~11x car 权重. 建议 @8000 若 car_P<0.08 切 balance_mode='log'
+- **@8000 决策矩阵**: >0.12 继续, 0.08-0.12 继续, 0.05-0.08 调 balance, <0.05 架构改
+- **Critic 建议**: @8000 前不做架构修改 (deep supervision/mask 等)
+- **off_cy 恶化**: 可解释 (深度估计+多类分布), @6000 观察趋势
+- **项目进展报告**: 363 行, CEO 指令完成
+
 ### [2026-03-09 ~01:40] 循环 #104 — ★★★ @4000 Val 完成! 第一个可信点 | car_P=0.078 持平 | truck/bicycle 新出现 | 审计签发
 - **@4000 val**: car_P=0.078 (持平), car_R=0.419 (停止spam), truck_P=0.057, bicycle_R=0.191
 - **bg_FA=0.199** 首次<0.20, off_th=0.150 大幅改善, off_cx=0.039 改善30%
