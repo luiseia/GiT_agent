@@ -4,8 +4,9 @@
 
 ## 正在进行
 - ORCH_024: Full nuScenes 2048+GELU+在线DINOv3 frozen, 4GPU DDP, 40000 iter, ETA 3/11
-- @8000 eval 已完成, 下一个 eval @10000
+- @10000 eval 已完成, 下一个 eval @12000 (建议加密)
 - accumulative_counts=4, 实际优化步数 = iter/4
+- LR decay milestone @15000, 当前恒定 LR 5e-5
 
 ## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit |
@@ -15,14 +16,15 @@
 | VERDICT_ORCH026_PLANQ | **PROCEED** | e086e84 |
 | VERDICT_FULL_8000 | CONDITIONAL | 44a6cf0 |
 | VERDICT_DINOV3_LAYER_AND_UNFREEZE | **CONDITIONAL** | e0f9c8d |
+| VERDICT_FULL_10000 | **CONDITIONAL** | 5fa543e |
 (更早: P6_3000, P6_VS_P5B, PLAN_P_FAIL_P6_TREND, P2_FINAL_FULL_CONFIG, CEO_STRATEGY_NEXT, CEO_ARCH_QUESTIONS, AR_SEQ_REEXAMINE)
 
 ## BUG 状态总表
 | BUG | 严重性 | 状态 | 描述 |
 |-----|--------|------|------|
 | BUG-1~3,8~12 | — | FIXED | 早期修复 |
-| BUG-15 | HIGH | OPEN | Precision 瓶颈 (类竞争已排除, 候选: 投影层/评估方法) |
-| BUG-17 | HIGH | Full确认 | per_class_balance sqrt 振荡, Plan Q证明不影响car_P |
+| BUG-15 | HIGH | OPEN | Precision 瓶颈 (类竞争已排除, 候选: 投影层/评估方法/Layer选择) |
+| BUG-17 | HIGH | Full确认 | per_class_balance sqrt 振荡+bg_FA恶化根因, Plan Q证明不影响car_P |
 | BUG-33 | MEDIUM | 可能已修 | DDP val, 待单GPU验证 |
 | BUG-45 | MEDIUM | OPEN | OCC head 推理 attn_mask=None |
 | BUG-46 | LOW | 信息 | accumulative_counts=4 |
@@ -32,41 +34,44 @@
 | BUG-50 | MEDIUM | NEW | unfreeze_last_n>0 移除torch.no_grad(), 40 blocks全部构建计算图, 显存暴增~10-15GB |
 下一个 BUG 编号: BUG-51
 
-## Full nuScenes 训练数据 (ORCH_024)
-| 指标 | @2000 | @4000 | @6000 | @8000 | peak(3) |
-|------|-------|-------|-------|-------|---------|
-| car_P | 0.079 | 0.078 | **0.090** | 0.060 | **0.090** |
-| car_R | 0.627 | 0.419 | 0.455 | **0.718** | — |
-| bg_FA | 0.222 | 0.199 | 0.331 | 0.311 | — |
-| off_th | 0.174 | 0.150 | 0.169 | **0.140** | — |
-| off_cx | 0.056 | 0.039 | 0.056 | **0.045** | — |
-| off_cy | 0.069 | 0.097 | 0.082 | **0.074** | — |
-| opt_steps | 500 | 1000 | 1500 | 2000 | — |
-| 模式 | car spam | 收敛 | 多类爆发 | car spam v2 | — |
+## Full nuScenes 训练数据 (ORCH_024, 5-eval)
+| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | peak(5) |
+|------|-------|-------|-------|-------|--------|---------|
+| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | **0.090** |
+| car_R | 0.627 | 0.419 | 0.455 | 0.718 | **0.726** | — |
+| truck_R | 0.000 | 0.059 | 0.138 | 0.000 | **0.239** | — |
+| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | **0.407** | — |
+| off_th | 0.174 | 0.150 | 0.169 | **0.140** | 0.160 | — |
+| opt_steps | 500 | 1000 | 1500 | 2000 | 2500 | — |
+| 模式 | car spam | 收敛 | 广泛(5类) | 窄(2类) | 车辆(6类) | — |
+
+@10000 新现象: CV_R=0.287, moto_R=0.126 首次出现; ped_R=0.000 消失; bg_FA=0.407 历史最差
 
 ## 振荡分析
-- 周期: ~1000 optimizer steps (~4000 iter)
-- 模式: car dominant → 多类展开 → 多类爆发 → car spam → 循环
-- @10000 预判: 进入"多类展开"阶段, car_P 预计回升 0.08-0.10
-- LR decay @15000 (非17000!) 后振荡应减弱
+- 周期: ~4000-6000 iter (可能在变长)
+- 模式: car dominant → 多类展开 → 窄收敛 → 车辆扩展 → 循环
+- bg_FA 世俗性上升趋势: 与类数正相关 + 基线漂移 (sqrt balance 套利行为)
+- LR decay @15000 后振荡应减弱
 
-## 分阶段决策矩阵 (DINOV3_LAYER_AND_UNFREEZE 判决修正版)
-| 阶段 | peak_car_P | 行动 |
-|------|-----------|------|
-| @10000 | >0.08 | 继续 |
-| @17000→建议改@20000 | >0.12 继续, >0.15 确认方向 | <0.12 架构干预 |
-| @25000 | >0.20 | <0.20 可能重设计 |
-| @40000 | >0.25 | <0.25 根本改变 |
-注: 基于 layer_idx=16 校准, layer 变更后需重校
+## 关键决策点
+| 触发 | 条件 | 行动 |
+|------|------|------|
+| @12000 eval | peak_car_P < 0.090 且 bg_FA > 0.40 | Early warning, 准备 ORCH_025 |
+| **@17000 eval** | **peak_car_P < 0.12 或 bg_FA > 0.40** | **立即启动 ORCH_025 (deep supervision)** |
+| @17000 eval | peak_car_P > 0.12 且 bg_FA < 0.40 | 继续 ORCH_024 到 @25000 |
+注: @17000 是最后决策点, 不可再推迟
+
+## Deep Supervision 准备 (ORCH_025)
+- `git.py:L388`: loss_out_indices = [8, 10, 17] (backbone 18 layers)
+- `git_occ_head.py:L621-624`: 辅助loss必须降权 aux_weight=0.4, 否则~4× loss跳变
+- 从头训练优于 resume (避免辅助层未监督的不稳定)
 
 ## 关键结论 (精简)
-- Deep Supervision: `git.py:L388` 改一行启用, 零代码
-- Plan Q: 类竞争无关car_P, 多类反而有正迁移
-- car_P瓶颈候选: BUG-15(投影层4096→768)/BUG-18(评估方法)/Layer选择(16可能偏浅)
-- BUG-48: unfreeze_last_n 完全无效, Plan M 方案B三重否决基于无效实验
-- BUG-50: unfreeze 时移除no_grad导致显存暴增, Plan M "特征漂移" 实为显存压力/训练噪声
-- Layer 24 (60% depth) 是最可能的最优提取点, 待实验验证
-- 优先级: BUG-48修复 > Layer验证 > Deep Supervision > 解冻block16 > LoRA > 方案D
+- car_P 0.090 非硬天花板, 但当前配置下难超 0.12
+- bg_FA 恶化是 sqrt balance 套利行为 (BUG-17 延伸), 非新 BUG
+- LR decay 优先于 deep supervision (免费, 无风险, 可诊断)
+- Layer 24 (60% depth) 是最可能的最优提取点
+- 优先级: LR decay(自动) > BUG-48修复 > Layer验证 > Deep Supervision > 解冻 > LoRA
 
 ## 恢复指引
 1. git pull 两个仓库
