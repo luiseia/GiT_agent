@@ -1,6 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~02:10 (循环 #105 Phase 2)
+> 最后更新: 2026-03-09 ~03:20 (循环 #108 Phase 1)
+
+## 🚨 活跃告警 (2026-03-09 03:20)
+> **GPU 1 资源冲突**: ORCH_026 (Plan Q, PID 908307, 11 GB) 与 ORCH_024 共享 GPU 1 → 显存 97.4% → ORCH_024 从 6.3s 减速到 17s/iter (2.7x)
+> **选项 A**: 让 Plan Q 跑完 (~3-5h), ORCH_024 延迟 ~3h, OOM 风险持续
+> **选项 B**: Kill Plan Q, 保护 ORCH_024, 之后再跑诊断
+> **需 CEO 决策**
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
