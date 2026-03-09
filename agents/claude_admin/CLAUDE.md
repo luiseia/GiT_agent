@@ -45,6 +45,12 @@ export AGENT="/home/UNT/yz0370/projects/GiT_agent"
   4. 优雅退出，等待人类重启
 - **每轮结束必须 git push**——确保执行报告持久化
 
+
+## 注意事项
+- 等待训练完成时，不要用 sleep 循环反复检查。计算一次 ETA，直接 sleep 到预估时间，醒来一次检查即可
+- 例如：还需 700 iter × 6.3 s/iter ≈ 4400 秒 → sleep 4400 → 检查一次
+- 不要每隔几分钟 sleep+grep，这会无意义消耗 context
+
 ## 执行指令示例
 
 ```bash

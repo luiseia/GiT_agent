@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 ~19:00 (循环 #92 Phase 2)
+> 最后更新: 2026-03-08 ~20:40 (循环 #94 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (1160/40000 warmup) | 首次 val @2000 ETA ~20:10 | CEO 架构审计完成
+## 当前阶段: ★★★★ Full nuScenes iter 2000 到达! Warmup 完成! @2000 Val 进行中 (340/753, ETA ~21:07)
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -156,7 +156,7 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 **Full nuScenes 路线 (VERDICT_P2_FINAL_FULL_CONFIG 最终决定)**:
 1. ✅ **Plan P2 COMPLETED**: GELU 确认 (@1000 +72%, @1500 +5.7%). BUG-42: @2000 回调 = LR 问题
 2. ✅ **Config 选择**: **2048+GELU + 在线 DINOv3 frozen** (Critic PROCEED)
-3. **ORCH_024 IN PROGRESS**: 610/40000 (warmup), loss 4-8 波动正常 (LR 仅 3%), 6.3 s/iter, 36-37 GB/GPU, ETA 3/11. **修正: val_interval=2000, 首次 val @2000 ETA ~20:13** (非 @500)
+3. **ORCH_024 IN PROGRESS**: 2000/40000, **warmup 完成!** LR=2.5e-06 达目标. @2000 val 进行中 (340/753, ETA ~21:07). iter_2000.pth 已保存. Loss@2000=5.53
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
@@ -187,6 +187,14 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 4. 连续 2 次同向 >5% (间隔 ≥500 iter): 可做结论
 5. Mini 实验只做代码验证/BUG 发现/粗略趋势, 永远不做架构决策
 6. Full nuScenes: @2000 仅趋势参考, @4000 第一个可信点, @8000 架构决策
+
+**VERDICT_AR_SEQ_REEXAMINE (CONDITIONAL — 维持"非主要"但上调为 contributing factor)**:
+- **Critic 维持结论**: 30 token AR 不是主要瓶颈, 但从"可忽略"上调为 **MEDIUM contributing factor**
+- **瓶颈排序**: DINOv3→BEV 投影 (HIGH) > 类别不平衡 (HIGH) > 30 token AR+exposure bias (MEDIUM) > BUG-45 mask 不一致 (MEDIUM)
+- **关键发现: finished_mask 机制** (`git_occ_head.py:L1100-1134`): 大部分 cell 是背景→Slot1=END→实际解码仅 1 token. 平均解码长度远小于 30
+- **Exposure bias**: 训练用 teacher forcing (GT input), 推理用自身预测. 30 token 的 train/inference gap 确实比 5 token 更大
+- **验证方案**: 方案 A (per-slot 指标提取, 零成本) >> C (仅评估 Slot 1) >> B (1-slot 实验, 不推荐). ORCH_024 @2000 eval 时应提取 per-slot 数据
+- **归因确认**: "GiT 序列更长" 的错误说法是 Conductor 的, 不是 Critic 的. CEO 的事实理解完全正确
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -682,6 +690,11 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~20:40] 循环 #94 Phase 2 — VERDICT_AR_SEQ_REEXAMINE | iter 2000 warmup 完成 | @2000 val 进行中
+- **VERDICT 处理**: AR 30 token 上调为 contributing factor (MEDIUM), finished_mask 缓解, per-slot 验证方案 A 零成本
+- **ORCH_024 里程碑**: iter 2000, warmup 完成, LR 到达目标, @2000 val 进行中 (ETA ~21:07)
+- **归因澄清**: CEO_CMD 处理, 确认是 Conductor 的错误不是 Critic 的
+
 ### [2026-03-08 ~19:00] 循环 #92 Phase 2 — VERDICT_CEO_ARCH_QUESTIONS CONDITIONAL | BUG-43/44/45 | 优先级重排
 - **VERDICT 处理**: Deep Supervision 代码已存在 (零成本!), BUG-43 纠正 Conductor 误估
 - **BUG-45 发现**: OCC head 推理 attn_mask=None, 训练/推理不一致
