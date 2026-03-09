@@ -3550,3 +3550,14 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - GPU: 4卡 36.4-37.0 GB, 100% util
 - 无新 ORCH 指令
 - 首次 val @2000 ETA ~20:10
+
+---
+
+## Cycle #173 | 2026-03-08 20:06
+- **Full nuScenes**: iter 1980/40000 (4.95%), ⚡ @2000 val 即将触发
+- Speed: ~6.27-6.52 s/iter, Mem: 28849 MB/GPU, LR: 2.475e-06 (warmup 99%)
+- Loss @1980: 5.68 (cls=3.93, reg=1.75), reg_loss 下降趋势 (2.5→1.8)
+- 磁盘: /mnt/SSD 351 GB 可用 (91%)
+- 进程: 4 DDP workers 全部存活
+- 无新 ORCH, 无 PENDING
+- **@2000 首次 val ETA ~20:08** — warmup 结束后首次 eval, CRITICAL
