@@ -103,3 +103,10 @@ CEO 指出: Conductor 说"错误不跨 cell 传播"是对的, 但同一 cell 内
 ## [2026-03-09 ~07:45] CEO 指令 (选项 A + OOM 风险)
 CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 **执行结果**: OOM 报告写入 shared/logs/oom.log. GPU 1 实际未 OOM, Plan Q ~5h 后正常完成退出. (Cycle #117)
+
+---
+## [2026-03-09 ~16:40] CEO 指令 (决策矩阵 + DINOv3 解冻策略)
+两个调查:
+1. @10000 决策矩阵 peak_car_P 阈值是否太低? 参考 BEVFormer/PETR, 合理标准是什么?
+2. DINOv3 解冻重新评估: (a) 部分解冻可行性 + 显存, (b) Layer 16 选择是否正确, (c) LoRA vs 部分解冻
+**执行结果**: 完整报告写入 shared/logs/decision_matrix_and_dinov3_review.md. 发现 BUG-48 (unfreeze_last_n 无效) + BUG-49 (58% 计算浪费). 签发 AUDIT_REQUEST_DINOV3_LAYER_AND_UNFREEZE. 提出分阶段阈值 (@17000 > 0.15, @25000 > 0.20, @40000 > 0.25). (Cycle #138)
