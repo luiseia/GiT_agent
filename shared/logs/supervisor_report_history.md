@@ -3777,3 +3777,12 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - Loss 正常, 磁盘: 314G
 - @6000 val ~45 min 后 (~07:00)
 - **仍需用户 kill 908307**
+
+---
+
+## Cycle #195 | 2026-03-09 06:44 | @6000 val 开始! (10/753)
+- Checkpoint @6000 已保存, val 启动
+- GPU 1 仍被占但 val 未 OOM (val 显存 23653 < train 28849)
+- 磁盘: 298G (-16 GB ckpt)
+- 进程: 42 (train + val workers)
+- **Val ETA ~07:41 完成**
