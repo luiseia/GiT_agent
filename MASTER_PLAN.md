@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~19:00 (循环 #140 — 巡航, MASTER_PLAN 清理完成 1260→787 行)
+> 最后更新: 2026-03-09 ~19:00 (循环 #143 — BUG-51 修复完成, 等 @12000 val 后重启训练)
 
 ## ✅ 告警已解除 (2026-03-09 07:43)
 > ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
@@ -10,7 +10,16 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes @10000 完成! peak_car_P=0.090 未突破 | bg_FA=0.407 最差 | 等 LR decay @15000 (@17000 硬性 deadline)
+## 当前阶段: ★★★★★ BUG-51 修复完成! overlap-based grid 分配 | ORCH_024 等 @12000 val 后终止重启
+
+### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED (Cycle #141-#143)
+**根因**: `generate_occ_flow_labels.py:312-315` center-based 分配要求 cell 中心落在投影内。`grid_resolution_perwin=(4,4)` → 20×20 grid, 每 cell 56×56 px。物体投影 <56px 时 `c_start > c_end` → 零 cell（兜底仅给 1 cell）。
+
+**影响量化** (500 帧采样): 70.1% 可见物体投影 <56px, 35.5% 物体获得零 cell (AABB 模式)。有物体的 cell 被标为背景 → 模型正确检测被惩罚为 FP → **car_P 天花板 + bg_FA 膨胀的最底层根因**。
+
+**修复**: `grid_assign_mode='overlap'` — 任何与投影有重叠的 cell 都分配。效果: 30px 行人 1 cell → 4 cells, 零 cell 率 21.1% → 0%。GiT commit `ec9a035`。
+
+**下一步**: 等 @12000 val 作为旧标签 baseline 对照 → 终止 ORCH_024 → 用修复后标签重启训练 (ORCH_028)
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -653,11 +662,12 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-48** | **HIGH** | `unfreeze_last_n` 解冻 DINOv3 末端 blocks (38-39), 但 layer_idx=16 提取中段. 梯度不流经 blocks 17-39, 解冻参数永远不被更新. **Plan M "漂移" 结论无效, 方案 B 三重否决需标注为基于无效实验** (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
 | **BUG-49** | **MEDIUM** | DINOv3 `get_intermediate_layers` 遍历全部 40 blocks, 但 layer_idx=16 只需前 17 个. 浪费 ~58% DINOv3 前向计算. 不影响正确性 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
 | **BUG-50** | **MEDIUM** | `unfreeze_last_n > 0` 时整个 `get_intermediate_layers` 移除 `torch.no_grad()`, 全部 40 blocks 构建计算图, 显存增加 ~10-15 GB. **Plan M "漂移" 的真因**: 显存暴增导致 OOM/训练不稳定, 非 DINOv3 特征漂移 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
+| **BUG-51** | **CRITICAL → FIXED** | Grid 20×20, center-based 分配导致 35.5% 物体零 cell, 70.1% 投影<56px. **修复**: `grid_assign_mode='overlap'` (GiT commit `ec9a035`). 可能是 car_P 天花板 + bg_FA 膨胀的最底层根因 |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 10230/40000 (25.6%), @10000 val ✅, 等 LR decay @15000, @17000 硬性 deadline** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 11060/40000 (27.7%), @12000 val ETA ~20:30, BUG-51 修复后将终止重启** |
 
 ### 已完成任务归档
 ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 mini+re-eval+Plan P/P2), ORCH_025 (测试框架 177passed), ORCH_026 (Plan Q 类竞争无关). 所有 AUDIT 已 VERDICT PROCESSED.
@@ -684,7 +694,9 @@ ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 m
 - **#120 (03-09 08:50)**: ★ ORCH_026 完成: Plan Q car_P=0.083<0.12 → 类竞争无关! 多类正迁移确认
 - **#128 (03-09 12:35)**: @8000 val: car_P=0.060 (P/R tradeoff), off_th=0.140 历史最低. BUG-47 修正决策矩阵用 peak
 - **#138 (03-09 17:00)**: ★★ CEO_CMD: BUG-48/49/50 发现! DINOv3 解冻完全无效. Layer 24 推荐. 分阶段阈值建立
-- **#139 (03-09 18:20)**: @10000 val: car_P=0.069, bg_FA=0.407 最差. @17000 硬性 deadline 设定. 详见 shared/logs/reports/decision_matrix_and_dinov3_review.md
+- **#139 (03-09 18:20)**: @10000 val: car_P=0.069, bg_FA=0.407 最差. @17000 硬性 deadline 设定
+- **#141 (03-09 19:15)**: ★★★★★ BUG-51 发现! Grid 分辨率过粗, 35.5% 物体零 cell. CEO 可视化触发
+- **#143 (03-09 19:00)**: ★★★★★ BUG-51 FIXED! `grid_assign_mode='overlap'`. GiT commit `ec9a035`
 - **bicycle 消失**: R=0.191→0.000, BUG-17 sqrt balance 振荡证据
 - **GPU 1 恢复**: Plan Q ~5h 完成, 速度恢复正常
 - **审计签发**: AUDIT_REQUEST_FULL_6000
