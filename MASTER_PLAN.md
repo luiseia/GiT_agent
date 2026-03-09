@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★★ Full nuScenes @6000 Val — car_P=0.090! ORCH_026: 类竞争无关! 等 @8000 架构决策
+## 当前阶段: ★★★★★ Full nuScenes @6000 — car_P=0.090! 类竞争无关 (PROCEED)! 等 @8000 架构决策 (~11:30)
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -720,7 +720,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **对比**: Plan Q 0.083 < P6@4000 0.126 (10类基线), 去除类竞争反而更差
 - **混淆因素**: 投影层 1024→2048 mismatch 随机初始化, 但 off_cx@1500 恢复基线, 3000 iter 足够
 - **结论**: car_P 瓶颈不在类间混淆, 需关注数据质量/模型容量/训练策略
-- **战略影响**: BUG-17 严重性需重评 (不影响 car_P), Full nuScenes 数据量是关键方向
+- **战略影响**: BUG-17 CRITICAL→HIGH (不影响 car_P), Full nuScenes 数据量是关键方向
+- **★★ VERDICT_ORCH026_PLANQ (Critic): PROCEED** — 结论有效且稳健
+  - Plan Q (单类+GELU) 0.083 < P2 (10类+GELU) 0.112 → 多类训练对 car 有正迁移!
+  - 10 类训练的特征多样性、BEV 理解、背景判别 → 比单类更好
+  - BUG-17: CRITICAL→HIGH, 不影响 car_P, 优先级 #4 (从 #2 降)
+  - **car_P 真正瓶颈候选**: (1) DINOv3→BEV 信息瓶颈 BUG-15 (4096→768 降维); (2) BEV 投影精度 proj_z0; (3) per-cell 评估偏差 BUG-18
+  - **优先级**: Deep Supervision > 方案D > LoRA (上升) > BUG-17 (下降) > Attention Mask
+  - **永久规则: 不再跑 Mini 实验** (Plan Q 是 Mini 收官)
+  - **@8000 后安排 BUG-15 专项审计** (precision 瓶颈根因)
 
 **2. 5 类车辆方案 — 不推荐作为主策略**
 - 技术可行: 同样用数据过滤保持 vocab 兼容, 无 BUG-27 风险
@@ -755,7 +763,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | BUG-14 | MEDIUM | 架构层面 |
 | BUG-15 | HIGH | P5b 解决 (双层投影) |
 | BUG-16 | MEDIUM | NOT BLOCKING |
-| **BUG-17** | **CRITICAL** | ~~P5b 解决~~ Full nuScenes 实证: bicycle 154K FP (P=0.001), sqrt balance 给稀有类 ~11x 权重. 建议: balance_mode='log' 或 weight cap=3.0 或关闭 (VERDICT_FULL_4000) |
+| **BUG-17** | **HIGH** (降级, was CRITICAL) | bicycle 154K FP + sqrt balance ~11x 权重. **但 VERDICT_ORCH026_PLANQ 证明不影响 car_P!** 危害限于 bg_FA 膨胀/训练不稳定. 修复时机: ORCH_024 后第二轮实验 |
 | **BUG-18** | **MEDIUM** | 设计层 — 评估时 GT instance 未跨 cell 关联 (Critic VERDICT_INSTANCE_GROUPING) |
 | **BUG-19** | **HIGH** | **FIXED** — z+=h/2 把 box 中心移到顶部, 导致投影只覆盖上半身。移除后多边形覆盖完整车辆。GiT commit `965b91b` |
 | **BUG-20** | **HIGH** | bus 振荡根因: nuScenes-mini 数据量不足 (~120 bus 标注/40 张图), sqrt 加权无法根治。数据集天花板, 非模型 bug (Critic VERDICT_P5B_3000) |

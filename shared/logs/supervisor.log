@@ -392,3 +392,6 @@
 [02:59:40] 📨 投递: ORCH_0309_0300_026.md → admin
 [08:15:29] 🔔 通知 Critic: REQUEST_FULL_6000
 [08:16:29] 🔔 通知 Critic: REQUEST_FULL_6000
+[08:43:38] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: ORCH026_PLANQ
+[08:43:53] → Critic 已重启并发送审计指令: ORCH026_PLANQ
+[08:44:54] 🔔 通知 Critic: REQUEST_ORCH026_PLANQ

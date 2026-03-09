@@ -83,6 +83,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | AR_SEQ_REEXAMINE | CONDITIONAL | 非主要瓶颈, MEDIUM |
 | **FULL_4000** | **CONDITIONAL** | **继续训练. BUG-17→CRITICAL, BUG-46 new. @8000决策矩阵** |
 | **FULL_6000** | **CONDITIONAL** | **继续训练. bg_FA=0.331不告警 (多类代价). car_P可信. bicycle振荡确认** |
+| **ORCH026_PLANQ** | **PROCEED** | **类竞争无关! car_P@best=0.083<0.12. 多类正迁移. BUG-17→HIGH. 新瓶颈: BUG-15** |
 
 ---
 
@@ -118,10 +119,10 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | 排名 | 提案 | 时机 |
 |------|------|------|
 | 1 | **Deep Supervision** (一行改动) | ORCH_024 后第一个实验 |
-| 2 | **BUG-17 修复** (balance_mode='log' 或 weight cap) | @8000 若 car_P<0.08 |
-| 3 | **方案 D (历史 occ box 2帧)** | ORCH_024 后 |
-| 4 | **Attention Mask / BUG-45 修复** | 与 deep supervision 一起 |
-| 5 | **方案 E (LoRA)** | D 之后 |
+| 2 | **方案 D (历史 occ box 2帧)** | ORCH_024 后 |
+| 3 | **方案 E (LoRA)** (上升, 缓解 BUG-15) | D 之后 |
+| 4 | **BUG-17 修复** (下降, 不影响 car_P) | ORCH_024 后第二轮 |
+| 5 | **Attention Mask / BUG-45 修复** | 与 deep supervision 一起 |
 
 ---
 
@@ -130,7 +131,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | BUG | 严重性 | 状态 |
 |-----|--------|------|
 | BUG-2~12 | — | 全部 FIXED |
-| **BUG-17** | **CRITICAL** | bicycle 154K FP + 振荡 (0→0.191→0). sqrt balance ~11x car 权重 |
+| **BUG-17** | **HIGH** (降级) | bicycle 154K FP + 振荡. 不影响 car_P (VERDICT 证明). 仅影响 bg_FA/训练稳定 |
 | BUG-33 | MEDIUM | FIXED — DefaultSampler, DDP 偏差可能已修复 |
 | BUG-43 | MEDIUM | Conductor 未读代码估算难度 |
 | BUG-45 | MEDIUM | OCC head 推理 attn_mask=None, Full 上 12000 KV entries |
