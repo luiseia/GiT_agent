@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~03:20 (循环 #108 Phase 1)
+> 最后更新: 2026-03-09 ~04:20 (循环 #110 Phase 1)
 
 ## 🚨 活跃告警 (2026-03-09 03:20)
 > **GPU 1 资源冲突**: ORCH_026 (Plan Q, PID 908307, 11 GB) 与 ORCH_024 共享 GPU 1 → 显存 97.4% → ORCH_024 从 6.3s 减速到 17s/iter (2.7x)
@@ -677,6 +677,34 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - [ ] **P7b**: 3D Anchor — 射线采样
 - [ ] **P8**: V2X 融合
 
+### 持久追踪: Car Precision 调查结论 (CEO 认可, Cycle #110)
+
+**1. 单类 Car 诊断实验 (Plan Q) — ORCH_026 IN PROGRESS**
+- **目的**: 干净回答 "类竞争是否为 car_P 瓶颈" (Plan K 因 BUG-27 无效)
+- **设计**: 保持 num_vocal=230 + num_classes=10 不变, 只在数据管道过滤 (避免 BUG-27)
+- **预提取特征 + 单 GPU**: 不加载 DINOv3, 可与 ORCH_024 共享 GPU
+- **判定标准**: car_P>0.20=类竞争是主瓶颈, 0.15-0.20=contributing factor, 0.12-0.15=不是瓶颈, <0.12=无关
+- **状态**: ORCH_026 已签发, Admin 执行中 (GPU 1, 导致 ORCH_024 减速 ⚠️)
+
+**2. 5 类车辆方案 — 不推荐作为主策略**
+- 技术可行: 同样用数据过滤保持 vocab 兼容, 无 BUG-27 风险
+- 可从 ORCH_024 checkpoint 加载 (vocab 兼容)
+- 显存/速度几乎无差异 (AR 长度由 grid 决定, 与类数无关)
+- **不推荐原因**: (a) 最终仍需 10 类, 增加迁移成本; (b) 修复 BUG-17 (balance_mode) 比回避类竞争更直接; (c) ORCH_024 已在学习多类
+- **结论**: 仅作为 mini 诊断备选, 不在 Full 上执行
+
+**3. LoRA 方案 (方案 E) — ORCH_024 后评估**
+- rank=16, ~12M 额外参数, ~2 GB 额外 VRAM
+- 需应用到 Layer 14-18 (围绕提取层 16) 才有意义, 而非 Layer 38-39
+- **风险**: 实现需 1-2 天, 效果不确定
+- **优先级**: BUG-17 修复 >> 方案 D (历史 occ box) >> LoRA
+- **执行条件**: ORCH_024 完成 + 方案 D 评估后, 且 car_P 仍不理想时
+
+**4. 特征漂移结论**
+- Plan M 崩溃: DINOv3 预训练表示脆弱, 任何微调都破坏中间层分布
+- Plan N car_P=0.05 低: BUG-27/31/36 叠加, 不代表 DINOv3 特征有本质 gap
+- ORCH_024 car_P=0.078 在更公平条件下证明 frozen DINOv3 可用
+
 ### Instance Grouping (VERDICT_INSTANCE_GROUPING — CONDITIONAL, 已归档)
 - **提案**: SLOT_LEN 10→11, 加 instance_id token (g_idx, 32 bins)
 - **Critic 判决**: 方向正确, 需解决 4 个问题 (编码方案/序列扩展/评估语义/Loss 权重)
@@ -748,6 +776,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
 | **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — ~4200/40000 (10.5%), @4000 VERDICT CONDITIONAL, 等 @6000 (~05:30) → @8000 做决策** |
 | **ORCH_025** | **pytest 测试框架** | **COMPLETED ✅ — 177 passed, 12 skipped, 3 xfailed** |
+| **ORCH_026** | **Plan Q 单类 car 诊断 (mini)** | **IN PROGRESS — GPU 1, 导致 ORCH_024 减速 2.7x ⚠️** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -769,6 +798,12 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **Critic 建议**: @8000 前不做架构修改 (deep supervision/mask 等)
 - **off_cy 恶化**: 可解释 (深度估计+多类分布), @6000 观察趋势
 - **项目进展报告**: 363 行, CEO 指令完成
+
+### [2026-03-09 ~04:20] 循环 #110 — CEO 双任务: 调查结论持久化 + 架构详细报告
+- **任务 1**: car_precision_investigation 结论写入 MASTER_PLAN 持久追踪区域 (Plan Q/5 类/LoRA/特征漂移)
+- **任务 2**: orch024_architecture_detail.md 撰写 — 完整数据流、参数统计、LR 层次、显存分析
+- **ORCH_026 IN PROGRESS**: Plan Q 在 GPU 1 执行, 导致 ORCH_024 减速 2.7x
+- **GPU 冲突**: GPU 1 显存 97.4%, 等 CEO 决策或 Plan Q 自然完成
 
 ### [2026-03-09 ~01:40] 循环 #104 — ★★★ @4000 Val 完成! 第一个可信点 | car_P=0.078 持平 | truck/bicycle 新出现 | 审计签发
 - **@4000 val**: car_P=0.078 (持平), car_R=0.419 (停止spam), truck_P=0.057, bicycle_R=0.191
