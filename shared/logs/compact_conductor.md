@@ -14,7 +14,7 @@
 ## ★★★★★ 当前状态: Full nuScenes @6000 Val — car_P=0.090 突破! 多类爆发! 等 @8000 确认
 
 ### ORCH_024 训练状态 (Cycle #118)
-- **进度**: 6100/40000 (15.3%), 速度恢复正常 ~6.3 s/iter
+- **进度**: 6220/40000 (15.6%), 速度稳定 ~6.3-6.5 s/iter
 - **BUG-46**: accumulative_counts=4, 实际 optimizer steps = iter/4
 - **ETA**: ~3/12 (因 GPU 1 事件延迟 +8.5h)
 - **显存**: 36-37 GB/GPU (A6000 48GB)
@@ -90,7 +90,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 6100/40000 (15.3%), @6000 val ✅, 等 @8000 (~21:00)** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 6220/40000 (15.6%), @6000 val ✅, 等 @8000 (~11:30)** |
 | **ORCH_025** | pytest 测试框架 | COMPLETED ✅ — 177 passed |
 | **ORCH_026** | Plan Q 单类 car 诊断 (mini) | IN PROGRESS/COMPLETED? — GPU 1 ~5h 后进程消失, 等 Admin 报告 |
 | ORCH_001-023 | Mini 阶段全部 | COMPLETED |
@@ -152,7 +152,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 1. ~~**@2000 val**~~ ✅ car_P=0.079
 2. ~~**@4000 val**~~ ✅ car_P=0.078, VERDICT 处理完
 3. ~~**@6000 val**~~ ✅ car_P=0.090, VERDICT 处理完
-4. **监控 @8000 val** (ETA ~3/9 ~21:00): **架构决策点!**
+4. **监控 @8000 val** (ETA ~3/9 ~11:30): **架构决策点!**
 5. **ORCH_026 结果**: 等 Admin 报告 Plan Q 单类 car 诊断
 6. **@8000 单 GPU re-eval**: 确认 DDP 偏差 (BUG-33)
 7. **ORCH_024 后实验**: Deep Supervision → Attention Mask → 方案 D
@@ -169,7 +169,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 | 事件 | iter | ETA |
 |------|------|-----|
 | ~~@6000 val~~ | ~~6000~~ | ✅ car_P=0.090, bg_FA=0.331 |
-| **@8000 val** | **8000** | **~3/9 ~21:00** |
+| **@8000 val** | **8000** | **~3/9 ~11:30 (修正)** |
 | 第一次 LR decay | 17000 | ~3/10 ~10:00 |
 | 训练结束 | 40000 | ~3/12 |
 
