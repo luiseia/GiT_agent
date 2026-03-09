@@ -3604,3 +3604,15 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - 进程: 22 个存活
 - 无新 ORCH, 无 PENDING
 - DDP val 偏差提醒: 建议 @4000 后单 GPU re-eval
+
+---
+
+## Cycle #177 | 2026-03-08 22:02
+- **Full nuScenes**: iter 2520/40000 (6.3%), post-warmup 训练正常
+- LR 恒定: base=5.0e-05, lr=2.5e-06
+- Loss 正常波动, 偶有尖峰 (@2330: 13.7, @2350: 10.8) 自行恢复
+- GPU: 4卡 36.8-37.4 GB, 93-100%
+- 磁盘: 336 GB 可用
+- 进程: 22 个存活
+- 无新 ORCH, 无 PENDING
+- @4000 val ETA 3/9 ~02:30
