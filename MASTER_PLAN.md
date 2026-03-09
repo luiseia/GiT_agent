@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~08:10 (循环 #118 Phase 1)
+> 最后更新: 2026-03-09 ~08:50 (循环 #120 Phase 1)
 
 ## ✅ 告警已解除 (2026-03-09 07:43)
 > ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★★ Full nuScenes @6000 Val — car_P 突破 0.090! 多类爆发! bg_FA 恶化需观察 | 等 @8000 确认
+## 当前阶段: ★★★★★ Full nuScenes @6000 Val — car_P=0.090! ORCH_026: 类竞争无关! 等 @8000 架构决策
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -713,12 +713,14 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 
 ### 持久追踪: Car Precision 调查结论 (CEO 认可, Cycle #110)
 
-**1. 单类 Car 诊断实验 (Plan Q) — ORCH_026 IN PROGRESS**
+**1. 单类 Car 诊断实验 (Plan Q) — ORCH_026 ✅ COMPLETED — 类竞争无关!**
 - **目的**: 干净回答 "类竞争是否为 car_P 瓶颈" (Plan K 因 BUG-27 无效)
 - **设计**: 保持 num_vocal=230 + num_classes=10 不变, 只在数据管道过滤 (避免 BUG-27)
-- **预提取特征 + 单 GPU**: 不加载 DINOv3, 可与 ORCH_024 共享 GPU
-- **判定标准**: car_P>0.20=类竞争是主瓶颈, 0.15-0.20=contributing factor, 0.12-0.15=不是瓶颈, <0.12=无关
-- **状态**: ORCH_026 已签发, Admin 执行中 (GPU 1, 导致 ORCH_024 减速 ⚠️)
+- **结果**: car_P@best = 0.083 (@2500) < 0.12 阈值 → **类竞争无关**
+- **对比**: Plan Q 0.083 < P6@4000 0.126 (10类基线), 去除类竞争反而更差
+- **混淆因素**: 投影层 1024→2048 mismatch 随机初始化, 但 off_cx@1500 恢复基线, 3000 iter 足够
+- **结论**: car_P 瓶颈不在类间混淆, 需关注数据质量/模型容量/训练策略
+- **战略影响**: BUG-17 严重性需重评 (不影响 car_P), Full nuScenes 数据量是关键方向
 
 **2. 5 类车辆方案 — 不推荐作为主策略**
 - 技术可行: 同样用数据过滤保持 vocab 兼容, 无 BUG-27 风险
@@ -808,9 +810,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — ~4200/40000 (10.5%), @4000 VERDICT CONDITIONAL, 等 @6000 (~05:30) → @8000 做决策** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 6380/40000 (16.0%), @6000 val ✅ (car_P=0.090), 等 @8000 (~11:30) 架构决策** |
 | **ORCH_025** | **pytest 测试框架** | **COMPLETED ✅ — 177 passed, 12 skipped, 3 xfailed** |
-| **ORCH_026** | **Plan Q 单类 car 诊断 (mini)** | **IN PROGRESS — GPU 1, 导致 ORCH_024 减速 2.7x ⚠️** |
+| **ORCH_026** | **Plan Q 单类 car 诊断 (mini)** | **COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关!** |
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -838,6 +840,15 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **任务 2**: orch024_architecture_detail.md 撰写 — 完整数据流、参数统计、LR 层次、显存分析
 - **ORCH_026 IN PROGRESS**: Plan Q 在 GPU 1 执行, 导致 ORCH_024 减速 2.7x
 - **GPU 冲突**: GPU 1 显存 97.4%, 等 CEO 决策或 Plan Q 自然完成
+
+### [2026-03-09 ~08:50] 循环 #120 — ★★★ ORCH_026 COMPLETED: 类竞争无关! | car_P@best=0.083 < 0.12 | 战略影响大
+- **ORCH_026 Plan Q 完成**: 单类 car 诊断, 3000 iter mini, car_P@best=0.083 (@2500)
+- **判定**: 0.083 < 0.12 → 类竞争不是 car precision 瓶颈!
+- **对比**: Plan Q 0.083 < P6@4000 0.126 (10类), 去除类竞争反而更差
+- **战略影响**: BUG-17 从 car_P 瓶颈视角降级 (仍影响整体质量), Full 数据量是关键
+- **混淆因素**: 投影层 mismatch (1024→2048 随机初始化) — 审计中
+- **审计签发**: AUDIT_REQUEST_ORCH026_PLANQ (5 问题: 结论有效性/战略影响/联合解读/BUG-17重评/优先级)
+- **训练进度**: 6380/40000 (16.0%), @8000 ETA ~11:30
 
 ### [2026-03-09 ~08:10] 循环 #118 — ★★★★★ @6000 Val 突破! car_P=0.090 (+15%) | 多类爆发 | bg_FA=0.331 恶化
 - **car_P=0.090**: 从 0.078-0.079 停滞区跳出, +15% (规则#2: 需 @8000 同向确认)

@@ -92,7 +92,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 |----|------|------|
 | **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 6220/40000 (15.6%), @6000 val ✅, 等 @8000 (~11:30)** |
 | **ORCH_025** | pytest 测试框架 | COMPLETED ✅ — 177 passed |
-| **ORCH_026** | Plan Q 单类 car 诊断 (mini) | IN PROGRESS/COMPLETED? — GPU 1 ~5h 后进程消失, 等 Admin 报告 |
+| **ORCH_026** | Plan Q 单类 car 诊断 (mini) | **COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关!** |
 | ORCH_001-023 | Mini 阶段全部 | COMPLETED |
 
 ---
@@ -153,7 +153,7 @@ Data: train 28130 (700 scenes), val 6019 (150 scenes), 零重叠
 2. ~~**@4000 val**~~ ✅ car_P=0.078, VERDICT 处理完
 3. ~~**@6000 val**~~ ✅ car_P=0.090, VERDICT 处理完
 4. **监控 @8000 val** (ETA ~3/9 ~11:30): **架构决策点!**
-5. **ORCH_026 结果**: 等 Admin 报告 Plan Q 单类 car 诊断
+5. ~~**ORCH_026 结果**~~: ✅ car_P@best=0.083 < 0.12 → 类竞争无关. 审计签发
 6. **@8000 单 GPU re-eval**: 确认 DDP 偏差 (BUG-33)
 7. **ORCH_024 后实验**: Deep Supervision → Attention Mask → 方案 D
 
