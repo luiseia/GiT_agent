@@ -93,3 +93,8 @@ CEO 指出: Conductor 说"错误不跨 cell 传播"是对的, 但同一 cell 内
 任务 1: 将 car_precision_investigation.md 关键结论写入 MASTER_PLAN 持久追踪区域 (Plan Q/5 类/LoRA/特征漂移).
 任务 2: 撰写 ORCH_024 架构详细报告 (DINOv3 冻结/投影层/LR/ViT 层/参数量/显存).
 **执行结果**: 任务 1 写入 MASTER_PLAN "持久追踪: Car Precision 调查结论" 区域. 任务 2 写入 shared/logs/orch024_architecture_detail.md. (Cycle #110)
+
+---
+## [2026-03-09 ~04:50] CEO 指令 (Val 数据集调查)
+问题: 训练 val 用的是跟 train 一样的数据集吗?
+**执行结果**: 不同。Train 28,130 samples (700 scenes) vs Val 6,019 samples (150 scenes), 零重叠, 标准 nuScenes 官方分割. 报告写入 shared/logs/val_dataset.md. (Cycle #111)
