@@ -125,8 +125,7 @@ while true; do
             log "→ supervisor: 已重启"
             SUPERVISOR_SENT=1
         elif is_idle agent-supervisor; then
-            tmux send-keys -t agent-supervisor \
-                "请执行下一轮自主循环：git pull 两个仓库 → 读 GiT/logs/ 训练日志和 eval 结果 → 写 shared/logs/supervisor_report_latest.md 精简摘要 → 检查指令投递状态 → 深度监控 → git push" Enter
+            tmux send-keys -t agent-supervisor "cat shared/commands/supervisor_cmd.md" Enter
             log "→ supervisor: 指令已发送"
             SUPERVISOR_SENT=1
         else
@@ -145,20 +144,19 @@ while true; do
     log "→ ops: 执行 save_tmux.sh"
     bash "${AGENT_DIR}/scripts/save_tmux.sh"
 
-    # ─── 5. Conductor Phase 1（信息收集 + 审计决策）
+    # ─── 5. Conductor Phase 1 ────────────────────
     CONDUCTOR_P1_SENT=0
     if tmux has-session -t agent-conductor 2>/dev/null; then
         if ! is_claude_alive agent-conductor; then
             log "⚠️ conductor: Claude Code 已退出，正在重启..."
             tmux send-keys -t agent-conductor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
             sleep 15
-            tmux send-keys -t agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待 Phase 1 指令" Enter
+            tmux send-keys -t agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待指令" Enter
             log "→ conductor: 已重启"
             sleep 10
         fi
         if is_idle agent-conductor || is_claude_alive agent-conductor; then
-            tmux send-keys -t agent-conductor \
-                "执行 Phase 1：git pull → CEO_CMD.md → 读 shared/logs/supervisor_report_latest.md → STATUS.md → 检查 ORCH 状态 → 读 Admin 报告 → 综合判断是否需要审计 → 如需审计则签发 AUDIT_REQUEST 到 shared/audit/requests/ → git push" Enter
+            tmux send-keys -t agent-conductor "cat shared/commands/phase1_cmd.md" Enter
             log "→ conductor Phase 1: 指令已发送"
             CONDUCTOR_P1_SENT=1
         else
@@ -182,19 +180,53 @@ while true; do
             AUDIT_NEEDED=1
             log "🔔 发现待审计: ${id}"
 
+            # 生成动态审计命令文件
+            cat > "${AGENT_DIR}/shared/commands/critic_cmd.md" << CRITICEOF
+# Critic 审计指令 — ${id}
+
+严格按以下步骤执行：
+
+## 1. PULL
+cd /home/UNT/yz0370/projects/GiT_agent && git pull
+cd /home/UNT/yz0370/projects/GiT && git pull
+
+## 2. 阅读角色定义
+读取 agents/claude_critic/CLAUDE.md，理解你的职责和规则
+
+## 3. 读取审计请求
+读取 shared/audit/requests/AUDIT_REQUEST_${id}.md
+
+## 4. 读取 MASTER_PLAN
+读取 MASTER_PLAN.md，审视 Conductor 的计划和决策是否合理
+
+## 5. 深度审查代码
+按审计请求要求，深度审查 GiT/ 中相关代码，追踪完整调用链
+
+## 6. 调试验证（如需）
+调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_$(date +%Y%m%d)/
+文件名必须以 debug_ 前缀
+
+## 7. 写入判决
+写入 shared/audit/pending/VERDICT_${id}.md
+判决必须包含：结论(PROCEED/STOP/CONDITIONAL)、发现的问题(附文件路径+行号)、对 Conductor 计划的评价
+
+## 8. 提交
+cd /home/UNT/yz0370/projects/GiT_agent
+git add shared/audit/pending/ && git commit -m "critic: verdict ${id}" && git push
+CRITICEOF
+
             if tmux has-session -t agent-critic 2>/dev/null; then
                 if ! is_claude_alive agent-critic; then
                     log "⚠️ critic: Claude Code 已退出，正在重启..."
                     tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
                     sleep 15
                 fi
-                tmux send-keys -t agent-critic \
-                    "请阅读 agents/claude_critic/CLAUDE.md，然后执行 shared/audit/requests/AUDIT_REQUEST_${id}.md 中的审计请求，将判决写入 shared/audit/pending/VERDICT_${id}.md 并 git push" Enter
+                tmux send-keys -t agent-critic "cat shared/commands/critic_cmd.md" Enter
                 log "→ critic: 审计指令已发送 (${id})"
             else
                 log "⚠️ critic: 会话不存在，无法执行审计"
             fi
-            break  # 一次只处理一个审计请求
+            break
         fi
     done
 
@@ -223,18 +255,14 @@ while true; do
         done
     fi
 
-    # ─── 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）
+    # ─── 7. Conductor Phase 2 ────────────────────
     if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
         if tmux has-session -t agent-conductor 2>/dev/null; then
-            # 等待 Conductor 空闲（可能还在处理 Phase 1 的尾巴）
             if ! is_idle agent-conductor; then
                 wait_for_idle agent-conductor 5 "conductor 等待空闲"
             fi
-            tmux send-keys -t agent-conductor \
-                "执行 Phase 2：git pull → 读取 shared/audit/pending/ 下所有 VERDICT 并纳入决策 → 将 VERDICT 和对应 AUDIT_REQUEST 移到 shared/audit/processed/ → 更新 MASTER_PLAN.md → 决定是否签发 ORCH → 检查 Context 剩余 → git push" Enter
+            tmux send-keys -t agent-conductor "cat shared/commands/phase2_cmd.md" Enter
             log "→ conductor Phase 2: 指令已发送"
-
-            # 等待 Phase 2 完成（最多 10 分钟）
             wait_for_idle agent-conductor 10 "conductor Phase 2"
         fi
     fi
@@ -248,8 +276,7 @@ while true; do
             tmux send-keys -t agent-admin "请阅读 /home/UNT/yz0370/projects/GiT_agent/agents/claude_admin/CLAUDE.md 并开始自主循环" Enter
             log "→ admin: 已重启"
         elif is_idle agent-admin; then
-            tmux send-keys -t agent-admin \
-                "请执行下一轮检查：git pull → 检查 shared/pending/ 是否有 DELIVERED 状态的 ORCH 指令，有则执行，无则回复无待执行" Enter
+            tmux send-keys -t agent-admin "cat /home/UNT/yz0370/projects/GiT_agent/shared/commands/admin_cmd.md" Enter
             log "→ admin: 指令已发送"
         else
             log "→ admin: 正在忙碌，跳过本轮"
