@@ -1,10 +1,10 @@
 # Critic 上下文压缩 — 2026-03-09
 
-## 当前状态: 休眠中，等待 ORCH_024 @6000/@8000 eval 或新审计请求
+## 当前状态: 休眠中，等待 ORCH_024 @8000 eval 或新审计请求
 
 ## 正在进行
 - ORCH_024: Full nuScenes 2048+GELU+在线DINOv3 frozen, 4GPU DDP, 40000 iter, ETA 3/11
-- @4000 eval 已完成, 下一个 eval @6000
+- @6000 eval 已完成, 下一个 eval @8000 (ETA ~3/9 21:00)
 - accumulative_counts=4, 实际优化步数 = iter/4
 
 ## 已完成的判决 (全部已 git push)
@@ -18,81 +18,54 @@
 | VERDICT_CEO_ARCH_QUESTIONS | CONDITIONAL | dd215af |
 | VERDICT_AR_SEQ_REEXAMINE | CONDITIONAL | 5b2c714 |
 | VERDICT_FULL_4000 | CONDITIONAL | 887508d |
-
-## 历史判决 (前几次会话)
-P2_FINAL, ARCH_REVIEW, P3_FINAL, P4_FINAL, 3D_ANCHOR, P5_MID,
-INSTANCE_GROUPING, P5B_3000(×2), P6_ARCHITECTURE, DIAG_RESULTS,
-DIAG_FINAL, P6_1000, P6_1500 — 全部 CONDITIONAL 或 PROCEED
+| VERDICT_FULL_6000 | CONDITIONAL | 32fa6ef |
 
 ## BUG 状态总表
 | BUG | 严重性 | 状态 | 描述 |
 |-----|--------|------|------|
-| BUG-1~3,8~12 | 中~致命 | FIXED | 早期修复 (theta, bg梯度, score链, cls_loss, clip_grad, warmup, classes, 匹配) |
+| BUG-1~3,8~12 | 中~致命 | FIXED | 早期修复 |
 | BUG-13 | LOW | 暂不修 | slot_class bg clamp |
 | BUG-14 | MEDIUM | 架构层 | grid token 与 image patch 冗余 |
 | BUG-15 | HIGH | OPEN | Precision 瓶颈 |
-| BUG-16 | MEDIUM | 设计层 | 预提取特征与数据增强不兼容 |
-| BUG-17 | HIGH | OPEN | per_class_balance 极不均衡数据零和振荡 |
+| BUG-17 | **CRITICAL** | **Full确认** | per_class_balance sqrt 振荡, bicycle 0→0.191→0 周期~2000iter |
 | BUG-18 | MEDIUM | 设计层 | 评估未跨 cell 关联 GT instance |
-| BUG-19 | HIGH | FIXED | proj_z0 标签问题 |
-| BUG-20 | HIGH | 数据层 | mini 样本不足导致类振荡 |
 | BUG-27 | CRITICAL | 教训 | 改 num_vocal = 实验无效 |
-| BUG-30 | — | **INVALID** | GELU不损害off_th, 假设错误 |
-| BUG-33 | MEDIUM | 确认 | DDP val GT重复, P不受影响, R偏差~10% |
-| BUG-35 | MEDIUM | 教训 | DINOv3 unfreeze = 特征漂移 |
-| BUG-39 | MEDIUM | 设计层 | 双层Linear无激活=单层, 但因式分解有优化优势 |
-| BUG-41 | HIGH | 确认 | Plan O 全程warmup, 结果不可信 |
-| BUG-42 | MEDIUM | 记录 | Plan P2 全程无LR decay (max_iters<milestone) |
+| BUG-33 | MEDIUM | 可能已修 | DDP val DefaultSampler, 待 @8000 单GPU验证 |
+| BUG-39 | MEDIUM | 设计层 | 双层Linear无激活=单层, 因式分解有优化优势 |
 | BUG-43 | MEDIUM | 确认 | Conductor 未查代码即估算 deep supervision 实现难度 |
-| BUG-44 | LOW | 理论层 | Deep supervision 各层共享 vocab embedding |
 | BUG-45 | MEDIUM | OPEN | OCC head 推理 attn_mask=None, 训练/推理不一致 |
 | BUG-46 | LOW | 信息 | accumulative_counts=4, 实际优化步数=iter/4 |
+下一个 BUG 编号: BUG-47
 
-## 下一个 BUG 编号: BUG-47
-
-## BUG-17 状态升级: CRITICAL (Full nuScenes 实证确认)
-- bicycle: 154K FP (P=0.001, R=0.191, GT=812)
-- sqrt balance 给 bicycle ~11x car 的 loss 权重
-- 可能间接拖累 car_P
-
-## CEO 架构问题审计结论 (VERDICT_CEO_ARCH_QUESTIONS)
-- **Q1 (30 Token AR)**: 非主要瓶颈, 低优先级. 但 Conductor 误称"原始 GiT 序列更长"
-- **Q2 (Deep Supervision)**: **已在代码中实现!** `git.py:L388` 改一行即可启用. Conductor 严重误判
-- **Q3 (Attention Mask)**: CEO 硬 mask 方案优于 Conductor 软权重方案. 发现 BUG-45 (训练/推理 mask 不一致)
-- **Q4 (评判标准)**: 基本合理, 补充规则5(不从mini做架构决策)和规则6(Full首次有意义eval需1epoch后)
-- **优先级修正**: Deep Supervision(零成本) >> 评判标准 >> 方案D >> Attention Mask >> LoRA >> 解码长度
-- **AR 序列复核**: 维持"非主要瓶颈"但上调为 contributing factor. 关键新发现: finished_mask 缩短实际序列, exposure bias 是合法担忧但非首要. 零成本验证: per-slot 指标分析
-
-## Full nuScenes 训练数据
-| 指标 | @2000 | @4000 | 趋势 |
-|------|-------|-------|------|
-| car_P | 0.079 | 0.078 | → 持平 |
-| car_R | 0.627 | 0.419 | ↓ 再平衡 |
-| truck_P | 0 | 0.057 | ↑ 新类 |
-| bg_FA | 0.222 | 0.199 | ↓ ✅ |
-| off_cx | 0.056 | 0.039 | ↓ ✅ |
-| off_cy | 0.069 | 0.097 | ↑ ❌ 需监控 |
-| off_th | 0.174 | 0.150 | ↓ ✅ |
+## Full nuScenes 训练数据 (ORCH_024)
+| 指标 | @2000 | @4000 | @6000 | 趋势 |
+|------|-------|-------|-------|------|
+| car_P | 0.079 | 0.078 | **0.090** | ↑ 突破 |
+| car_R | 0.627 | 0.419 | 0.455 | ↗ 回升 |
+| truck_P | 0 | 0.057 | 0.019 | ↓ FP增 |
+| bus_R | 0 | 0 | 0.287 | ↑ 新类 |
+| ped_P | 0.001 | 0.001 | 0.024 | ↑ 新类 |
+| bg_FA | 0.222 | 0.199 | **0.331** | ↑ ❌ 多类代价 |
+| off_cx | 0.056 | 0.039 | 0.056 | ↗ 新类拉偏 |
+| off_cy | 0.069 | 0.097 | 0.082 | ↘ 改善 |
+| off_th | 0.174 | 0.150 | 0.169 | ↗ 新类拉偏 |
+| opt_steps | 500 | 1000 | 1500 | — |
 
 ## ORCH_024 @8000 决策矩阵
-| 结果 | 行动 |
-|------|------|
-| car_P > 0.12 | 架构验证, 继续到 @17000 看 LR decay |
-| car_P 0.08-0.12 | 方向正确, 继续 |
-| car_P 0.05-0.08 | 调参: 考虑关闭 per_class_balance 或调低 bg_balance_weight |
-| car_P < 0.05 | 严重问题, 需架构级修改 |
+| car_P | bg_FA | 行动 |
+|-------|-------|------|
+| >0.12 | <0.30 | 架构验证, 继续到 @17000 |
+| 0.08-0.12 | <0.35 | 方向正确, 继续 |
+| 0.05-0.08 | any | 调参 per_class_balance |
+| <0.05 | any | 严重问题 |
 
-## 训练代际谱系 (精简)
-```
-P1→P2→P3→P4→P5(DINOv3 L16)→P5b(双层1024+GELU)
-→P6(2048+noGELU, BUG-39退化但@3500超P5b)
-→Plan P2(2048+GELU, 收敛快72%)
-→ORCH_024(Full nuScenes, 2048+GELU+在线DINOv3 frozen)
-→下一步: Deep Supervision(零成本) + 方案D(历史occ 2帧)
-```
+## 关键架构审计结论 (精简)
+- Deep Supervision: 已在代码中, `git.py:L388` 改一行启用
+- Attention Mask: CEO 硬 mask > Conductor 软权重, BUG-45 待修
+- AR 序列: 非主要瓶颈, contributing factor, per-slot 分析待做
+- 优先级: Deep Supervision >> 方案D >> Attention Mask >> LoRA
 
 ## 恢复指引
 1. git pull 两个仓库
-2. 检查 shared/audit/requests/ 是否有新 AUDIT_REQUEST (无对应 pending/VERDICT 且无 processed/VERDICT)
+2. 检查 shared/audit/requests/ 是否有新 AUDIT_REQUEST
 3. 有则审计，无则休眠
-4. ORCH_024 @2000 eval 后可能有新审计请求
