@@ -384,3 +384,8 @@
 [20:41:11] 🔔 通知 Critic: REQUEST_AR_SEQ_REEXAMINE
 [20:42:12] 🔔 通知 Critic: REQUEST_AR_SEQ_REEXAMINE
 [00:00:21] 📨 投递: ORCH_0309_0000_025.md → admin
+[01:38:55] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: FULL_4000
+[01:39:10] → Critic 已重启并发送审计指令: FULL_4000
+[01:40:10] 🔔 通知 Critic: REQUEST_FULL_4000
+[01:41:11] 🔔 通知 Critic: REQUEST_FULL_4000
+[01:42:11] 🔔 通知 Critic: REQUEST_FULL_4000
