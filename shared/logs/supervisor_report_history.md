@@ -3661,3 +3661,12 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - GPU: 4卡 100%, 磁盘: 336G 可用, 进程: 22
 - 状态: 巡航中, @3840 有 loss spike (10.25) 已恢复
 - **⚠️ @4000 val 约 11 min 后开始!**
+
+---
+
+## Cycle #183 | 2026-03-09 00:56 | iter 4000/40000 (10.0%)
+- **@4000 checkpoint 已保存**, val 进行中 (240/753, ~32%)
+- @4000 train loss: 5.72 (cls=3.34, reg=2.38)
+- 磁盘: 322G 可用 (ckpt -14 GB)
+- 进程: 38 (train+val workers)
+- **Val ETA: ~01:35 完成**
