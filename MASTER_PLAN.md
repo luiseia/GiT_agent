@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~12:35 (循环 #128 Phase 1)
+> 最后更新: 2026-03-09 ~17:00 (循环 #138 Phase 2)
 
 ## ✅ 告警已解除 (2026-03-09 07:43)
 > ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes @8000 — peak_car_P=0.090 (CONDITIONAL 继续)! off_th=0.140 历史最低! 等 @10000 (~16:00)
+## 当前阶段: ★★★★ Full nuScenes @10000 val 进行中 | BUG-48/49/50 发现! Layer 16 待验证 | 分阶段阈值已建立
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -304,7 +304,7 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
-- **方案 B (DINOv3 unfreeze)**: ❌ 三重否决 (显存超限 50+GB>48GB, BUG-35 特征漂移, GPU 全占用)
+- **方案 B (DINOv3 unfreeze)**: ⚠️ ~~三重否决~~ **基于无效实验 (BUG-48)!** Plan M unfreeze 实际未生效. 需修 BUG-48 后用正确 block 重新实验
 - **方案 C (单类 car)**: ⚠️ 不改 vocab, ORCH_024 car 指标已足够替代
 - **方案 D (历史 occ box)**: ✅ 最有前途的下一步! ORCH_024 后执行. **2 帧 1.0s** (CEO 建议 1 帧, Critic 推荐 2 帧). 编码用轻量条件信号 (方案 3)
 - **方案 E (LoRA)**: ✅ 最佳 DINOv3 域适应方案. 在 D 之后执行. rank=16, ~12M 参数, 显存 +2 GB
@@ -790,7 +790,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **执行条件**: ORCH_024 完成 + 方案 D 评估后, 且 car_P 仍不理想时
 
 **4. 特征漂移结论**
-- Plan M 崩溃: DINOv3 预训练表示脆弱, 任何微调都破坏中间层分布
+- ~~Plan M 崩溃: DINOv3 预训练表示脆弱, 任何微调都破坏中间层分布~~ **BUG-48: unfreeze 实际未生效! "漂移" 系 BUG-50 显存暴增所致**
 - Plan N car_P=0.05 低: BUG-27/31/36 叠加, 不代表 DINOv3 特征有本质 gap
 - ORCH_024 car_P=0.078 在更公平条件下证明 frozen DINOv3 可用
 
@@ -826,7 +826,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-32** | **MEDIUM** | Plan K @1500 off_cy 跳变 0.073→0.206, LR decay 后回归退化. P6 LR milestones 需关注 (Critic VERDICT_DIAG_FINAL) |
 | **BUG-33** | **MEDIUM** (降级) | gt_cnt DDP inflation 根因确认: 缺 DistributedSampler. **ORCH_019 完成**: car_P 有小幅偏差 (最大 -9%@1500), car_R 偏差最大 (-27%@1500), 方向不一致. 修复已应用 (sampler config) |
 | **BUG-34** | **LOW** (降级) | proj lr_mult=2.0, LR decay @2500 后 proj LR 1e-4→1e-5 自动缓解. 无需 P6b (Critic VERDICT_P6_1500) |
-| **BUG-35** | **MEDIUM** | DINOv3 unfreeze last-2 导致特征漂移: Plan M car_R 0.699→0.489 (-21%). 在线路径必须 frozen (Critic VERDICT_P6_1500) |
+| **BUG-35** | ~~MEDIUM~~ **INVALIDATED** | ~~DINOv3 unfreeze last-2 导致特征漂移~~. **BUG-48 证明: unfreeze_last_n=2 解冻 blocks 38-39, 但 layer 16 不受影响. "漂移" 系 BUG-50 显存暴增所致, 非真漂移** |
 | **BUG-36** | **HIGH** | Plan M/N vs P6 对比条件不一致: Plan M/N proj_dim=1024, P6 proj_dim=2048. CEO 基于不公平对比否决在线路径. 需 Plan O 验证 (Critic VERDICT_P6_3000) |
 | **BUG-37** | **HIGH** | P5b 基线不可信 → **ORCH_020 完成**: P5b@3000 单GPU car_P=**0.116** (非 DDP 的 0.107), DDP 低估 8%. **P6 落后 P5b!** |
 | **BUG-38** | ~~MEDIUM~~ **LOW** | Critic car_P 预测 0.12-0.13 实际准确, 仅延迟 500 iter. @3500 hit 0.121, @4000 hit 0.126 (Critic VERDICT_PLAN_P_FAIL_P6_TREND) |
@@ -839,6 +839,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-45** | **MEDIUM** | OCC head 推理 `attn_mask=None`, 训练有 causal+跨 cell 隔离 mask. Full 上 12000 KV entries 累积更严重 (VERDICT_FULL_4000 补充) |
 | **BUG-46** | **LOW** | `accumulative_counts=4` 使 optimizer steps = iter/4. @4000=500 post-warmup steps < Mini @1000. 非代码 BUG, 分析需标注 optimizer steps (VERDICT_FULL_4000) |
 | **BUG-47** | **MEDIUM** | 决策矩阵使用单点 car_P 不适用于振荡训练. 相邻 eval 给出相反结论 (@6000 "继续" vs @8000 "调参"). 修正: 用最近 3-eval 峰值 peak_car_P (VERDICT_FULL_8000) |
+| **BUG-48** | **HIGH** | `unfreeze_last_n` 解冻 DINOv3 末端 blocks (38-39), 但 layer_idx=16 提取中段. 梯度不流经 blocks 17-39, 解冻参数永远不被更新. **Plan M "漂移" 结论无效, 方案 B 三重否决需标注为基于无效实验** (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
+| **BUG-49** | **MEDIUM** | DINOv3 `get_intermediate_layers` 遍历全部 40 blocks, 但 layer_idx=16 只需前 17 个. 浪费 ~58% DINOv3 前向计算. 不影响正确性 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
+| **BUG-50** | **MEDIUM** | `unfreeze_last_n > 0` 时整个 `get_intermediate_layers` 移除 `torch.no_grad()`, 全部 40 blocks 构建计算图, 显存增加 ~10-15 GB. **Plan M "漂移" 的真因**: 显存暴增导致 OOM/训练不稳定, 非 DINOv3 特征漂移 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
@@ -864,7 +867,7 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **ORCH_021** | **Plan O 在线+2048+noGELU** | **COMPLETED (INVALID) — car_P=0.000, BUG-41 全程warmup + BUG-39 退化** |
 | **ORCH_022** | **Plan P 2048+GELU** | **COMPLETED (FAIL) — car_P=0.004, 超参问题 (lr_mult=1.0+warmup=100), bg_FA=0.165 历史最低** |
 | **ORCH_023** | **P6@4000 re-eval + Plan P2** | **COMPLETED ✅ — P6@4000=0.1263, P2: @1000=0.100(+72%), @1500=0.112(+5.7%), @2000=0.096(BUG-42 LR回调)** |
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 8020/40000 (20.1%), @8000 val ✅ (car_P=0.060, off_th=0.140!), 等 Critic 架构决策** |
+| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 10000/40000 (25.0%), @10000 val 进行中 (~17:00 完成), peak_car_P=0.090** |
 | **ORCH_025** | **pytest 测试框架** | **COMPLETED ✅ — 177 passed, 12 skipped, 3 xfailed** |
 | **ORCH_026** | **Plan Q 单类 car 诊断 (mini)** | **COMPLETED ✅ — car_P@best=0.083 < 0.12 → 类竞争无关!** |
 
@@ -894,6 +897,24 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 - **任务 2**: orch024_architecture_detail.md 撰写 — 完整数据流、参数统计、LR 层次、显存分析
 - **ORCH_026 IN PROGRESS**: Plan Q 在 GPU 1 执行, 导致 ORCH_024 减速 2.7x
 - **GPU 冲突**: GPU 1 显存 97.4%, 等 CEO 决策或 Plan Q 自然完成
+
+### [2026-03-09 ~17:00] 循环 #138 — ★★★★ CEO_CMD: BUG-48/49/50 发现! DINOv3 解冻+Layer 审查 | 分阶段阈值
+- **CEO 调查 1: 决策矩阵**: @10000 阈值合理不改. **新增分阶段目标** (Critic 修正):
+  - @10000: peak > 0.08 (不变)
+  - @20000 (Critic 建议改为 @20000): peak > 0.12 (Critic 建议从 0.15 降至 0.12)
+  - @25000: peak > 0.20
+  - @40000: peak > 0.25
+  - **注: 阈值基于 layer_idx=16 校准, layer 变更后需重校**
+- **CEO 调查 2: DINOv3 解冻**: 发现 BUG-48/49/50!
+  - **BUG-48 (HIGH)**: `unfreeze_last_n` 解冻末端 blocks, 但 layer 16 不受影响 → 完全无效!
+  - **BUG-49 (MEDIUM)**: 前向遍历全部 40 blocks, 只需 17 个 → 58% 计算浪费
+  - **BUG-50 (MEDIUM)**: 解冻时移除 no_grad, 全 40 blocks 构建计算图 → 显存+10-15GB
+  - **BUG-35 INVALIDATED**: Plan M "漂移" 系 BUG-50 显存暴增所致, 非 DINOv3 特征漂移
+  - **方案 B 三重否决**: 标注为"基于无效实验", 不可用于后续决策
+  - **Layer 16 (40%)**: 非最优但非灾难. Layer 24 (60%) 推荐为首选候选
+- **VERDICT_DINOV3_LAYER_AND_UNFREEZE**: CONDITIONAL — 修 BUG-48 > Layer 验证 > 其他
+- **修正后优先级**: BUG-48 修复 > Layer 验证 (方案 C 先, A 后) > Deep Supervision > 解冻 1 block > LoRA
+- **报告**: shared/logs/decision_matrix_and_dinov3_review.md
 
 ### [2026-03-09 ~12:35] 循环 #128 — ★★★★ @8000 Val 架构决策点! car_P=0.060 (P/R tradeoff) | off_th=0.140 历史最低 | 类间振荡
 - **car_P=0.060**: 从 0.090 回落 -33%, 但 car_R=0.718 (+58%) — P/R tradeoff
