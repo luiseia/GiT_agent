@@ -7,7 +7,7 @@
 - @2000 eval ETA ~20:00 今天 — 第一个有意义的 Full nuScenes 评估点
 - Mini 验证阶段已完成，所有 mini 实验结束
 
-## 已完成的判决 (本次会话, 全部已 git push)
+## 已完成的判决 (全部已 git push)
 | 判决 | 结论 | Commit |
 |------|------|--------|
 | VERDICT_P6_3000 | CONDITIONAL | 67f6644 |
@@ -15,6 +15,7 @@
 | VERDICT_PLAN_P_FAIL_P6_TREND | CONDITIONAL | df6427d |
 | VERDICT_P2_FINAL_FULL_CONFIG | **PROCEED** | df2d2a4 |
 | VERDICT_CEO_STRATEGY_NEXT | CONDITIONAL | 83bc425 |
+| VERDICT_CEO_ARCH_QUESTIONS | CONDITIONAL | dd215af |
 
 ## 历史判决 (前几次会话)
 P2_FINAL, ARCH_REVIEW, P3_FINAL, P4_FINAL, 3D_ANCHOR, P5_MID,
@@ -40,27 +41,18 @@ DIAG_FINAL, P6_1000, P6_1500 — 全部 CONDITIONAL 或 PROCEED
 | BUG-39 | MEDIUM | 设计层 | 双层Linear无激活=单层, 但因式分解有优化优势 |
 | BUG-41 | HIGH | 确认 | Plan O 全程warmup, 结果不可信 |
 | BUG-42 | MEDIUM | 记录 | Plan P2 全程无LR decay (max_iters<milestone) |
+| BUG-43 | MEDIUM | 确认 | Conductor 未查代码即估算 deep supervision 实现难度 |
+| BUG-44 | LOW | 理论层 | Deep supervision 各层共享 vocab embedding |
+| BUG-45 | MEDIUM | OPEN | OCC head 推理 attn_mask=None, 训练/推理不一致 |
 
-## 下一个 BUG 编号: BUG-43
+## 下一个 BUG 编号: BUG-46
 
-## Mini 验证关键结论
-- **最优架构**: Linear(4096,2048)+GELU+Linear(2048,768), lr_mult=2.0, DINOv3 frozen
-- **P5b@3000 基线** (单GPU): car_P=0.116, bg_FA=0.189, off_th=0.195
-- **P6@4000** (2048+noGELU, 单GPU): car_P=0.126, bg_FA=0.274, off_th=0.191
-- **P6@6000** (DDP): car_P=0.129, bg_FA=0.274
-- **Plan P2** (2048+GELU): @1000 car_P=0.100(+72%快), @1500=0.112, @2000=0.096(无decay过拟合)
-- GELU 收敛快 72%，去 GELU 是错误 (BUG-39/40), P2@2000 回调=超参问题非架构
-- 在线 DINOv3 mini 数据全部有缺陷 (BUG-27/31/41), 直接 Full 验证
-
-## CEO 方案决策 (VERDICT_CEO_STRATEGY_NEXT)
-- **A (1024投影)**: 已被 ORCH_024 (2048) 涵盖
-- **B (DINOv3 unfreeze)**: 不可行 (显存超限+BUG-35)
-- **C (单类car)**: 保持10类看car指标即可
-- **D (历史occ 2帧)**: 最佳后续方向, ORCH_024后启动
-- **E (LoRA)**: 可行替代unfreeze, 方案D之后
-- **F (多尺度)**: 低优先级
-- **G (等@2000)**: 当前最正确行动
-- 优先级: ORCH_024继续 >> 等@2000 >> D >> E >> F
+## CEO 架构问题审计结论 (VERDICT_CEO_ARCH_QUESTIONS)
+- **Q1 (30 Token AR)**: 非主要瓶颈, 低优先级. 但 Conductor 误称"原始 GiT 序列更长"
+- **Q2 (Deep Supervision)**: **已在代码中实现!** `git.py:L388` 改一行即可启用. Conductor 严重误判
+- **Q3 (Attention Mask)**: CEO 硬 mask 方案优于 Conductor 软权重方案. 发现 BUG-45 (训练/推理 mask 不一致)
+- **Q4 (评判标准)**: 基本合理, 补充规则5(不从mini做架构决策)和规则6(Full首次有意义eval需1epoch后)
+- **优先级修正**: Deep Supervision(零成本) >> 评判标准 >> 方案D >> Attention Mask >> LoRA >> 解码长度
 
 ## ORCH_024 @2000 决策矩阵
 | 结果 | 行动 |
@@ -76,7 +68,7 @@ P1→P2→P3→P4→P5(DINOv3 L16)→P5b(双层1024+GELU)
 →P6(2048+noGELU, BUG-39退化但@3500超P5b)
 →Plan P2(2048+GELU, 收敛快72%)
 →ORCH_024(Full nuScenes, 2048+GELU+在线DINOv3 frozen)
-→下一步: 方案D(历史occ 2帧) 或 LoRA(E)
+→下一步: Deep Supervision(零成本) + 方案D(历史occ 2帧)
 ```
 
 ## 恢复指引
