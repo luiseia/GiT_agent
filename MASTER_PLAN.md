@@ -1,12 +1,12 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-08 ~17:45 (循环 #89 Phase 1)
+> 最后更新: 2026-03-08 ~19:00 (循环 #92 Phase 2)
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (610/40000 warmup) | 首次 val @2000 ETA ~20:13
+## 当前阶段: ★★★★ Full nuScenes 训练中! ORCH_024 IN PROGRESS (1160/40000 warmup) | 首次 val @2000 ETA ~20:10 | CEO 架构审计完成
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -168,6 +168,25 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 - **方案 G (等 @2000)**: ✅ 最正确的当下行动
 - **优先级**: ORCH_024 >> 方案 G >> 方案 D >> 方案 E >> F >> C >> B >> A
 - **@2000 决策矩阵**: car_P>0.15 → 继续+排队 D; 0.08-0.15 → 继续; 0.03-0.08 → 调参; <0.03 → 切预提取
+
+**VERDICT_CEO_ARCH_QUESTIONS (CONDITIONAL — BUG-43 修正优先级)**:
+- **Q1 (30 token AR 解码)**: 不是主要瓶颈. OCC per-query 30 token 是 GiT 最长的 (det=5), 但 per-cell 并行, 错误不跨 cell 传播. 低优先级
+- **Q2 (Deep Supervision)**: ★★★ **代码已存在!** `git.py:L386-388` 只需改一行 `loss_out_indices=[8,10,11]`. **BUG-43: Conductor 未读代码误估 "1-2 天"**. 零成本, 应为 #1 优先级
+- **Q3 (Attention Mask)**: CEO 直觉正确, 用 hard mask. **BUG-45: OCC head 推理 attn_mask=None, 训练有 causal+跨 cell 隔离, 不一致!** 应在 Full nuScenes 上验证, 非 mini
+- **Q4 (评判标准)**: 基本合理. 补充: @2000=0.57 epoch 仅趋势参考; @4000=1.14 epoch 第一个可信点; @8000 可做架构决策. Mini 上永远不做架构决策
+- **修正后优先级**: Q2 (Deep Supervision, 零成本) >> Q4 >> 方案D >> Q3 (Mask) >> 方案E >> Q1 >> 方案F
+- **ORCH_024 后第一个实验**: 实验A=仅启用 deep supervision; 实验B=deep supervision + structured mask. A/B ablation
+- **BUG-43 (MEDIUM)**: Conductor 未读代码就给 deep supervision 实现估算. 已纠正
+- **BUG-44 (LOW)**: Deep supervision 各层共享 vocab embedding, 理论风险, 暂不处理
+- **BUG-45 (MEDIUM)**: OCC head 推理 `attn_mask=None` vs 训练有显式 mask. 参考 `git_det_head.py:L417-427` 修复
+
+**实验评判标准 (永久规则, CEO+Critic 确认)**:
+1. 单次 eval 相对变化 <5%: 不做决策, 标记"波动"
+2. 单次 5-15%: 需下一个 eval (间隔 ≥500 iter) 同向确认才可做条件性结论
+3. 单次 >15%: 可能有意义, 但排除前 500 iter 数据
+4. 连续 2 次同向 >5% (间隔 ≥500 iter): 可做结论
+5. Mini 实验只做代码验证/BUG 发现/粗略趋势, 永远不做架构决策
+6. Full nuScenes: @2000 仅趋势参考, @4000 第一个可信点, @8000 架构决策
 
 **BUG-33 修复完成**:
 - ✅ ORCH_019: 5 ckpt 单 GPU re-eval, @2500+ DDP 偏差 <2%
@@ -663,6 +682,14 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 > CEO 方向: 不再以这些指标为最高目标。完整 nuScenes 性能才是真正评判标准。
 
 ## 历史决策
+### [2026-03-08 ~19:00] 循环 #92 Phase 2 — VERDICT_CEO_ARCH_QUESTIONS CONDITIONAL | BUG-43/44/45 | 优先级重排
+- **VERDICT 处理**: Deep Supervision 代码已存在 (零成本!), BUG-43 纠正 Conductor 误估
+- **BUG-45 发现**: OCC head 推理 attn_mask=None, 训练/推理不一致
+- **优先级重排**: Q2 (Deep Supervision) 升至 #1, Q3 (Mask) 降至 #4
+- **ORCH_024 后计划**: 实验A (deep supervision only) → 实验B (+structured mask) A/B ablation
+- **评判标准永久规则**: 写入 MASTER_PLAN, 6 条规则 (CEO+Critic 确认)
+- **无新 ORCH**: 等 @2000 eval (~20:10)
+
 ### [2026-03-08 ~17:15] 循环 #87 Phase 2 — VERDICT_CEO_STRATEGY_NEXT CONDITIONAL | 等 @2000 决策 | 无新 ORCH
 - **VERDICT 处理**: CEO 方案 A 已涵盖, B 三重否决, C 不改 vocab, D 最有前途 (2帧 1.0s), E LoRA 推荐, F 搁置, G 等数据
 - **优先级排序**: ORCH_024 >> G >> D >> E >> F >> C >> B >> A

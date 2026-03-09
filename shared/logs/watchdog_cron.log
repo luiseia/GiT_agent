@@ -516,3 +516,69 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-08 17:40:02] watchdog: ⚠️ agent-critic context 剩余 4%
 [2026-03-08 17:40:02] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
 [2026-03-08 17:40:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 17:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 17:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 17:50:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 17:50:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 17:50:01] watchdog: ⚠️ agent-supervisor context 剩余 7%
+[2026-03-08 17:50:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 17:51:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 17:51:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 17:51:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:00:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:00:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:00:01] watchdog: ⚠️ agent-supervisor context 剩余 1%
+[2026-03-08 18:00:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒
+[2026-03-08 18:01:01] watchdog: → agent-supervisor: 已发送 /compact，等待 30 秒
+[2026-03-08 18:01:31] watchdog: → agent-supervisor: 已发送恢复指令
+[2026-03-08 18:01:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:10:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:10:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:20:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:20:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:20:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:30:02] watchdog: === 用量检查开始 ===
+[2026-03-08 18:30:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:30:02] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:30:02] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:30:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:40:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:40:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 18:50:01] watchdog: === 用量检查开始 ===
+[2026-03-08 18:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 18:50:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 18:50:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 18:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 19:00:01] watchdog: === 用量检查开始 ===
+[2026-03-08 19:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 19:00:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 19:00:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 19:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 19:10:01] watchdog: === 用量检查开始 ===
+[2026-03-08 19:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 19:10:01] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 19:10:01] watchdog: → agent-critic: 需要 compact 但正在忙碌，下轮再试
+[2026-03-08 19:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 19:20:01] watchdog: === 用量检查开始 ===
+[2026-03-08 19:20:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-08 19:20:08] watchdog: ⚠️ agent-critic context 剩余 4%
+[2026-03-08 19:20:08] watchdog: → agent-critic: 已发送保存指令，等待 60 秒
+[2026-03-08 19:21:08] watchdog: → agent-critic: 已发送 /compact，等待 30 秒
+[2026-03-08 19:21:38] watchdog: → agent-critic: 已发送恢复指令
+[2026-03-08 19:21:38] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 19:30:01] watchdog: === 用量检查开始 ===
+[2026-03-08 19:30:07] watchdog: 用量: 2%  |  Resets 12am (America/Chicago)
+[2026-03-08 19:30:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-08 19:40:01] watchdog: === 用量检查开始 ===
+[2026-03-08 19:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-08 19:40:01] watchdog: ✅ 用量正常，无需休眠
