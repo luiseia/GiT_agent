@@ -72,3 +72,8 @@ CEO 指出: "原始 GiT 在 COCO 检测上序列更长" 的错误说法不是 Cr
 ## [2026-03-08 ~21:15] CEO 指令 (AR Slot 内错误传播纠正)
 CEO 指出: Conductor 说"错误不跨 cell 传播"是对的, 但同一 cell 内 3 层 slot 会从 Slot 1 (最近层) 传播到 Slot 3 (最远层). AR 30 token 的 within-cell exposure bias 应被验证. 等待 per-slot 验证结果.
 **执行结果**: CEO 观察正确. Conductor 之前的表述不够精确 — "per-cell 并行, 错误不跨 cell" 掩盖了 cell 内 Slot1→2→3 的串行错误传播. 这正是 per-slot 指标提取 (方案 A) 要验证的目标. 已纳入决策. (Cycle #96)
+
+---
+## [2026-03-08 ~23:57] CEO 指令 (自动化测试框架)
+签发 ORCH 给 Admin 创建 pytest 测试框架 (GiT/tests/): test_config_sanity.py (config 验证, 防 BUG-42), test_eval_integrity.py (eval 指标正确性, 防 BUG-12), test_label_generation.py (标签生成, 防 AABB regression), test_training_smoke.py (10 iter 微训练验证). 输出路径 /home/UNT/yz0370/projects/GiT/ssd_workspace/test_outputs/.
+**执行结果**: 签发 ORCH_025 给 Admin. (Cycle #101)
