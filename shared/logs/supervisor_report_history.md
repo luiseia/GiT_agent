@@ -3586,3 +3586,21 @@ Full nuScenes iter 610/40000, 训练正常. 修正: val_interval=2000, 首次 va
 - 磁盘: 336 GB 可用
 - 进程: 38 个存活
 - 无新 ORCH, 无 PENDING
+
+---
+
+## Cycle #176 | 2026-03-08 21:33 — ⚡ @2000 首次 Val 完成!
+- **Full nuScenes @2000 DDP Val 结果**:
+  - car_R=0.627, **car_P=0.0789** (在预期 0.05-0.10 范围内!)
+  - truck_P=0.000, bus_P=0.000 (warmup 刚结束, 预期)
+  - ped_P=0.001, barrier_P=0.001
+  - **bg_FA=0.222** (P6 mini: 0.173, P2 mini: 0.256)
+  - **off_th=0.174** (mini: 0.25+ — 大幅改善 33%!)
+- **结论**: 在线 DINOv3 路径确认有效, Full nuScenes 数据多样性改善 offset
+- 训练恢复: iter 2250/40000, LR 恒定 2.5e-06
+- Val 耗时 ~57 min (753 batches)
+- GPU: 4卡 36.8-37.3 GB, 100%
+- 磁盘: 336 GB 可用
+- 进程: 22 个存活
+- 无新 ORCH, 无 PENDING
+- DDP val 偏差提醒: 建议 @4000 后单 GPU re-eval
