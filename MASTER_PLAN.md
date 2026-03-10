@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~19:00 (循环 #143 — BUG-51 修复完成, 等 @12000 val 后重启训练)
+> 最后更新: 2026-03-09 ~21:45 (循环 #148 — @12000 val 完成, ORCH_024 终止, ORCH_028 签发)
 
 ## ✅ 告警已解除 (2026-03-09 07:43)
 > ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
@@ -10,7 +10,7 @@
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★★ BUG-51 修复完成! overlap-based grid 分配 | ORCH_024 等 @12000 val 后终止重启
+## 当前阶段: ★★★★★ ORCH_024 终止 → ORCH_028 签发 (overlap-based grid, 从零重训)
 
 ### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED (Cycle #141-#143)
 **根因**: `generate_occ_flow_labels.py:312-315` center-based 分配要求 cell 中心落在投影内。`grid_resolution_perwin=(4,4)` → 20×20 grid, 每 cell 56×56 px。物体投影 <56px 时 `c_start > c_end` → 零 cell（兜底仅给 1 cell）。
@@ -19,7 +19,7 @@
 
 **修复**: `grid_assign_mode='overlap'` — 任何与投影有重叠的 cell 都分配。效果: 30px 行人 1 cell → 4 cells, 零 cell 率 21.1% → 0%。GiT commit `ec9a035`。
 
-**下一步**: 等 @12000 val 作为旧标签 baseline 对照 → 终止 ORCH_024 → 用修复后标签重启训练 (ORCH_028)
+**@12000 val baseline 已收集, ORCH_024 终止, ORCH_028 (overlap 重训) 已签发**
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
@@ -317,16 +317,19 @@ balance_mode = 'sqrt', bg_balance_weight = 2.5
 
 - **永久规则补充**: eval 结果需参考振荡周期, 不做单点决策 (BUG-47)
 
-**Full nuScenes 训练数据汇总 (完整 5 eval)**:
-| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | peak | 趋势 |
-|------|-------|-------|-------|-------|--------|------|------|
-| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | **0.090** | 振荡, peak 未突破 |
-| car_R | 0.627 | 0.419 | 0.455 | 0.718 | **0.726** | 0.726 | ✅ 持续攀升 |
-| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | **0.407** | — | ⚠️ 系统性恶化 |
-| off_th | 0.174 | **0.150** | 0.169 | **0.140** | 0.160 | **0.140** | 振荡, @8000 最优 |
-| off_cx | 0.056 | **0.039** | 0.056 | 0.045 | — | **0.039** | 振荡 |
-| off_cy | 0.069 | 0.097 | 0.082 | 0.074 | — | — | 振荡 |
-| 模式 | car spam | 收敛 | 广泛(5类) | 窄(2类) | **车辆(6类)** | — | 3 种模式轮转 |
+**Full nuScenes 训练数据汇总 (完整 6 eval — ORCH_024 最终, center-based 标签)**:
+| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | @12000 | peak | 趋势 |
+|------|-------|-------|-------|-------|--------|--------|------|------|
+| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | **0.081** | **0.090** | 振荡, peak 未突破 |
+| car_R | 0.627 | 0.419 | 0.455 | 0.718 | **0.726** | 0.526 | 0.726 | 振荡 |
+| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | **0.407** | **0.278** | — | ★ @12000 大幅改善! |
+| off_th | 0.174 | **0.150** | 0.169 | **0.140** | 0.160 | **0.128** | **0.128** | ★ @12000 历史最低! |
+| off_cx | 0.056 | **0.039** | 0.056 | 0.045 | — | **0.038** | **0.038** | ✅ |
+| off_cy | 0.069 | 0.097 | 0.082 | 0.074 | — | 0.081 | — | 振荡 |
+| 模式 | car spam | 收敛 | 广泛(5类) | 窄(2类) | 车辆(6类) | **car+bus** | — | 4 种模式轮转 |
+
+**⚠️ 以上所有数据基于 center-based 标签 (BUG-51), 不可与 overlap 标签训练直接对比 (Critic VERDICT)**
+**★ ORCH_024 终止, 所有旧决策矩阵阈值作废, ORCH_028 @4000 后重建**
 
 **VERDICT_CEO_STRATEGY_NEXT (CONDITIONAL — 等 @2000 再决策)**:
 - **方案 A (1024+GELU)**: ✅ 已被 ORCH_024 (2048+GELU) 涵盖, 无需额外实验
@@ -667,10 +670,11 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | **Full nuScenes 2048+GELU+在线DINOv3** | **IN PROGRESS — 11060/40000 (27.7%), @12000 val ETA ~20:30, BUG-51 修复后将终止重启** |
+| **ORCH_024** | Full nuScenes 2048+GELU+在线DINOv3 (center-based) | **TERMINATED @12000 — 作为 center-based baseline. 6 eval 完整. 被 ORCH_028 supersede** |
+| **ORCH_028** | **Full nuScenes overlap-based grid 重训练** | **PENDING — 从零开始, 只改 grid_assign_mode='overlap', 其余与 ORCH_024 一致** |
 
 ### 已完成任务归档
-ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 mini+re-eval+Plan P/P2), ORCH_025 (测试框架 177passed), ORCH_026 (Plan Q 类竞争无关). 所有 AUDIT 已 VERDICT PROCESSED.
+ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 mini+re-eval+Plan P/P2), ORCH_025 (测试框架 177passed), ORCH_026 (Plan Q 类竞争无关), ORCH_027 (可视化). 所有 AUDIT 已 VERDICT PROCESSED.
 
 ## 指标参考 (CEO: 红线降级, mini 仅 debug)
 | 指标 | 参考线 | @3000 | @4000 | @5000 | **@6000** | 备注 |
@@ -697,6 +701,7 @@ ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 m
 - **#139 (03-09 18:20)**: @10000 val: car_P=0.069, bg_FA=0.407 最差. @17000 硬性 deadline 设定
 - **#141 (03-09 19:15)**: ★★★★★ BUG-51 发现! Grid 分辨率过粗, 35.5% 物体零 cell. CEO 可视化触发
 - **#143 (03-09 19:00)**: ★★★★★ BUG-51 FIXED! `grid_assign_mode='overlap'`. GiT commit `ec9a035`
+- **#148 (03-09 21:22)**: ★★★ @12000 val: car_P=0.081, bg_FA=0.278(改善!), off_th=0.128(最低!). VERDICT PROCEED: 终止 ORCH_024, ORCH_028 签发 (overlap 重训从零开始)
 - **bicycle 消失**: R=0.191→0.000, BUG-17 sqrt balance 振荡证据
 - **GPU 1 恢复**: Plan Q ~5h 完成, 速度恢复正常
 - **审计签发**: AUDIT_REQUEST_FULL_6000
