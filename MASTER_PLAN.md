@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-11 ~18:30 (两阶段过滤已实现并合入 GiT master)
+> 最后更新: 2026-03-11 ~18:50 (ORCH_029 已启动, Critic TWO_STAGE_FILTER 审计完成)
 
 ## ✅ Overlap 阈值审计完成 + 代码已合入 (2026-03-11)
 > **问题**: BUG-51 的 `grid_assign_mode='overlap'` 将任何有重叠的 cell 都标为前景，大量边缘 cell 仅与 2D bbox 有微小重叠，不含实际目标像素，制造噪声训练标签。
@@ -15,14 +15,16 @@
 > **验证**: 20 样本可视化 — FG cell 减少 30.3%，对象保留率 96.9%，0% IoF 丢失
 > **GiT commit**: `a64a226` (master), 默认参数即启用过滤
 >
-> **ORCH_028 可以从零重启**
+> **⚠️ Critic 审计发现 (BUG-52)**: IoF/IoB 过滤是**死代码** — `use_rotated_polygon=True` 时 99.4% GT 走 convex hull 路径，完全跳过 IoF/IoB。实际生效的过滤是 `convex hull center-check + vis≥10%`。Convex hull 提供等效保护 (Mean IoF=0.845)，不需要修改代码或重启训练。explore_final.py 的 FG 统计 (41.0/frame) 偏高，实际训练 FG=33.1/frame (BUG-53)。
+>
+> **ORCH_029 已启动训练 (2026-03-11 ~18:35)**
 
 ## CEO 战略转向 (2026-03-08 + 2026-03-11 补充)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 > **补充 (3-11)**: 图像 grid 与 2D bbox 无法完美对齐是固有限制。主目标是 BEV box 属性，周边 grid 的 FP/FN 通过置信度阈值或 loss 加权处理。
 
-## 当前阶段: ★★★★★ ORCH_028 从零重训（两阶段过滤标签）
+## 当前阶段: ★★★★★ ORCH_029 训练中（overlap + vis≥10% + convex hull）
 
 ## ⚠️ ORCH_028 断电中断 (2026-03-09 ~23:40)
 > Spring break 断电关机。ORCH_028 在 iter 1180/40000 被 kill，无 checkpoint。
@@ -31,10 +33,12 @@
 ## 下一步行动计划 (2026-03-11, 务实版)
 
 ### 立即执行
-1. **ORCH_028 从零重启** — 使用当前 master 代码（含两阶段过滤），config 不变 (`plan_full_nuscenes_gelu.py`)，4×A6000
-   - 预期变化: 训练标签更干净（FG cell -30%），模型不再被迫对纯背景 cell 预测前景
-   - 预期效果: bg_FA 下降（更少噪声标签），car_P 可能提升（减少无效前景惩罚）
+1. **ORCH_029 已启动** ✅ — 使用当前 master 代码, config 不变 (`plan_full_nuscenes_gelu.py`), 4×A6000
+   - 实际过滤: overlap 标签 + convex hull center-check + vis≥10% (IoF/IoB 死代码, BUG-52)
+   - 实际 FG: ~33.1/frame (比 explore_final.py 的 41.0 少 19%, BUG-53)
+   - 预期效果: bg_FA 下降（更干净标签 + vis 拒绝画面外物体），car_P 可能提升
    - @4000 第一个可信评估点，与 ORCH_024 center-based 对比
+   - ⚠️ Critic 建议: @4000 分类对比 vis filter 对 pedestrian/traffic_cone 的影响（远处小物体更易被 vis 过滤）
 
 ### @4000 后决策（基于两阶段过滤标签的第一批数据）
 2. **对比 ORCH_024 baseline**: 同 config 不同标签，直接看 car_P/bg_FA/off_th 是否改善
@@ -48,7 +52,8 @@
 
 ### 已作废/搁置
 - ~~ORCH_024 center-based 标签训练~~ — 终止于 @12000，数据已保留作对比 baseline
-- ~~AUDIT_REQUEST_OVERLAP_THRESHOLD~~ — 已完成，不再需要 Critic 审计
+- ~~AUDIT_REQUEST_OVERLAP_THRESHOLD~~ — VERDICT PROCEED, 已归档
+- ~~AUDIT_REQUEST_TWO_STAGE_FILTER~~ — VERDICT CONDITIONAL (BUG-52/53), 已归档, ORCH_029 继续
 - ~~所有旧决策矩阵阈值~~ — 基于 center-based 标签，两阶段过滤标签需重建 baseline
 
 ### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED + 阈值优化 (Cycle #141-#143 + 2026-03-11)
@@ -716,13 +721,16 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-48** | **HIGH** | `unfreeze_last_n` 解冻 DINOv3 末端 blocks (38-39), 但 layer_idx=16 提取中段. 梯度不流经 blocks 17-39, 解冻参数永远不被更新. **Plan M "漂移" 结论无效, 方案 B 三重否决需标注为基于无效实验** (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
 | **BUG-49** | **MEDIUM** | DINOv3 `get_intermediate_layers` 遍历全部 40 blocks, 但 layer_idx=16 只需前 17 个. 浪费 ~58% DINOv3 前向计算. 不影响正确性 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
 | **BUG-50** | **MEDIUM** | `unfreeze_last_n > 0` 时整个 `get_intermediate_layers` 移除 `torch.no_grad()`, 全部 40 blocks 构建计算图, 显存增加 ~10-15 GB. **Plan M "漂移" 的真因**: 显存暴增导致 OOM/训练不稳定, 非 DINOv3 特征漂移 (VERDICT_DINOV3_LAYER_AND_UNFREEZE) |
-| **BUG-51** | **CRITICAL → FIXED** | Grid 20×20, center-based 分配导致 35.5% 物体零 cell, 70.1% 投影<56px. **修复**: `grid_assign_mode='overlap'` (GiT commit `ec9a035`). 可能是 car_P 天花板 + bg_FA 膨胀的最底层根因 |
+| **BUG-51** | **CRITICAL → FIXED v2** | Grid 20×20, center-based 分配导致 35.5% 物体零 cell, 70.1% 投影<56px. **修复 v1**: `grid_assign_mode='overlap'` (commit `ec9a035`). **修复 v2**: 两阶段过滤 (commit `a64a226`). 实际生效: convex hull + vis≥10% |
+| **BUG-52** | **HIGH → ACCEPTED** | IoF/IoB 过滤是死代码: `use_rotated_polygon=True` 使 99.4% GT 走 convex hull 路径, 跳过 IoF/IoB 分支 (elif). Convex hull 提供等效保护 (Mean IoF=0.845). **不修复**: 改代码无增量收益 (<0.1%), 不重启训练 (VERDICT_TWO_STAGE_FILTER) |
+| **BUG-53** | **MEDIUM → NOTED** | `explore_final.py` 用 AABB 而非 convex hull, FG=41.0/frame vs 实际训练 FG=33.1/frame. 验证数据偏高但方向一致 (实际更严格). 不影响训练 (VERDICT_TWO_STAGE_FILTER) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
 |----|------|------|
-| **ORCH_024** | Full nuScenes 2048+GELU+在线DINOv3 (center-based) | **TERMINATED @12000 — 作为 center-based baseline. 6 eval 完整. 被 ORCH_028 supersede** |
-| **ORCH_028** | **Full nuScenes overlap-based grid 重训练** | **PENDING — 从零开始, 只改 grid_assign_mode='overlap', 其余与 ORCH_024 一致** |
+| **ORCH_024** | Full nuScenes 2048+GELU+在线DINOv3 (center-based) | **TERMINATED @12000 — center-based baseline, 6 eval 完整** |
+| **ORCH_028** | Full nuScenes overlap-based (无阈值过滤) | **TERMINATED @1180 — 断电 kill, 无 ckpt, 被 ORCH_029 替代** |
+| **ORCH_029** | **Full nuScenes overlap + vis≥10% + convex hull** | **IN_PROGRESS — 从零训练, 4×A6000, ~18:35 启动. 实际过滤: convex hull + vis (IoF/IoB 死代码)** |
 
 ### 已完成任务归档
 ORCH_008~013 (P5/P5b/BUG-19), ORCH_014~016 (P6准备+诊断), ORCH_017~023 (P6 mini+re-eval+Plan P/P2), ORCH_025 (测试框架 177passed), ORCH_026 (Plan Q 类竞争无关), ORCH_027 (可视化). 所有 AUDIT 已 VERDICT PROCESSED.
