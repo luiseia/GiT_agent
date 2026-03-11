@@ -421,3 +421,7 @@
 [16:05:39] 🔁 Supervisor 同步循环启动
 [16:14:42] 🔔 通知 Critic: REQUEST_OVERLAP_THRESHOLD
 [16:15:10] Cycle #230: post-shutdown recovery report written
+[16:15:42] 🔔 通知 Critic: REQUEST_OVERLAP_THRESHOLD
+[16:16:43] 🔔 通知 Critic: REQUEST_OVERLAP_THRESHOLD
+[16:17:43] 🔔 通知 Critic: REQUEST_OVERLAP_THRESHOLD
+[16:17:43] Cycle #231: ORCH_028 blocked on AUDIT_OVERLAP_THRESHOLD, Critic not responding
