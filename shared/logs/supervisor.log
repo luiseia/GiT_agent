@@ -418,3 +418,6 @@
 [21:27:14] 🔔 通知 Critic: REQUEST_12000_TERMINATE
 [21:28:15] 🔔 通知 Critic: REQUEST_12000_TERMINATE
 [21:32:19] 📨 投递: ORCH_0309_2145_028.md → admin
+[16:05:39] 🔁 Supervisor 同步循环启动
+[16:14:42] 🔔 通知 Critic: REQUEST_OVERLAP_THRESHOLD
+[16:15:10] Cycle #230: post-shutdown recovery report written
