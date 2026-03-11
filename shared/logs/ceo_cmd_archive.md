@@ -110,3 +110,7 @@ CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 1. @10000 决策矩阵 peak_car_P 阈值是否太低? 参考 BEVFormer/PETR, 合理标准是什么?
 2. DINOv3 解冻重新评估: (a) 部分解冻可行性 + 显存, (b) Layer 16 选择是否正确, (c) LoRA vs 部分解冻
 **执行结果**: 完整报告写入 shared/logs/decision_matrix_and_dinov3_review.md. 发现 BUG-48 (unfreeze_last_n 无效) + BUG-49 (58% 计算浪费). 签发 AUDIT_REQUEST_DINOV3_LAYER_AND_UNFREEZE. 提出分阶段阈值 (@17000 > 0.15, @25000 > 0.20, @40000 > 0.25). (Cycle #138)
+
+---
+## [2026-03-11 16:14:06] CEO 指令
+我觉得应该设置红框与图像grid的重合超过红框的百分之多少？这个grid某一个slot才能算是正样本。审计一下写个报告
