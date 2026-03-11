@@ -1,31 +1,76 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-11 ~16:15 (Conductor 恢复 — ORCH_028 断电中断, CEO 新指令: overlap 阈值审计)
+> 最后更新: 2026-03-11 ~18:30 (两阶段过滤已实现并合入 GiT master)
 
-## ⚠️ ORCH_028 断电中断 (2026-03-09 ~23:40)
-> Spring break 断电关机。ORCH_028 在 iter 1180/40000 (warmup 阶段) 被 SIGTERM kill。
-> **无 checkpoint 保存**，需从零重启。4x A6000 GPU 当前全部空闲。
-> **暂不重启** — 等待 CEO 新指令的审计结论 (overlap 阈值问题)。
+## ✅ Overlap 阈值审计完成 + 代码已合入 (2026-03-11)
+> **问题**: BUG-51 的 `grid_assign_mode='overlap'` 将任何有重叠的 cell 都标为前景，大量边缘 cell 仅与 2D bbox 有微小重叠，不含实际目标像素，制造噪声训练标签。
+>
+> **CEO 核心洞察**: 2D bbox 本身已大于目标实例（尤其行人），边缘 cell 完全是背景。追求图像 grid 级别的 recall/precision 不重要，主要目标是优化 BEV 视角下的 box 属性，多余 FP/FN 用置信度阈值过滤。
+>
+> **解决方案**: 两阶段过滤 `vis≥10% + (IoF≥30% OR IoB≥20%)`
+> - Stage 1 (object-level): bbox 可见面积 < 10% → 整个物体被拒（处理超出画面的物体）
+> - Stage 2 (cell-level): `IoF = 交集/cell面积 ≥ 30%`（过滤大物体边缘噪声 cell）OR `IoB = 交集/full_bbox面积 ≥ 20%`（保护小目标，bbox < cell 时 IoF 天然低但 IoB 高）
+> - IoB 分母用 **full bbox 面积**（未裁剪），因为大车出画面的情况已被 vis + IoF 处理
+>
+> **验证**: 20 样本可视化 — FG cell 减少 30.3%，对象保留率 96.9%，0% IoF 丢失
+> **GiT commit**: `a64a226` (master), 默认参数即启用过滤
+>
+> **ORCH_028 可以从零重启**
 
-## ⚠️ CEO 新指令: Overlap 阈值审计 (2026-03-11)
-> CEO 指出: 当前 `grid_assign_mode='overlap'` 将任何有重叠的 cell 都标为正样本候选，
-> 应考虑设置最低重叠比例阈值。已签发 `AUDIT_REQUEST_OVERLAP_THRESHOLD` 给 Critic。
-> **ORCH_028 重启 blocked on 此审计结论** — 如需修改标签生成逻辑，必须在重训前完成。
-
-## CEO 战略转向 (2026-03-08)
+## CEO 战略转向 (2026-03-08 + 2026-03-11 补充)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
+> **补充 (3-11)**: 图像 grid 与 2D bbox 无法完美对齐是固有限制。主目标是 BEV box 属性，周边 grid 的 FP/FN 通过置信度阈值或 loss 加权处理。
 
-## 当前阶段: ★★★★★ ORCH_028 等待审计 → overlap 阈值确定后从零重训
+## 当前阶段: ★★★★★ ORCH_028 从零重训（两阶段过滤标签）
 
-### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED (Cycle #141-#143)
+## ⚠️ ORCH_028 断电中断 (2026-03-09 ~23:40)
+> Spring break 断电关机。ORCH_028 在 iter 1180/40000 被 kill，无 checkpoint。
+> 需从零重启，现已具备条件（两阶段过滤代码已合入）。
+
+## 下一步行动计划 (2026-03-11, 务实版)
+
+### 立即执行
+1. **ORCH_028 从零重启** — 使用当前 master 代码（含两阶段过滤），config 不变 (`plan_full_nuscenes_gelu.py`)，4×A6000
+   - 预期变化: 训练标签更干净（FG cell -30%），模型不再被迫对纯背景 cell 预测前景
+   - 预期效果: bg_FA 下降（更少噪声标签），car_P 可能提升（减少无效前景惩罚）
+   - @4000 第一个可信评估点，与 ORCH_024 center-based 对比
+
+### @4000 后决策（基于两阶段过滤标签的第一批数据）
+2. **对比 ORCH_024 baseline**: 同 config 不同标签，直接看 car_P/bg_FA/off_th 是否改善
+3. **如果改善明显 (car_P > ORCH_024 peak 0.090)**: 验证两阶段过滤有效，继续训练到 LR decay
+4. **如果无明显变化或恶化**: 标签噪声不是主要瓶颈，回到架构改进路线（deep supervision 优先）
+
+### 中期待办（ORCH_028 训练期间可并行准备）
+5. **CEO 提出的 loss 加权方案**: 对分配了很多 grid 的实例的边缘 grid 给更小的 loss 贡献（soft 版本的边缘过滤）。当前用 hard 过滤（直接删除 cell），如果训练效果不理想可考虑 soft loss 权重作为改进
+6. **Deep supervision config 准备**: `loss_out_indices=[8,10,11]` + `aux_weight=0.4`，ORCH_028 到 @8000 如果 car_P 仍未突破 0.12 则启用
+7. **置信度阈值后处理**: CEO 指出 FP/FN 可用置信度过滤，评估时尝试不同 confidence threshold 看 P/R tradeoff
+
+### 已作废/搁置
+- ~~ORCH_024 center-based 标签训练~~ — 终止于 @12000，数据已保留作对比 baseline
+- ~~AUDIT_REQUEST_OVERLAP_THRESHOLD~~ — 已完成，不再需要 Critic 审计
+- ~~所有旧决策矩阵阈值~~ — 基于 center-based 标签，两阶段过滤标签需重建 baseline
+
+### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED + 阈值优化 (Cycle #141-#143 + 2026-03-11)
 **根因**: `generate_occ_flow_labels.py:312-315` center-based 分配要求 cell 中心落在投影内。`grid_resolution_perwin=(4,4)` → 20×20 grid, 每 cell 56×56 px。物体投影 <56px 时 `c_start > c_end` → 零 cell（兜底仅给 1 cell）。
 
 **影响量化** (500 帧采样): 70.1% 可见物体投影 <56px, 35.5% 物体获得零 cell (AABB 模式)。有物体的 cell 被标为背景 → 模型正确检测被惩罚为 FP → **car_P 天花板 + bg_FA 膨胀的最底层根因**。
 
-**修复**: `grid_assign_mode='overlap'` — 任何与投影有重叠的 cell 都分配。效果: 30px 行人 1 cell → 4 cells, 零 cell 率 21.1% → 0%。GiT commit `ec9a035`。
+**修复 v1**: `grid_assign_mode='overlap'` — 任何与投影有重叠的 cell 都分配。GiT commit `ec9a035`。
+**问题**: overlap 模式过于激进，大量边缘 cell 仅微小重叠却被标为前景，制造噪声标签。
 
-**@12000 val baseline 已收集, ORCH_024 终止, ORCH_028 (overlap 重训) 已签发**
+**修复 v2 (2026-03-11)**: 两阶段过滤 `vis≥10% + (IoF≥30% OR IoB≥20%)`。GiT commit `a64a226`。
+- IoF (intersection/cell_area): 过滤大物体边缘噪声（cell 只被 bbox 覆盖一角）
+- IoB (intersection/full_bbox_area): 保护小目标（bbox < cell 56×56 时，IoF 天然低但 IoB 高，用 OR 兜住）
+- vis (clamped_area/full_bbox_area): 拒绝大部分在画面外的物体
+- 20 样本验证: baseline 58.6 FG → filtered 40.9 FG (**-30.3%**)，对象保留 96.9%，0 对象因过滤丢失
+
+**探索过程**: IoF→IoB→IoF+IoB→两阶段(vis+IoF)→两阶段v2(vis+IoF|IoB)→IoF 扫描(10%-40%)→最终确定 IoF30%
+- IoB 单独用: 大小物体不平衡（100-cell 大车每 cell IoB=1%，固定阈值杀大车）
+- IoF 单独用: 不保护小目标（26×35 小车跨 cell 边界，IoF 最高 16%）
+- OR 逻辑解决: 大物体靠 IoF，小目标靠 IoB，互不干扰
+
+**@12000 val baseline 已收集 (center-based ORCH_024), ORCH_028 从零重训 (两阶段过滤标签)**
 
 ### ★★★★ VERDICT_P2_FINAL_FULL_CONFIG 核心判决 (Critic, Cycle #86)
 
