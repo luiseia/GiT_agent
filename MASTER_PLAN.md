@@ -1,16 +1,22 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-09 ~21:45 (循环 #148 — @12000 val 完成, ORCH_024 终止, ORCH_028 签发)
+> 最后更新: 2026-03-11 ~16:15 (Conductor 恢复 — ORCH_028 断电中断, CEO 新指令: overlap 阈值审计)
 
-## ✅ 告警已解除 (2026-03-09 07:43)
-> ~~GPU 1 资源冲突~~: ORCH_026 (Plan Q) ~5h 后正常完成退出. GPU 1 恢复 36782 MB.
-> CEO 选择选项 A (让 Plan Q 跑完). OOM 未发生. ORCH_024 延迟约 +8.5h (可接受).
+## ⚠️ ORCH_028 断电中断 (2026-03-09 ~23:40)
+> Spring break 断电关机。ORCH_028 在 iter 1180/40000 (warmup 阶段) 被 SIGTERM kill。
+> **无 checkpoint 保存**，需从零重启。4x A6000 GPU 当前全部空闲。
+> **暂不重启** — 等待 CEO 新指令的审计结论 (overlap 阈值问题)。
+
+## ⚠️ CEO 新指令: Overlap 阈值审计 (2026-03-11)
+> CEO 指出: 当前 `grid_assign_mode='overlap'` 将任何有重叠的 cell 都标为正样本候选，
+> 应考虑设置最低重叠比例阈值。已签发 `AUDIT_REQUEST_OVERLAP_THRESHOLD` 给 Critic。
+> **ORCH_028 重启 blocked on 此审计结论** — 如需修改标签生成逻辑，必须在重训前完成。
 
 ## CEO 战略转向 (2026-03-08)
 > **不再以 Recall/Precision 为最高目标，不再高度预警红线。**
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 
-## 当前阶段: ★★★★★ ORCH_024 终止 → ORCH_028 签发 (overlap-based grid, 从零重训)
+## 当前阶段: ★★★★★ ORCH_028 等待审计 → overlap 阈值确定后从零重训
 
 ### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED (Cycle #141-#143)
 **根因**: `generate_occ_flow_labels.py:312-315` center-based 分配要求 cell 中心落在投影内。`grid_resolution_perwin=(4,4)` → 20×20 grid, 每 cell 56×56 px。物体投影 <56px 时 `c_start > c_end` → 零 cell（兜底仅给 1 cell）。
