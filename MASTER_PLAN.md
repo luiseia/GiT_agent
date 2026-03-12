@@ -105,7 +105,7 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 |----|------|------|
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000, 6 eval 完整 |
 | ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
-| **ORCH_029** | **Full nuScenes overlap + vis + convex hull** | **IN_PROGRESS @~1350, 4×A6000** |
+| **ORCH_029** | **Full nuScenes overlap + vis + convex hull** | **IN_PROGRESS @~1640, 4×A6000** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
