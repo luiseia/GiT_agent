@@ -125,7 +125,7 @@ ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000, ckpt 保留 |
 | ORCH_032 | Full nuScenes 多层 [9,19,29,39] + overlap+vis | ❌ TERMINATED @2000, 全面坍缩 (BUG-57/58/59/60) |
 | ORCH_033 | 多层修复重启: load_from+proj4096+clip30+lr5 | COMPLETED, 但使用 BUG-52 修复前代码 |
-| **ORCH_034** | **Kill 033 + BUG-52 IoF/IoB 修复后重启** | **PENDING** |
+| **ORCH_034** | **Kill 033 + BUG-52 IoF/IoB 修复后重启** | **DELIVERED, Admin 执行中** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
