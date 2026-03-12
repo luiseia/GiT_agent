@@ -114,3 +114,8 @@ CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 ---
 ## [2026-03-11 16:14:06] CEO 指令
 我觉得应该设置红框与图像grid的重合超过红框的百分之多少？这个grid某一个slot才能算是正样本。审计一下写个报告
+
+---
+## [2026-03-12 ~04:15] CEO 指令
+为什么BUG-52 ACCEPTED IoF/IoB 死代码, convex hull 等效, 不修复能ACCEPTED，不修复？立刻给我一个report放到shared/logs/reports里。
+**执行结果**: 报告写入 shared/logs/reports/bug52_iof_iob_analysis.md。核心原因：Critic 审计定量验证 convex hull 与 IoF/IoB 效果等价（差异 0.1%），修复成本>收益，当前行为无危害。
