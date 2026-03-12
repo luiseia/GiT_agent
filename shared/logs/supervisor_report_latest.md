@@ -1,34 +1,39 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-12 14:56:00
-> Cycle #274
+> 时间: 2026-03-12 15:30:00
+> Cycle #275
 
-## 训练状态 — ORCH_034 (multilayer_v3, warm start)
-- 进度: iter **4350/40000** (10.9%)
-- LR: 2.5e-6 (post-warmup, 稳定)
-- ETA: ~2d 15h 03min
-- GPU: 0-3 各 ~37.0 GB, 100% ✅
-- 磁盘: /mnt/SSD 95% (194GB free)
-- Conductor: 已提交 @4000 val 给 Critic 审计 (critic_cmd.md 已更新)
+## 训练状态 — ⚠️ ORCH_034 已停止, ORCH_035 待启动
+- ORCH_034 最终迭代: iter **4620/40000** (停止于 15:23:51)
+- GPU: 0-3 全部空闲 (0%, 15 MiB) — **无训练在跑**
+- 磁盘: /mnt/SSD 95% (194GB free), /home 99% (69GB free) ⚠️
 
-## Loss 趋势 (iter 4080-4350)
+## ORCH_034 最终 loss (iter 4400-4620)
 | iter | loss | cls | reg | grad_norm |
 |------|------|-----|-----|-----------|
-| 4100 | 4.35 | 2.80 | 1.55 | 27.3 |
-| 4150 | 4.35 | 2.55 | 1.80 | 25.3 |
-| 4200 | 4.15 | 2.30 | 1.85 | 19.4 |
-| 4250 | 3.56 | 1.66 | 1.90 | 30.2 |
-| 4300 | 4.85 | 3.51 | 1.34 | 29.7 |
-| 4350 | 5.46 | 3.72 | 1.74 | 30.7 |
+| 4400 | 4.98 | 3.11 | 1.87 | 33.1 |
+| 4450 | — | — | — | — |
+| 4500 | — | — | — | — |
+| 4550 | — | — | — | — |
+| 4600 | 2.57 | 1.33 | 1.24 | 16.6 |
+| 4620 | 6.02 | 4.07 | 1.95 | 44.0 |
 
 ### 分析
-1. **post-@4000 训练非常健康** — 零 reg=0 (28 iters 全部 reg>0)
-2. Loss 均值 ~4.5, reg 均值 ~1.7, grad_norm 11.6-45.7 — 全部正常范围
-3. 无 loss spike (本窗口最大 6.76), 训练稳定
-4. **等待 Critic 审计 @4000 val 结果** — Conductor 决策待定
+1. ORCH_034 被 kill (可能由 Admin 执行 ORCH_035 Task 2)
+2. 最终 loss 正常, 无异常终止迹象
+3. **GPU 闲置时间** — 从 15:23:51 到现在 ~7 分钟, ORCH_035 尚未启动
+
+## ORCH_035 状态
+- 文件: `ORCH_0312_1750_035.md`
+- **状态: DELIVERED** (Conductor 已投递)
+- 内容: Label Pipeline 大修 (5 项改动: BUG-19v3 z-fix, convex hull, Sutherland-Hodgman IoF/IoB, filter_invisible=False, vis+cell_count 组合过滤)
+- 目标: 从 ORCH_034@4000 resume 训练
+- 截止: 03/12 19:00
+- 工作目录 `full_nuscenes_multilayer_v4` 尚未创建 — **Admin 尚未开始执行**
 
 ## 异常告警
-- ⚠️ bg_FA=0.3240 破红线 (上一 cycle 报告) — 等待 Critic/Conductor 决策
-- 训练本身无异常
+- 🔴 **GPU 空闲** — 训练已停, ORCH_035 未启动
+- ⚠️ /home 磁盘 99% (69GB free)
+- ⚠️ bg_FA=0.3240 红线 (ORCH_034 @4000) — ORCH_035 label 修复应改善
 
 ## ORCH 投递
-- 0 个 PENDING
+- ORCH_035: DELIVERED (等待 Admin 执行)
