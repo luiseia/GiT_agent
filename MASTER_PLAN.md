@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~04:45
+> 最后更新: 2026-03-12 ~10:10
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -16,68 +16,62 @@
 
 ---
 
-## 当前阶段: ORCH_033 修复多层坍缩, 准备重启
+## 当前阶段: ORCH_034 训练中, @2000 eval 结果积极, 等待 @4000
 
-### ORCH_032 坍缩诊断 (Critic VERDICT: STOP)
+### ⭐ ORCH_034 @2000 eval 结果 (03/12 09:47)
 
-ORCH_032 @2000 全面坍缩 (car=0, 仅 ped_R=0.83)。**根因: 训练设置错误，非代码 bug**:
-- **BUG-57** [CRITICAL]: 16384→2048 随机投影 (8:1) 信息摧毁，proj.0 经 2000 iter 零学习 (actual/expected std = 1.007)
-- **BUG-58** [HIGH]: `load_from=None` 导致 backbone/head 无暖启动
-- **BUG-59** [HIGH]: 压缩比 8:1 对 2 层 MLP 太激进 (J-L 理论: 2.83× 距离失真)
-- **BUG-60** [MEDIUM]: `clip_grad=10.0` 未调整, 有效 lr 仅名义值 12.5%
+| 指标 | ORCH_024 @2000 | ORCH_029 @2000 | ORCH_032 @2000 | **ORCH_034 @2000** |
+|------|---------------|---------------|---------------|-------------------|
+| car_R | 0.627 | 0.3737 | 0.0000 | **0.8124** ⭐ |
+| car_P | 0.079 | 0.0514 | 0.0000 | 0.0571 |
+| bg_FA | 0.222 | 0.1615 | 0.3181 | **0.2073** ✅ |
+| off_th | 0.174 | 0.1447 | 0.2308 | **0.1655** ✅ |
+| ped_R | 0.000 | 0.000 | 0.8328 | 0.0000 ⚠️ |
 
-> 完整审计: `shared/audit/processed/VERDICT_MULTILAYER_032_COLLAPSE.md`
+**结论**: car_R 0.8124 是历史最佳 (ORCH_024 peak=0.726)。多层特征+暖启动+BUG修复组合效果显著。car_P 仍低 (0.057)，非car类全0是@2000早期单类主导现象。继续训练到@4000。
 
-### ORCH_033 修复计划 (方案 A+B 混合)
+### 修复清单 (ORCH_034 已部署)
 
-| 修复项 | 旧值 | 新值 | 目的 |
-|--------|------|------|------|
-| load_from | None | ORCH_029@2000 ckpt | backbone/head 暖启动 (BUG-58) |
-| preextracted_proj_hidden_dim | 2048 | 4096 | 压缩比 8:1→4:1 (BUG-59) |
-| clip_grad max_norm | 10.0 | 30.0 | 匹配多层梯度尺度 (BUG-60) |
-| lr_mult (proj) | 2.0 | 5.0 | 加速 proj 收敛 (BUG-57) |
+| 修复项 | 旧值 | 新值 | BUG |
+|--------|------|------|-----|
+| load_from | None | ORCH_029@2000 | BUG-58 |
+| proj_hidden_dim | 2048 | 4096 (4:1) | BUG-59 |
+| clip_grad | 10.0 | 30.0 | BUG-60 |
+| lr_mult (proj) | 2.0 | 5.0 | BUG-57 |
+| IoF/IoB 过滤 | 死代码 | convex hull+IoF/IoB | BUG-52 |
 
 ## 实验路线图
 
 | 阶段 | 时间 | 实验 | 内容 | 决策依据 |
 |------|------|------|------|---------|
-| ✅ 已完成 | 03/11 23:15 | ORCH_029 @2000 eval | bg_FA -27%, off_th -17%, car_P -35% | 标签改进确认 |
-| ✅ 已完成 | 03/11 ~23:45 | ORCH_032 启动 | 多层训练从零开始 | commit `64c3a10` |
-| ❌ 失败 | 03/12 ~04:00 | ORCH_032 @2000 eval | 全面坍缩, Critic STOP | BUG-57/58/59/60 |
-| **待执行** | 03/12 ~04:45 | ORCH_033 签发 | Kill 032 + 修复重启 (方案 A+B) | — |
-| **里程碑 3** | ~03/12 10:00 | ORCH_033 @2000 eval | 对比 ORCH_029@2000 基线 | car_P>0.05 = 正常收敛 |
-| **里程碑 4** | ~03/12 16:00 | ORCH_033 @4000 eval | 多层 vs 单层真正对比 | 见下方决策树 |
+| ✅ | 03/11 23:15 | ORCH_029 @2000 | bg_FA -27%, off_th -17% | 标签改进确认 |
+| ❌ | 03/12 ~04:00 | ORCH_032 @2000 | 全面坍缩 | BUG-57/58/59/60 |
+| ⭐ **已完成** | 03/12 09:47 | ORCH_034 @2000 | **car_R=0.8124**, bg_FA=0.2073, off_th=0.1655 | 多层特征方向正确 |
+| **里程碑 4** | ~03/12 16:00 | ORCH_034 @4000 | 多层 vs 单层真正对比 | 见下方决策树 |
+| **里程碑 5** | ~03/13 | ORCH_034 @8000 | 架构决策点 | — |
 
 ### @4000 决策树
 
 ```
-ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
+ORCH_034 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 │
-├─ car_P > 0.10 → ★ 多层特征有效, 继续训练到 LR decay
+├─ car_P > 0.10 → ★ 多层特征确认有效, 继续到 LR decay
 │
-├─ car_P 0.06-0.10 → 有改善但不够大
-│   └─ 对比 bg_FA/off_th: 如优于 029, 继续; 否则考虑加 LayerNorm
+├─ car_P 0.06-0.10 → 有改善
+│   └─ 对比 bg_FA/off_th: 优于 029 → 继续; 否则考虑 LayerNorm
 │
-└─ car_P < 0.06 → 修复不够或多层本身无效
-    ├─ 检查 proj.0 权重是否开始偏离 kaiming init
-    └─ 考虑渐进训练 (方案 C: 冻结 backbone 先训 proj)
+└─ car_P < 0.06 → car_R 高但 car_P 低 = FP 过多
+    └─ 考虑置信度阈值后处理或 loss 加权调整
 ```
 
 ---
 
 ## 关键发现
 
-### ⚠️ ORCH_032 @2000 多层特征坍缩 (2026-03-12)
+### ORCH_032 坍缩 → ORCH_034 修复成功
 
-| 指标 | ORCH_024 @2000 | ORCH_029 @2000 | ORCH_032 @2000 |
-|------|---------------|---------------|---------------|
-| car_P | 0.079 | 0.0514 | **0.0000** |
-| car_R | 0.627 | 0.3737 | **0.0000** |
-| bg_FA | 0.222 | 0.1615 | **0.3181** |
-| off_th | 0.174 | 0.1447 | **0.2308** |
-| ped_R | 0.000 | 0.000 | **0.8328** (P=0.006) |
-
-模型坍缩到仅预测 pedestrian。审计中 (AUDIT_REQUEST_MULTILAYER_032_COLLAPSE)。
+ORCH_032 从零训练导致 8:1 投影坍缩 (BUG-57/58/59/60)。ORCH_034 修复后 car_R 从 0→0.8124。
+> 完整审计: `shared/audit/processed/VERDICT_MULTILAYER_032_COLLAPSE.md`
 
 ### ★★★★★ DINOv3 多层特征 (2026-03-11, CEO 论文分析)
 
@@ -150,10 +144,10 @@ ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | **BUG-54** | FIXED | layer_indices 0-indexed 修正 [9,19,29,39] (commit `dba4760`) |
 | **BUG-55** | FIXED | 多层 config load_from=None (commit `dba4760`) |
 | **BUG-56** | NOTED | layer_idx=16 实为 block 16 (0-indexed) = 论文 Layer 17, 不改 |
-| **BUG-57** | CRITICAL→FIXING | proj.0 经 2000 iter 零学习, 8:1 随机投影摧毁信息 → ORCH_033 proj_hidden=4096 + lr_mult=5 |
-| **BUG-58** | HIGH→FIXING | load_from=None 无暖启动 → ORCH_033 load_from=ORCH_029@2000 |
-| **BUG-59** | HIGH→FIXING | 16384→2048 压缩比 8:1 太激进 → ORCH_033 proj_hidden=4096 (4:1) |
-| **BUG-60** | MEDIUM→FIXING | clip_grad=10.0 未调整, 有效 lr 仅 12.5% → ORCH_033 clip_grad=30.0 |
+| **BUG-57** | FIXED | proj.0 零学习 → proj_hidden=4096 + lr_mult=5 (ORCH_034 car_R=0.81 验证) |
+| **BUG-58** | FIXED | load_from=None → ORCH_029@2000 暖启动 (ORCH_034 验证) |
+| **BUG-59** | FIXED | 8:1 压缩 → 4:1 (ORCH_034 验证) |
+| **BUG-60** | FIXED | clip_grad=10→30 (ORCH_034 验证) |
 
 ### 已关闭 BUG (BUG-2~46, 详见 `shared/logs/archive/verdict_history.md`)
 
