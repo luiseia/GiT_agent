@@ -1,14 +1,14 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-12 09:09:00
-> Cycle #262
+> 时间: 2026-03-12 09:37:00
+> Cycle #263
 
 ## 训练状态 — ORCH_034 (multilayer_v3, warm start)
 - 进度: iter **2000/40000** (5.0%) — ⭐ **WARMUP COMPLETE**
 - LR: **2.5e-6** (base_lr=5e-5, warmup 100% ✅)
 - @2000 checkpoint saved at 08:55:09
-- @2000 val **IN PROGRESS**: 190/753 (25.2%), ~4.1s/iter, **ETA val complete ~09:47**
-- GPU: 0-3 各 ~35.4-35.6 GB, 95-100% ✅ (val mode)
-- 磁盘: /mnt/SSD 95% (209GB free) — checkpoint 占用 ~15GB
+- @2000 val **IN PROGRESS**: **590/753 (78.4%)**, ~4.1s/iter, **ETA val complete ~09:47**
+- GPU: 0-3 各 ~35.4-35.6 GB, 97-100% ✅ (val mode)
+- 磁盘: /mnt/SSD 95% (209GB free)
 
 ## Loss 趋势 (iter 1840-2000, post-reg0-cluster)
 | iter | loss | cls | reg | grad_norm |
@@ -20,10 +20,9 @@
 | 2000 | **5.11** | **3.21** | **1.91** | **43.0** |
 
 ### 分析
-1. **@2000 里程碑达成!** Warmup 完成, LR 锁定 2.5e-6
-2. **iter 2000 训练指标**: loss=5.11, cls=3.21, reg=1.91 — 全部 reg>0, 健康
-3. **对比 ORCH_032 @2000**: ORCH_032 当时 loss=6.14, reg0=9.0% — ORCH_034 loss 更低且 reg0% 更少, 暖启动优势明显
-4. **关键等待**: val 结果 (ETA ~09:47) 将决定 ORCH_034 是否突破 ORCH_032 的坍缩
+1. **@2000 val 即将完成** — 590/753 (78.4%), 预计 ~09:47 出结果
+2. Val 运行稳定, ~4.09s/iter, memory 24803 MB, 无 OOM/NaN
+3. **下一 cycle (~10:10) 必定能捕获完整 @2000 val 结果** — 这是 ORCH_034 的关键判决点
 
 ## @2000 val 预期 (red-line 检查)
 | 指标 | ORCH_029 @2000 (baseline) | ORCH_032 @2000 (坍塌) | ORCH_034 预期 |
@@ -33,8 +32,8 @@
 | off_th | 0.1447 | 0.2308 | 应 < 0.20 |
 
 ## 异常告警
-- ℹ️ 磁盘 95% (209GB) — checkpoint 保存后下降, 暂安全但需关注
-- ⭐ **@2000 val 正在运行** — 下一 cycle (~09:40) 应能捕获完整 val 结果
+- ℹ️ 磁盘 95% (209GB) — 稳定, 暂安全
+- ⭐ **@2000 val 78% 完成** — 约 10 分钟后出结果
 
 ## ORCH 投递
 - 0 个 PENDING
