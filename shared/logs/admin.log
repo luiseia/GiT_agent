@@ -3,3 +3,4 @@
 [23:35:43] DONE: ORCH_032 - stopped ORCH_029, started multilayer training (4 GPU)
 [04:59:04] DONE: ORCH_033 - killed ORCH_032, fixed BUG-57/58/59/60, restarted multilayer v2 (4 GPU, loss@10=4.06)
 [05:25:23] DONE: ORCH_034 - killed ORCH_033, deployed BUG-52 IoF/IoB fix, restarted multilayer v3 (loss@10=3.88)
+[10:08:09] ORCH_034 @2000 val: car_R=0.8124 car_P=0.0571 bg_FA=0.2073 (大幅改善vs ORCH_029)
