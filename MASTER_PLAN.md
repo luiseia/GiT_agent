@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~14:20
+> 最后更新: 2026-03-12 ~17:55
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -16,33 +16,46 @@
 
 ---
 
-## 当前阶段: ORCH_034 训练中, @4000 Critic PROCEED, 等待 @8000
+## 当前阶段: ORCH_035 等待 Admin 执行 (Label Pipeline 大修)
 
-### ⭐ ORCH_034 eval 汇总
+### ⭐ ORCH_035 Label Pipeline 改动清单
 
-| 指标 | ORCH_024 @4000 | ORCH_034 @2000 | **ORCH_034 @4000** | @2000→@4000 |
-|------|---------------|---------------|-------------------|-------------|
-| car_R | 0.419 | 0.8124 | **0.8195** | +0.9% ✅ |
-| car_P | 0.078 | 0.0571 | **0.0451** | -21% ⚠️ |
-| bg_FA | 0.199 | 0.2073 | **0.3240** | +56% ❌ |
-| off_th | 0.150 | 0.1655 | **0.1598** | -3.4% ✅ |
-| bus_R | — | 0.000 | **0.0695** | 激活 ✅ |
-| constr_R | — | 0.000 | **0.1095** | 激活 ✅ |
-| ped_R | — | 0.000 | **0.0240** | 激活 ✅ |
-| cone_R | — | 0.000 | **0.1304** | 激活 ✅ |
+CEO 亲自审核并确认的 5 项 label 生成改动 (GiT commit `80b1e23`):
 
-**结论**: car_R 维持 0.82 高位，4 个新类别激活 — 多层特征方向正确。bg_FA 0.324 是类别激活正常现象 (Critic: ORCH_024 @6000 同为 0.331)。ORCH_034 比 ORCH_024 快 ~2000 iter。继续到 @8000。
-> Critic 审计: `shared/audit/processed/VERDICT_034_AT4000_BGFA.md`
+| # | 改动 | 原因 | BUG |
+|---|------|------|-----|
+| 1 | **BUG-19v3 z-fix**: z = box BOTTOM (mmdet3d) | 修复前车辆只覆盖下半部分 cell | BUG-19v3 |
+| 2 | **Convex hull 替代 AABB** | AABB 对斜角车辆过大 ~25% | — |
+| 3 | **IoF/IoB 对 hull 多边形计算** (Sutherland-Hodgman) | 对 AABB 计算 IoF 永远 ~1.0, 过滤失效 | BUG-52v2 |
+| 4 | **filter_invisible=False** | nuScenes vis_token 过滤误杀可见车辆 | — |
+| 5 | **vis + cell_count 组合过滤** | 纯 vis<10% 误杀 29-cell 大目标 | — |
 
-### 修复清单 (ORCH_034 已部署)
+### 最终 config 参数
+```python
+filter_invisible=False,
+use_rotated_polygon=True,        # convex hull
+min_vis_ratio=0.10,              # vis < 10% 且 cells < 6 才过滤
+min_vis_cell_count=6,            # vis 低但占 >=6 cell 的大目标保留
+min_iof=0.30,                    # IoF/IoB 对 hull polygon 计算
+min_iob=0.10,
+grid_assign_mode='overlap',
+```
 
-| 修复项 | 旧值 | 新值 | BUG |
-|--------|------|------|-----|
-| load_from | None | ORCH_029@2000 | BUG-58 |
-| proj_hidden_dim | 2048 | 4096 (4:1) | BUG-59 |
-| clip_grad | 10.0 | 30.0 | BUG-60 |
-| lr_mult (proj) | 2.0 | 5.0 | BUG-57 |
-| IoF/IoB 过滤 | 死代码 | convex hull+IoF/IoB | BUG-52 |
+### 训练计划
+- **Resume from ORCH_034@4000** (backbone/projection 有效, head 适应新标签)
+- 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
+- 评估点: @8000 (从 resume 算 @4000 新 iter)
+
+### ORCH_034 eval 参考 (修复前标签, 仅供对比)
+
+| 指标 | ORCH_034 @2000 | ORCH_034 @4000 |
+|------|---------------|---------------|
+| car_R | 0.8124 | 0.8195 |
+| car_P | 0.0571 | 0.0451 |
+| bg_FA | 0.2073 | 0.3240 |
+| off_th | 0.1655 | 0.1598 |
+
+> 注: ORCH_034 使用旧 label pipeline (BUG-19v3 未修, AABB IoF/IoB, filter_invisible=True)。数值不直接可比。
 
 ## 实验路线图
 
@@ -51,53 +64,50 @@
 | ✅ | 03/11 23:15 | ORCH_029 @2000 | bg_FA -27%, off_th -17% | 标签改进确认 |
 | ❌ | 03/12 ~04:00 | ORCH_032 @2000 | 全面坍缩 | BUG-57/58/59/60 |
 | ✅ | 03/12 09:47 | ORCH_034 @2000 | car_R=0.8124, bg_FA=0.2073 | 多层特征方向正确 |
-| ✅ | 03/12 14:18 | ORCH_034 @4000 | car_R=0.82, bg_FA=0.324, 4类激活 | Critic: PROCEED |
-| **里程碑 5** | ~03/13 02:00 | ORCH_034 @8000 | 架构决策点 + score_thr 消融 | @8000 bg_FA>0.40 → 介入 |
+| ✅ | 03/12 14:18 | ORCH_034 @4000 | car_R=0.82, 4类激活 | Critic: PROCEED |
+| **当前** | 03/12 17:50 | ORCH_035 | Label pipeline 大修 + resume 034@4000 | DELIVERED |
+| **里程碑 6** | ~03/13 | ORCH_035 @8000 | 新标签效果评估 | 重点: car_P 改善, bg_FA |
 
 ### @8000 决策树
 
 ```
-ORCH_034 @8000 (参照 ORCH_024 @10000: car_P=0.069, bg_FA=0.407):
+ORCH_035 @8000 (新 label pipeline):
 │
-├─ car_P > 0.08 → ★ 多层特征全面优于单层, 继续到 LR decay
+├─ car_P > 0.08 + bg_FA < 0.35 → ★ 标签+特征双重改进成功
 │
-├─ car_P 0.05-0.08 + bg_FA < 0.35 → 正常进展, 继续训练
+├─ car_P > 0.06 → 进步中, 继续训练到 LR decay
 │
-├─ bg_FA > 0.40 → 考虑: score_thr 后处理 / loss 加权调整
+├─ car_P 不变 (~0.045) → 标签改进未传导到 precision, 分析原因
 │
-└─ car_P < 0.05 → precision 瓶颈, 分析 per-class FP
+└─ car_P 下降 → z-fix 可能改变 recall/precision 平衡, 检查 recall
 ```
-
-### @8000 准备事项 (Critic 建议)
-- score_thr 消融: 测试 score_thr=0.1/0.2/0.3 对 car_P 和 bg_FA 的影响
-- 如 bg_FA>0.40: 考虑介入
-- BUG-17 关注: bicycle 激活后可能引发振荡
 
 ---
 
 ## 关键发现
 
-### ORCH_032 坍缩 → ORCH_034 修复成功
+### ★★★★★ Label Pipeline 大修 (2026-03-12, CEO 亲审)
 
-ORCH_032 从零训练导致 8:1 投影坍缩 (BUG-57/58/59/60)。ORCH_034 修复后 car_R 从 0→0.8124。
-> 完整审计: `shared/audit/processed/VERDICT_MULTILAYER_032_COLLAPSE.md`
+CEO 对 label generation pipeline 逐项审查, 发现多个问题:
+- BUG-19v3: z-convention 错误导致所有车辆只有下半部分被覆盖
+- IoF/IoB 对 AABB 计算完全无效 (hull 内部 IoF ≈ 1.0)
+- filter_invisible 误杀可见度 0-40% 的车辆 (与自有 vis_ratio 重复)
+- 纯 vis < 10% 对画面内大目标过于激进
+- 详细可视化: `ssd_workspace/Debug/progressive_filter/`
 
 ### ★★★★★ DINOv3 多层特征 (2026-03-11, CEO 论文分析)
 
 > 详细分析: `shared/logs/reports/dinov3_paper_analysis.md`
 
-- 论文 4/4 下游任务都用 **[10,20,30,40] 四层拼接** (16384维)，我们只用 Layer 16 单层 (4096维)
-- Layer 16 在几何任务上远未达峰 (Layer 30-35 最优)，多层拼接是 DINOv3 特有优势
-- 适配层差距: 论文 12 层 Transformer (100M) vs 我们 2 层 MLP (10M)
-- **代码已就绪**: ORCH_030 (commit `8a961de`) + ORCH_031 BUG-54/55 修复 (commit `dba4760`)
-- Config: `plan_full_nuscenes_multilayer.py`, `layer_indices=[9,19,29,39]`, `load_from=None`
+- 论文 4/4 下游任务都用 **[10,20,30,40] 四层拼接** (16384维)
+- Layer 16 在几何任务上远未达峰 (Layer 30-35 最优)
+- ORCH_034 验证: car_R 0→0.81, 4 个新类别激活
 
 ### BUG-51 标签修复 (overlap + vis filter)
 
-- **问题**: center-based 分配导致 35.5% 物体零 cell，是 car_P 天花板根因之一
-- **修复**: `grid_assign_mode='overlap'` + `vis≥10%` + convex hull (commits `ec9a035`, `a64a226`)
-- **BUG-52 (FIXED)**: IoF/IoB 原为死代码 → CEO 要求部署，已在 convex hull 分支追加 IoF/IoB 双重过滤
-- **ORCH_029 @2000 验证**: bg_FA -27%, off_th -17% 确认标签改进有效
+- center-based 分配导致 35.5% 物体零 cell, 是 car_P 天花板根因之一
+- overlap + vis + convex hull 修复 (commits `ec9a035`, `a64a226`)
+- ORCH_029 @2000 验证: bg_FA -27%, off_th -17%
 
 ### ORCH_024 baseline 数据 (center-based, 已终止 @12000)
 
@@ -123,16 +133,14 @@ ORCH_032 从零训练导致 8:1 投影坍缩 (BUG-57/58/59/60)。ORCH_034 修复
 
 | ID | 目标 | 状态 |
 |----|------|------|
-| ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000, 6 eval 完整 |
-| ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
-| ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000, ckpt 保留 |
-| ORCH_032 | Full nuScenes 多层 [9,19,29,39] + overlap+vis | ❌ TERMINATED @2000, 全面坍缩 (BUG-57/58/59/60) |
-| ORCH_033 | 多层修复重启: load_from+proj4096+clip30+lr5 | COMPLETED, 但使用 BUG-52 修复前代码 |
-| **ORCH_034** | **多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复** | **IN_PROGRESS, 训练中** |
+| ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000 |
+| ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
+| ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
+| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **DELIVERED, 等 Admin** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
-已完成归档: ORCH_001-027 (详见 `shared/logs/archive/verdict_history.md`)
+已完成归档: ORCH_001-033 (详见 `shared/logs/archive/verdict_history.md`)
 
 ---
 
@@ -147,20 +155,20 @@ ORCH_032 从零训练导致 8:1 投影坍缩 (BUG-57/58/59/60)。ORCH_034 修复
 | **BUG-48** | HIGH | unfreeze_last_n 解冻 blocks 38-39 但 layer 16 不受影响, 梯度不流经 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks 但只需前 17 个, 浪费 58% |
 | **BUG-50** | MEDIUM | unfreeze 时移除 no_grad, 全部 40 blocks 构建计算图, +10-15GB |
-| **BUG-51** | FIXED v2 | Grid 分辨率过粗 → overlap + vis 修复 (commits `ec9a035`, `a64a226`) |
-| **BUG-52** | FIXED | IoF/IoB 死代码 → convex hull 分支内追加 IoF/IoB 双重过滤 (CEO 指令) |
-| **BUG-53** | NOTED | explore_final.py FG 偏高 (41.0 vs 实际 33.1), 方向一致 |
-| **BUG-54** | FIXED | layer_indices 0-indexed 修正 [9,19,29,39] (commit `dba4760`) |
-| **BUG-55** | FIXED | 多层 config load_from=None (commit `dba4760`) |
-| **BUG-56** | NOTED | layer_idx=16 实为 block 16 (0-indexed) = 论文 Layer 17, 不改 |
-| **BUG-57** | FIXED | proj.0 零学习 → proj_hidden=4096 + lr_mult=5 (ORCH_034 car_R=0.81 验证) |
-| **BUG-58** | FIXED | load_from=None → ORCH_029@2000 暖启动 (ORCH_034 验证) |
-| **BUG-59** | FIXED | 8:1 压缩 → 4:1 (ORCH_034 验证) |
-| **BUG-60** | FIXED | clip_grad=10→30 (ORCH_034 验证) |
+
+### 已修复 BUG (本轮)
+
+| BUG | 修复 |
+|-----|------|
+| BUG-19v3 | z = box BOTTOM, corners z ∈ [z, z+h] (commit `80b1e23`) |
+| BUG-51v2 | overlap + vis + convex hull |
+| BUG-52v2 | IoF/IoB 对 hull polygon 计算 (Sutherland-Hodgman) (commit `80b1e23`) |
+| BUG-57 | proj lr_mult=5.0 |
+| BUG-58 | load_from=ORCH_029@2000 |
+| BUG-59 | proj 4:1 compression |
+| BUG-60 | clip_grad=30.0 |
 
 ### 已关闭 BUG (BUG-2~46, 详见 `shared/logs/archive/verdict_history.md`)
-
-关键已关闭: BUG-19 (FIXED, z+=h/2), BUG-27 (vocab mismatch), BUG-33 (DDP sampler), BUG-39 (因式参数化有效), BUG-40 (Critic 审计链失误)
 
 ---
 
