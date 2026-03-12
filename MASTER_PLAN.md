@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-11 ~23:30
+> 最后更新: 2026-03-12 ~00:00
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -16,7 +16,7 @@
 
 ---
 
-## 当前阶段: ORCH_029 @2000 完成, 准备切换到多层特征 ORCH_032
+## 当前阶段: ORCH_032 多层特征训练进行中 (从零开始)
 
 ### ORCH_029 @2000 eval 结果 (03/11 ~23:15)
 
@@ -35,8 +35,8 @@
 | 阶段 | 时间 | 实验 | 内容 | 决策依据 |
 |------|------|------|------|---------|
 | ✅ 已完成 | 03/11 23:15 | ORCH_029 @2000 eval | bg_FA -27%, off_th -17%, car_P -35% | 标签改进确认 |
-| **现在** | 03/11 ~23:30 | 停止 ORCH_029, 启动 ORCH_032 | 保留 ckpt, 释放 GPU, 签发 ORCH_032 | — |
-| **阶段 2** | ~03/12 00:00 | ORCH_032 训练 | **多层 [9,19,29,39]** + overlap+vis 标签, `plan_full_nuscenes_multilayer.py`, 从零训练, 4×A6000 | CEO 论文分析: 多层特征可能是 car_P 根因 |
+| ✅ 已完成 | 03/11 ~23:45 | ORCH_032 启动 | Admin 执行: kill 029, 启动多层训练, VRAM 29.8GB/GPU (+1GB) | commit `64c3a10` |
+| **现在** | 03/12 ~00:00 | ORCH_032 训练中 | **多层 [9,19,29,39]** + overlap+vis, 从零训练, 4×A6000, ETA ~2d22h | — |
 | **里程碑 2** | ~03/12 04:00 | ORCH_032 @2000 eval | 多层 vs ORCH_029 @2000 vs ORCH_024 @2000 三方对比 | 特征改进是否有效 |
 | **里程碑 3** | ~03/12 11:00 | ORCH_032 @4000 eval | 第一个可信评估点, 重建决策矩阵 | 继续 or 调参 |
 | **条件分支** | @4000 后 | 视数据决定 | 见下方决策树 | — |
@@ -116,7 +116,8 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 |----|------|------|
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000, 6 eval 完整 |
 | ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
-| **ORCH_029** | **Full nuScenes overlap + vis + convex hull** | **@2000 eval 完成, 准备停止** |
+| ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000, ckpt 保留 |
+| **ORCH_032** | **Full nuScenes 多层 [9,19,29,39] + overlap+vis** | **IN_PROGRESS, 4×A6000, ETA ~03/14 22:00** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
