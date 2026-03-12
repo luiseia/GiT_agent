@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-11 ~22:30
+> 最后更新: 2026-03-11 ~23:30
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -16,18 +16,29 @@
 
 ---
 
-## 当前阶段: ORCH_029 @2000 val 进行中 (29%, ETA ~23:14), 等结果后决策切换
+## 当前阶段: ORCH_029 @2000 完成, 准备切换到多层特征 ORCH_032
+
+### ORCH_029 @2000 eval 结果 (03/11 ~23:15)
+
+| 指标 | ORCH_024 @2000 | ORCH_029 @2000 | 变化 | 判断 |
+|------|---------------|---------------|------|------|
+| car_P | 0.079 | 0.0514 | -35% | ⚠️ 下降, 但 @2000 仅趋势参考 |
+| bg_FA | 0.222 | **0.1615** | **-27%** | ✅ overlap 标签有效降噪 |
+| off_th | 0.174 | **0.1447** | **-17%** | ✅ 角度精度提升 |
+| car_R | 0.627 | 0.3737 | -40% | 早期, 待观察 |
+| reg=0 | 28.6% | 9.0% | **-68%** | ✅ 标签质量显著改善 |
+
+**结论**: overlap+vis 标签在噪声控制 (bg_FA, off_th, reg=0) 上全面优于 center-based。car_P 下降可能是早期现象或特征瓶颈。现在切换到多层特征测试 CEO 核心假设。
 
 ## 实验路线图
 
 | 阶段 | 时间 | 实验 | 内容 | 决策依据 |
 |------|------|------|------|---------|
-| **现在** | 03/11 ~22:30 | ORCH_029 @2000 val | val 进行中 29%, ckpt 已保存, reg=0 9.0% (vs 024 28.6%) | 等 val 完成 |
-| **里程碑 1** | ~03/11 23:14 | ORCH_029 @2000 eval 完成 | 收集指标, 与 ORCH_024 @2000 对比 | 标签改进初步结论 |
-| **切换** | ~03/12 01:30 | 停止 ORCH_029 | 保留 ckpt, 释放 4 GPU | — |
-| **阶段 2** | ~03/12 01:30 | ORCH_032 启动 | **多层 [9,19,29,39]** + overlap+vis 标签, `plan_full_nuscenes_multilayer.py`, 从零训练, 4×A6000 | CEO 论文分析: 多层特征可能是 car_P 根因 |
-| **里程碑 2** | ~03/12 05:00 | ORCH_032 @2000 eval | 多层 vs ORCH_029 @2000 vs ORCH_024 @2000 三方对比 | 特征改进是否有效 |
-| **里程碑 3** | ~03/12 12:00 | ORCH_032 @4000 eval | 第一个可信评估点, 重建决策矩阵 | 继续 or 调参 |
+| ✅ 已完成 | 03/11 23:15 | ORCH_029 @2000 eval | bg_FA -27%, off_th -17%, car_P -35% | 标签改进确认 |
+| **现在** | 03/11 ~23:30 | 停止 ORCH_029, 启动 ORCH_032 | 保留 ckpt, 释放 GPU, 签发 ORCH_032 | — |
+| **阶段 2** | ~03/12 00:00 | ORCH_032 训练 | **多层 [9,19,29,39]** + overlap+vis 标签, `plan_full_nuscenes_multilayer.py`, 从零训练, 4×A6000 | CEO 论文分析: 多层特征可能是 car_P 根因 |
+| **里程碑 2** | ~03/12 04:00 | ORCH_032 @2000 eval | 多层 vs ORCH_029 @2000 vs ORCH_024 @2000 三方对比 | 特征改进是否有效 |
+| **里程碑 3** | ~03/12 11:00 | ORCH_032 @4000 eval | 第一个可信评估点, 重建决策矩阵 | 继续 or 调参 |
 | **条件分支** | @4000 后 | 视数据决定 | 见下方决策树 | — |
 
 ### @4000 决策树
@@ -77,7 +88,7 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 - **问题**: center-based 分配导致 35.5% 物体零 cell，是 car_P 天花板根因之一
 - **修复**: `grid_assign_mode='overlap'` + `vis≥10%` + convex hull (commits `ec9a035`, `a64a226`)
 - **Critic 发现 (BUG-52)**: IoF/IoB 是死代码，实际生效的是 convex hull + vis≥10%
-- **ORCH_029 正在验证此修复**
+- **ORCH_029 @2000 验证**: bg_FA -27%, off_th -17% 确认标签改进有效
 
 ### ORCH_024 baseline 数据 (center-based, 已终止 @12000)
 
@@ -105,7 +116,7 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 |----|------|------|
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000, 6 eval 完整 |
 | ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
-| **ORCH_029** | **Full nuScenes overlap + vis + convex hull** | **IN_PROGRESS @2000, val 进行中, 4×A6000** |
+| **ORCH_029** | **Full nuScenes overlap + vis + convex hull** | **@2000 eval 完成, 准备停止** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
