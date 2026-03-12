@@ -4641,3 +4641,11 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 
 ---
 ### Cycle #241 | 2026-03-11 22:57 | ORCH_029 @2000 val 550/753 (73%) ETA ~23:15 | GPU ✅ | Disk 94%
+
+---
+### Cycle #242 | 2026-03-11 23:26 | ⭐⭐⭐ ORCH_029 @2000 VAL RESULTS
+- **car_P=0.0514** (ORCH_024: 0.079, ⚠️ -35%)
+- **bg_FA=0.1615** (ORCH_024: 0.222, ✅ -27% 大幅改善!)
+- **off_th=0.1447** (ORCH_024: 0.174, ✅ -17% 改善!)
+- truck_R=0.000 (同 ORCH_024), bicycle_R=0.238 (非零, 新信号)
+- 训练已恢复 @2110, LR=2.5e-6 | GPU ✅ | Disk 94%

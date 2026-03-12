@@ -461,3 +461,4 @@
 [239] 2026-03-11 22:00 | ORCH_029 @1910/40000 | loss=4.87 | reg0=9.4% | GPU_OK | Disk_93% | @2000_val_imminent
 [240] 2026-03-11 22:28 | ⭐ ORCH_029 @2000 WARMUP_DONE | val_in_progress 220/753 | loss=4.93 | reg0=9.0% | Disk_94%
 [241] 2026-03-11 22:57 | ORCH_029 @2000 val 550/753 (73%) | ETA_val_23:15 | GPU_OK | Disk_94%
+[242] 2026-03-11 23:26 | ⭐⭐⭐ ORCH_029 @2000 VAL: car_P=0.0514 bg_FA=0.1615 off_th=0.1447 | bg_FA↓27% off_th↓17% car_P↓35% | train@2110
