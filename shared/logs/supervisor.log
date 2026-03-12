@@ -508,3 +508,4 @@
 [266] 2026-03-12 11:03 | ORCH_034 @2710/40000 | stable_cruise | reg0@2450(single) | loss_avg~4.9 | continue_to_@4000 ETA_22:00 | GPU_OK | Disk_95%
 [267] 2026-03-12 11:32 | ORCH_034 @2980/40000 | reg0@2860-2870(2x)+spike@2880(10.59) | loss_avg~4.7 | @4000_ETA_22:00 | GPU_OK | Disk_95%
 [268] 2026-03-12 12:01 | ORCH_034 @3260/40000 | @3000_passed_clean | 0_reg0 | loss_avg~4.6 | @4000_ETA_21:30 | GPU_OK | Disk_95%
+[269] 2026-03-12 12:30 | ORCH_034 @3530/40000 | loss_avg~4.3 | reg0@3270,3520(sporadic) | @4000_ETA_21:00 | GPU_OK | Disk_95%
