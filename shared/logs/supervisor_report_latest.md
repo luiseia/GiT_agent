@@ -1,75 +1,73 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-11 19:05:00
-> Cycle #232
+> 时间: 2026-03-11 19:10:00
+> Cycle #233
 
 ## 训练状态
-- 当前实验: **ORCH_029** (Full nuScenes, 两阶段过滤标签)
-- 进度: **初始化中** (config dump 阶段, 尚未开始 iter)
-- GPU 使用: 0-3 各 ~1.7 GB (模型加载中, 预计训练开始后升至 ~28.8 GB)
-- 训练是否正常运行: **启动中 — 需下轮确认**
-- Work dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260311/full_nuscenes_filtered`
+- 当前实验: **ORCH_029** (Full nuScenes, overlap + vis filter)
+- 进度: iter **~250/40000** (0.63%)
+- GPU: 0-3 各 ~36.5 GB, 100% 利用率
+- 速度: ~6.2-6.5 s/iter (正常)
+- 显存: 28849 MB/GPU (正常)
+- ETA: ~2d 21h → **~3/14 16:00**
+- load_from: P5b@3000
+- 训练正常运行: **是 ✅**
 
-## 重大进展 (Cycle #231 → #232)
+## Loss 趋势 (iter 200-250)
+| iter | loss | cls | reg | grad_norm |
+|------|------|-----|-----|-----------|
+| 200 | 4.79 | 2.48 | 2.31 | 25.2 |
+| 210 | 4.61 | 2.02 | 2.60 | 43.7 |
+| 220 | 6.92 | 3.84 | 3.08 | 47.6 |
+| 230 | 4.70 | 2.16 | 2.54 | 34.9 |
+| 240 | 0.53 | 0.53 | **0.00** | 37.8 |
+| 250 | 9.14 | 6.76 | 2.39 | 33.2 |
 
-### 1. VERDICT_OVERLAP_THRESHOLD 完成 (16:23)
-- **结论: PROCEED** — 无需添加阈值
-- Convex hull 已是隐式 ~50% IoF 阈值, Mean IoF=0.845, 仅 0.4% cell < 0.20
-- 边缘 cell 问题在统计上不存在
+- Warmup 阶段, 波动正常, 无 NaN/OOM
+- **reg=0 频率: 1/25 = 4.0%** (ORCH_028 was 9.1%, ORCH_024 was 28.6%)
 
-### 2. CEO 指导: 两阶段过滤方案实施 (commit `a64a226`)
-- Stage 1: `vis >= 10%` (object-level, 拒绝出画面物体)
-- Stage 2: `IoF >= 30% OR IoB >= 20%` (cell-level, 过滤噪声 + 保护小目标)
-- 20 样本验证: FG 减少 30.3%, 对象保留率 96.9%
+## 重大审计发现: VERDICT_TWO_STAGE_FILTER (18:43)
 
-### 3. ORCH_029 签发 + 启动 (18:30)
-- 替代 ORCH_028 (被停电 kill, 无 ckpt)
-- 从零训练, overlap + 两阶段过滤, 其他参数同 ORCH_024
+### BUG-52 (HIGH): IoF/IoB 过滤是死代码
+- `use_rotated_polygon=True` 使 99.4% GT 走 convex hull 路径, **完全跳过 IoF/IoB**
+- ORCH_029 实际生效的过滤: **overlap + convex hull center-check + vis >= 10%**
+- min_iof=0.30, min_iob=0.20 虽已设置但**对训练无影响**
+- **结论: CONDITIONAL — 继续训练, 无需改代码/重启**
+  - Convex hull 提供等效保护 (Mean IoF=0.845)
+  - 实际 FG=33.1/frame (比 explore_final.py 的 41.0 更严格)
 
-### 4. AUDIT_REQUEST_TWO_STAGE_FILTER 签发 (18:27)
-- 不阻塞 ORCH_029, 审计结论可能影响后续调参
+### BUG-53 (MEDIUM): 验证脚本与训练行为不一致
+- explore_final.py 用 AABB+IoF/IoB, 训练实际用 convex hull
+- MASTER_PLAN "FG -30.3%" 数据基于验证脚本, 非训练实际
 
 ## ORCH 指令状态
 | 指令 | 状态 | 备注 |
 |------|------|------|
 | ORCH_001-027 | COMPLETED | 全部完成 |
-| ORCH_028 | **SUPERSEDED** | 被 ORCH_029 取代 (停电 kill + 标签升级) |
-| **ORCH_029** | **IN PROGRESS** | 初始化中, 4 GPU DDP |
+| ORCH_028 | SUPERSEDED | 被 ORCH_029 取代 |
+| **ORCH_029** | **IN PROGRESS** | iter ~250, 训练正常 |
 
 ## 审计状态
-| 请求 | 状态 |
-|------|------|
-| OVERLAP_THRESHOLD | ✅ VERDICT 完成 — PROCEED |
-| **TWO_STAGE_FILTER** | 🔴 等待 VERDICT (不阻塞训练) |
-
-## 核心指标 — ORCH_024 @12000 (参考基线)
-| 指标 | 值 | 红线 |
-|------|-----|------|
-| car_P | 0.0813 | — |
-| truck_R | 0.0000 | ⚠️ < 0.08 |
-| bg_FA | 0.2777 | ⚠️ > 0.25 |
-| off_th | **0.1275** | ✅ 历史最佳 |
-
-## 代码变更 (最近 5 条 GiT commit)
-```
-a64a226 feat: two-stage grid cell filtering (vis>=10% + IoF>=30% OR IoB>=20%)
-59b8195 ops: emergency shutdown - spring break power outage
-996813e config: add grid_assign_mode='overlap' for BUG-51 fix
-ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
-6655b06 Add full nuScenes 10-sample visualization script (ORCH_027)
-```
+| 请求 | 状态 | 关键结论 |
+|------|------|---------|
+| OVERLAP_THRESHOLD | ✅ PROCEED | 无需阈值 |
+| TWO_STAGE_FILTER | ✅ CONDITIONAL | BUG-52 IoF/IoB 死代码, 继续训练 |
 
 ## 深度监控
-- **GPU**: 0-3 ~1.7 GB (初始化), 进程存活 (PID 88858-88861)
+- **GPU**: 0-3 ~36.5 GB, 100% ✅
 - **磁盘**: /mnt/SSD 253 GB 可用 (93%)
-- **ORCH_024 ckpts**: 6 × ~15 GB 保留中
-- **ORCH_028 work_dir**: 存在但无 ckpt, ORCH_029 建议删除
+- **进程**: 24 个 train.py 进程存活 ✅
+- **无 PENDING ORCH**
 
 ## 下一里程碑
 | 事件 | 预计时间 |
 |------|---------|
-| ORCH_029 首个训练 iter | 数分钟内 |
-| @100 iter 早期检查 | ~+11 min |
-| @2000 val | ~+3.5 h |
+| @2000 val (首次 eval) | ~3/12 ~02:00 |
+| @4000 val | ~3/12 ~09:00 |
+| LR decay @17000 | ~3/13 ~06:00 |
 
 ## 异常告警
-无新告警。训练刚启动，等待确认初始化完成。
+无。训练健康运行, 审计完成, 无阻塞项。
+
+## Conductor 需知
+1. **BUG-52**: IoF/IoB 是死代码, 实际过滤 = convex hull + vis. 不影响训练但需更新认知
+2. **@4000 关注**: vis filter 对远处小物体 (ped, cone) 可能有不对称影响, 分类对比时注意
