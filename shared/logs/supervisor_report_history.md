@@ -4687,3 +4687,6 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 
 ---
 ### Cycle #253 | 2026-03-12 04:50 | ORCH_032 @2450/40000 | loss=0.7-12.0 UNSTABLE | cls=0.7-9.8 | reg=0 at iter 2410,2450 | grad_norm avg~45 (high) | Mode collapse persists | CEO_CMD: BUG-52 report requested | GPU ✅ | Disk 94% (224GB)
+
+---
+### Cycle #254 | 2026-03-12 05:00 | ORCH_032 @2530/40000 | loss=0.7-10.6 UNSTABLE | cls spike freq high | reg=0 not seen since 2450 | grad_norm avg~47 | No new ORCH | CEO_CMD pending | GPU ✅ | Disk 94%
