@@ -459,3 +459,4 @@
 [21:01:43] Cycle #237: ORCH_029 @1350, loss trending down, all green
 [238] 2026-03-11 21:31 | ORCH_029 @1640/40000 | loss=4.18 | reg0=7.3% | GPU_OK | Disk_93%
 [239] 2026-03-11 22:00 | ORCH_029 @1910/40000 | loss=4.87 | reg0=9.4% | GPU_OK | Disk_93% | @2000_val_imminent
+[240] 2026-03-11 22:28 | ⭐ ORCH_029 @2000 WARMUP_DONE | val_in_progress 220/753 | loss=4.93 | reg0=9.0% | Disk_94%
