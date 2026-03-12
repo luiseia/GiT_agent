@@ -1,0 +1,1 @@
+为什么BUG-52	ACCEPTED	IoF/IoB 死代码, convex hull 等效, 不修复能ACCEPTED，不修复？。立刻给我一个report放到shared/logs/reports里，我要看。
