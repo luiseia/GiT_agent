@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~04:15
+> 最后更新: 2026-03-12 ~04:45
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -16,58 +16,52 @@
 
 ---
 
-## 当前阶段: ORCH_032 @2000 eval 坍缩, 审计中
+## 当前阶段: ORCH_033 修复多层坍缩, 准备重启
 
-### ORCH_029 @2000 eval 结果 (03/11 ~23:15)
+### ORCH_032 坍缩诊断 (Critic VERDICT: STOP)
 
-| 指标 | ORCH_024 @2000 | ORCH_029 @2000 | 变化 | 判断 |
-|------|---------------|---------------|------|------|
-| car_P | 0.079 | 0.0514 | -35% | ⚠️ 下降, 但 @2000 仅趋势参考 |
-| bg_FA | 0.222 | **0.1615** | **-27%** | ✅ overlap 标签有效降噪 |
-| off_th | 0.174 | **0.1447** | **-17%** | ✅ 角度精度提升 |
-| car_R | 0.627 | 0.3737 | -40% | 早期, 待观察 |
-| reg=0 | 28.6% | 9.0% | **-68%** | ✅ 标签质量显著改善 |
+ORCH_032 @2000 全面坍缩 (car=0, 仅 ped_R=0.83)。**根因: 训练设置错误，非代码 bug**:
+- **BUG-57** [CRITICAL]: 16384→2048 随机投影 (8:1) 信息摧毁，proj.0 经 2000 iter 零学习 (actual/expected std = 1.007)
+- **BUG-58** [HIGH]: `load_from=None` 导致 backbone/head 无暖启动
+- **BUG-59** [HIGH]: 压缩比 8:1 对 2 层 MLP 太激进 (J-L 理论: 2.83× 距离失真)
+- **BUG-60** [MEDIUM]: `clip_grad=10.0` 未调整, 有效 lr 仅名义值 12.5%
 
-**结论**: overlap+vis 标签在噪声控制 (bg_FA, off_th, reg=0) 上全面优于 center-based。car_P 下降可能是早期现象或特征瓶颈。现在切换到多层特征测试 CEO 核心假设。
+> 完整审计: `shared/audit/processed/VERDICT_MULTILAYER_032_COLLAPSE.md`
+
+### ORCH_033 修复计划 (方案 A+B 混合)
+
+| 修复项 | 旧值 | 新值 | 目的 |
+|--------|------|------|------|
+| load_from | None | ORCH_029@2000 ckpt | backbone/head 暖启动 (BUG-58) |
+| preextracted_proj_hidden_dim | 2048 | 4096 | 压缩比 8:1→4:1 (BUG-59) |
+| clip_grad max_norm | 10.0 | 30.0 | 匹配多层梯度尺度 (BUG-60) |
+| lr_mult (proj) | 2.0 | 5.0 | 加速 proj 收敛 (BUG-57) |
 
 ## 实验路线图
 
 | 阶段 | 时间 | 实验 | 内容 | 决策依据 |
 |------|------|------|------|---------|
 | ✅ 已完成 | 03/11 23:15 | ORCH_029 @2000 eval | bg_FA -27%, off_th -17%, car_P -35% | 标签改进确认 |
-| ✅ 已完成 | 03/11 ~23:45 | ORCH_032 启动 | Admin 执行: kill 029, 启动多层训练, VRAM 29.8GB/GPU (+1GB) | commit `64c3a10` |
-| ⚠️ **里程碑 2** | 03/12 ~04:00 | ORCH_032 @2000 eval | **全面坍缩**: car=0, bg_FA=0.318, off_th=0.231, 仅 ped_R=0.83 | 审计签发 |
-| **现在** | 03/12 ~04:15 | 等待 Critic 审计 | AUDIT_REQUEST_MULTILAYER_032_COLLAPSE | 实现bug or 架构问题? |
-| **里程碑 3** | ~03/12 18:00 | ORCH_032 @4000 eval | 如无 bug: 继续观察是否恢复; 如有 bug: 修复后重启 | — |
-| **条件分支** | @4000 后 | 视数据决定 | 见下方决策树 | — |
+| ✅ 已完成 | 03/11 ~23:45 | ORCH_032 启动 | 多层训练从零开始 | commit `64c3a10` |
+| ❌ 失败 | 03/12 ~04:00 | ORCH_032 @2000 eval | 全面坍缩, Critic STOP | BUG-57/58/59/60 |
+| **待执行** | 03/12 ~04:45 | ORCH_033 签发 | Kill 032 + 修复重启 (方案 A+B) | — |
+| **里程碑 3** | ~03/12 10:00 | ORCH_033 @2000 eval | 对比 ORCH_029@2000 基线 | car_P>0.05 = 正常收敛 |
+| **里程碑 4** | ~03/12 16:00 | ORCH_033 @4000 eval | 多层 vs 单层真正对比 | 见下方决策树 |
 
 ### @4000 决策树
 
 ```
-ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
+ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 │
-├─ car_P > 0.12 → ★ 多层特征有效, 继续训练到 LR decay
-│   └─ @8000: 考虑加 deep supervision / LN+BN (P3)
+├─ car_P > 0.10 → ★ 多层特征有效, 继续训练到 LR decay
 │
-├─ car_P 0.09-0.12 → 有改善但不够大
-│   ├─ bg_FA < 0.20 → 标签+特征都有贡献, 继续训练
-│   └─ bg_FA > 0.25 → 特征改善被标签噪声抵消, 考虑 P3 (LN+BN)
+├─ car_P 0.06-0.10 → 有改善但不够大
+│   └─ 对比 bg_FA/off_th: 如优于 029, 继续; 否则考虑加 LayerNorm
 │
-└─ car_P < 0.09 → 多层特征无效或有害
-    ├─ 检查 loss 收敛是否正常
-    ├─ 考虑 P4 (加重投影层) 或回退单层 Layer 32
-    └─ 重新评估架构瓶颈
+└─ car_P < 0.06 → 修复不够或多层本身无效
+    ├─ 检查 proj.0 权重是否开始偏离 kaiming init
+    └─ 考虑渐进训练 (方案 C: 冻结 backbone 先训 proj)
 ```
-
-### 并行准备清单 (不占 GPU)
-
-| 优先级 | 任务 | 状态 | 触发条件 |
-|--------|------|------|---------|
-| P3 | 投影层加 LN+BN | 待开发 | ORCH_032 @4000 后视需要 |
-| P4 | 加重投影层 (2-4 层 Transformer) | 待设计 | ORCH_032 car_P < 0.09 |
-| — | Soft loss 加权 (边缘 cell 降权) | 待设计 | ORCH_032 bg_FA > 0.25 |
-| — | Deep supervision (`loss_out_indices=[8,10,11]`) | 待配置 | ORCH_032 @8000 car_P < 0.12 |
-| — | 置信度阈值后处理 | 待评估 | 任何 eval 后可尝试 |
 
 ---
 
@@ -129,7 +123,8 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000, 6 eval 完整 |
 | ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000, ckpt 保留 |
-| **ORCH_032** | **Full nuScenes 多层 [9,19,29,39] + overlap+vis** | **IN_PROGRESS @2100+, @2000 eval 坍缩, 审计中** |
+| ORCH_032 | Full nuScenes 多层 [9,19,29,39] + overlap+vis | ❌ TERMINATED @2000, 全面坍缩 (BUG-57/58/59/60) |
+| **ORCH_033** | **多层修复重启: load_from+proj4096+clip30+lr5** | **PENDING** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
@@ -154,6 +149,10 @@ ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | **BUG-54** | FIXED | layer_indices 0-indexed 修正 [9,19,29,39] (commit `dba4760`) |
 | **BUG-55** | FIXED | 多层 config load_from=None (commit `dba4760`) |
 | **BUG-56** | NOTED | layer_idx=16 实为 block 16 (0-indexed) = 论文 Layer 17, 不改 |
+| **BUG-57** | CRITICAL→FIXING | proj.0 经 2000 iter 零学习, 8:1 随机投影摧毁信息 → ORCH_033 proj_hidden=4096 + lr_mult=5 |
+| **BUG-58** | HIGH→FIXING | load_from=None 无暖启动 → ORCH_033 load_from=ORCH_029@2000 |
+| **BUG-59** | HIGH→FIXING | 16384→2048 压缩比 8:1 太激进 → ORCH_033 proj_hidden=4096 (4:1) |
+| **BUG-60** | MEDIUM→FIXING | clip_grad=10.0 未调整, 有效 lr 仅 12.5% → ORCH_033 clip_grad=30.0 |
 
 ### 已关闭 BUG (BUG-2~46, 详见 `shared/logs/archive/verdict_history.md`)
 
