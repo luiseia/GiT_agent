@@ -1,4 +1,4 @@
-# Critic 审计指令 — MULTILAYER_FEATURE
+# Critic 审计指令 — MULTILAYER_032_COLLAPSE
 
 严格按以下步骤执行：
 
@@ -10,7 +10,7 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 读取 agents/claude_critic/CLAUDE.md，理解你的职责和规则
 
 ## 3. 读取审计请求
-读取 shared/audit/requests/AUDIT_REQUEST_MULTILAYER_FEATURE.md
+读取 shared/audit/requests/AUDIT_REQUEST_MULTILAYER_032_COLLAPSE.md
 
 ## 4. 读取 MASTER_PLAN
 读取 MASTER_PLAN.md，审视 Conductor 的计划和决策是否合理
@@ -19,13 +19,13 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 按审计请求要求，深度审查 GiT/ 中相关代码，追踪完整调用链
 
 ## 6. 调试验证（如需）
-调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_20260311/
+调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_20260312/
 文件名必须以 debug_ 前缀
 
 ## 7. 写入判决
-写入 shared/audit/pending/VERDICT_MULTILAYER_FEATURE.md
+写入 shared/audit/pending/VERDICT_MULTILAYER_032_COLLAPSE.md
 判决必须包含：结论(PROCEED/STOP/CONDITIONAL)、发现的问题(附文件路径+行号)、对 Conductor 计划的评价
 
 ## 8. 提交
 cd /home/UNT/yz0370/projects/GiT_agent
-git add shared/audit/pending/ && git commit -m "critic: verdict MULTILAYER_FEATURE" && git push
+git add shared/audit/pending/ && git commit -m "critic: verdict MULTILAYER_032_COLLAPSE" && git push
