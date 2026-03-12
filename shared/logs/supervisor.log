@@ -506,3 +506,4 @@
 [264] 2026-03-12 10:05 | ⭐⭐ ORCH_034 @2000 VAL | car_R=0.8124 bg_FA=0.2073 off_th=0.1655 ped_R=0 | RED_LINES_PASS | @2160 training_healthy | GPU_OK | Disk_95%
 [265] 2026-03-12 10:35 | ORCH_034 @2440/40000 | post-val healthy | spike@2380(10.36,recovered) | reg0@2410(single) | next_val@4000_ETA_22:20 | GPU_OK | Disk_95%
 [266] 2026-03-12 11:03 | ORCH_034 @2710/40000 | stable_cruise | reg0@2450(single) | loss_avg~4.9 | continue_to_@4000 ETA_22:00 | GPU_OK | Disk_95%
+[267] 2026-03-12 11:32 | ORCH_034 @2980/40000 | reg0@2860-2870(2x)+spike@2880(10.59) | loss_avg~4.7 | @4000_ETA_22:00 | GPU_OK | Disk_95%
