@@ -119,3 +119,8 @@ CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 ## [2026-03-12 ~04:15] CEO 指令
 为什么BUG-52 ACCEPTED IoF/IoB 死代码, convex hull 等效, 不修复能ACCEPTED，不修复？立刻给我一个report放到shared/logs/reports里。
 **执行结果**: 报告写入 shared/logs/reports/bug52_iof_iob_analysis.md。核心原因：Critic 审计定量验证 convex hull 与 IoF/IoB 效果等价（差异 0.1%），修复成本>收益，当前行为无危害。
+
+---
+## [2026-03-12 ~04:45] CEO 指令
+我不确定Convex hull真的等效，所以我要求部署新的过滤方式Stage 2 的 IoF/IoB 过滤。必须修改，因此之前的实验可能要重做
+**执行结果**: 已修复 BUG-52。在 convex hull 分支内追加 IoF/IoB 双重过滤 (`generate_occ_flow_labels.py` L387-401)。当 `min_iof>0 or min_iob>0` 时，cell 必须同时通过 convex hull center-check 和 IoF≥0.30 OR IoB≥0.20。向后兼容：无 IoF/IoB 参数时行为不变。ORCH_033 需要基于此修复重启训练。

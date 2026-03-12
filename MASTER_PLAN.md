@@ -93,7 +93,7 @@ ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 
 - **问题**: center-based 分配导致 35.5% 物体零 cell，是 car_P 天花板根因之一
 - **修复**: `grid_assign_mode='overlap'` + `vis≥10%` + convex hull (commits `ec9a035`, `a64a226`)
-- **Critic 发现 (BUG-52)**: IoF/IoB 是死代码，实际生效的是 convex hull + vis≥10%
+- **BUG-52 (FIXED)**: IoF/IoB 原为死代码 → CEO 要求部署，已在 convex hull 分支追加 IoF/IoB 双重过滤
 - **ORCH_029 @2000 验证**: bg_FA -27%, off_th -17% 确认标签改进有效
 
 ### ORCH_024 baseline 数据 (center-based, 已终止 @12000)
@@ -124,7 +124,8 @@ ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | ORCH_028 | Full nuScenes overlap (无过滤) | TERMINATED @1180, 断电 kill |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000, ckpt 保留 |
 | ORCH_032 | Full nuScenes 多层 [9,19,29,39] + overlap+vis | ❌ TERMINATED @2000, 全面坍缩 (BUG-57/58/59/60) |
-| **ORCH_033** | **多层修复重启: load_from+proj4096+clip30+lr5** | **PENDING** |
+| ORCH_033 | 多层修复重启: load_from+proj4096+clip30+lr5 | COMPLETED, 但使用 BUG-52 修复前代码 |
+| **ORCH_034** | **Kill 033 + BUG-52 IoF/IoB 修复后重启** | **PENDING** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
@@ -144,7 +145,7 @@ ORCH_033 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks 但只需前 17 个, 浪费 58% |
 | **BUG-50** | MEDIUM | unfreeze 时移除 no_grad, 全部 40 blocks 构建计算图, +10-15GB |
 | **BUG-51** | FIXED v2 | Grid 分辨率过粗 → overlap + vis 修复 (commits `ec9a035`, `a64a226`) |
-| **BUG-52** | ACCEPTED | IoF/IoB 死代码, convex hull 等效, 不修复 |
+| **BUG-52** | FIXED | IoF/IoB 死代码 → convex hull 分支内追加 IoF/IoB 双重过滤 (CEO 指令) |
 | **BUG-53** | NOTED | explore_final.py FG 偏高 (41.0 vs 实际 33.1), 方向一致 |
 | **BUG-54** | FIXED | layer_indices 0-indexed 修正 [9,19,29,39] (commit `dba4760`) |
 | **BUG-55** | FIXED | 多层 config load_from=None (commit `dba4760`) |
