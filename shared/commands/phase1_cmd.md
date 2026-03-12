@@ -21,7 +21,7 @@ cd /home/UNT/yz0370/projects/GiT_agent && git pull
 ## 5. PENDING
 检查 shared/pending/ 中 ORCH 指令状态：
 - DONE → 读取对应 shared/logs/report_ORCH_*.md
-- 超时（>20 分钟无响应）→ 在 MASTER_PLAN.md 标记告警
+- 超时（>20 分钟无响应）→ 记录到 shared/logs/supervisor.log 并在 Phase 2 决策时处理
 
 ## 6. ADMIN
 读取 shared/logs/report_ORCH_*.md 了解 Admin 执行结果

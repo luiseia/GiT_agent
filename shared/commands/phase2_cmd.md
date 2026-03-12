@@ -24,7 +24,7 @@ done
 ```
 
 ## 4. PLAN
-更新 MASTER_PLAN.md
+更新 MASTER_PLAN.md（仅更新路线图/ORCH状态/BUG表格等活跃内容，历史数据归档到 shared/logs/archive/，保持 MASTER_PLAN 精简）
 
 ## 5. ACT
 决定是否签发 ORCH 指令：
