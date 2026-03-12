@@ -41,60 +41,59 @@
 > **目标: 设计出在完整 nuScenes 上性能优秀的代码。mini 数据集仅用于 debug。**
 > **补充 (3-11)**: 图像 grid 与 2D bbox 无法完美对齐是固有限制。主目标是 BEV box 属性，周边 grid 的 FP/FN 通过置信度阈值或 loss 加权处理。
 
-## 当前阶段: ★★★★★ ORCH_029 训练中（overlap + vis≥10% + convex hull）
+## 当前阶段: ORCH_029 @2000 eval 后切换多层特征训练
 
-## ⚠️ ORCH_028 断电中断 (2026-03-09 ~23:40)
-> Spring break 断电关机。ORCH_028 在 iter 1180/40000 被 kill，无 checkpoint。
-> 需从零重启，现已具备条件（两阶段过滤代码已合入）。
+## 实验路线图
 
-## 下一步行动计划 (2026-03-11, 务实版)
+| 阶段 | 时间 | 实验 | 内容 | 决策依据 |
+|------|------|------|------|---------|
+| **现在** | 03/11 ~20:30 | ORCH_029 继续 | overlap+vis 标签, Layer 16 单层, 4×A6000 | 等 @2000 数据 |
+| **里程碑 1** | ~03/12 01:00 | ORCH_029 @2000 eval | 收集指标, 与 ORCH_024 @2000 对比 | 标签改进初步结论 |
+| **切换** | ~03/12 01:30 | 停止 ORCH_029 | 保留 ckpt, 释放 4 GPU | — |
+| **阶段 2** | ~03/12 01:30 | ORCH_032 启动 | **多层 [9,19,29,39]** + overlap+vis 标签, `plan_full_nuscenes_multilayer.py`, 从零训练, 4×A6000 | CEO 论文分析: 多层特征可能是 car_P 根因 |
+| **里程碑 2** | ~03/12 05:00 | ORCH_032 @2000 eval | 多层 vs ORCH_029 @2000 vs ORCH_024 @2000 三方对比 | 特征改进是否有效 |
+| **里程碑 3** | ~03/12 12:00 | ORCH_032 @4000 eval | 第一个可信评估点, 重建决策矩阵 | 继续 or 调参 |
+| **条件分支** | @4000 后 | 视数据决定 | 见下方决策树 | — |
 
-### 立即执行
-1. **ORCH_029 已启动** ✅ — 使用当前 master 代码, config 不变 (`plan_full_nuscenes_gelu.py`), 4×A6000
-   - 实际过滤: overlap 标签 + convex hull center-check + vis≥10% (IoF/IoB 死代码, BUG-52)
-   - 实际 FG: ~33.1/frame (比 explore_final.py 的 41.0 少 19%, BUG-53)
-   - 预期效果: bg_FA 下降（更干净标签 + vis 拒绝画面外物体），car_P 可能提升
-   - @4000 第一个可信评估点，与 ORCH_024 center-based 对比
-   - ⚠️ Critic 建议: @4000 分类对比 vis filter 对 pedestrian/traffic_cone 的影响（远处小物体更易被 vis 过滤）
+### @4000 决策树
 
-### @4000 后决策（基于两阶段过滤标签的第一批数据）
-2. **对比 ORCH_024 baseline**: 同 config 不同标签，直接看 car_P/bg_FA/off_th 是否改善
-3. **如果改善明显 (car_P > ORCH_024 peak 0.090)**: 验证两阶段过滤有效，继续训练到 LR decay
-4. **如果无明显变化或恶化**: 标签噪声不是主要瓶颈，回到架构改进路线（deep supervision 优先）
+```
+ORCH_032 @4000 car_P vs ORCH_024 @4000 (baseline 0.078):
+│
+├─ car_P > 0.12 → ★ 多层特征有效, 继续训练到 LR decay
+│   └─ @8000: 考虑加 deep supervision / LN+BN (P3)
+│
+├─ car_P 0.09-0.12 → 有改善但不够大
+│   ├─ bg_FA < 0.20 → 标签+特征都有贡献, 继续训练
+│   └─ bg_FA > 0.25 → 特征改善被标签噪声抵消, 考虑 P3 (LN+BN)
+│
+└─ car_P < 0.09 → 多层特征无效或有害
+    ├─ 检查 loss 收敛是否正常
+    ├─ 考虑 P4 (加重投影层) 或回退单层 Layer 32
+    └─ 重新评估架构瓶颈
+```
 
-### ★★★★★ DINOv3 特征改进路线（ORCH_029 训练期间并行准备）
+### 并行准备清单 (不占 GPU)
 
-**P1: Layer 32 单层快速验证**（最小改动，最快获得数据）
-- 仅改 config: `online_dinov3_layer_idx=32`（论文几何任务最优区间）
-- 在 mini 上跑对比: Layer 16 vs Layer 32，看 loss 收敛和初期指标
-- 预期: 如果 Layer 32 有明显改善，证实 Layer 选择是瓶颈
-- **签发 ORCH 实现此验证**
+| 优先级 | 任务 | 状态 | 触发条件 |
+|--------|------|------|---------|
+| P3 | 投影层加 LN+BN | 待开发 | ORCH_032 @4000 后视需要 |
+| P4 | 加重投影层 (2-4 层 Transformer) | 待设计 | ORCH_032 car_P < 0.09 |
+| — | Soft loss 加权 (边缘 cell 降权) | 待设计 | ORCH_032 bg_FA > 0.25 |
+| — | Deep supervision (`loss_out_indices=[8,10,11]`) | 待配置 | ORCH_032 @8000 car_P < 0.12 |
+| — | 置信度阈值后处理 | 待评估 | 任何 eval 后可尝试 |
 
-**P2: 多层 [10,20,30,40] 拼接**（论文核心做法，潜在收益最大）
-- 修改 `OnlineDINOv3Embed.forward()`: 调用 `get_intermediate_layers(n=[10,20,30,40])`
-- 投影层输入: 16384→2048→GELU→768（第一层 Linear 参数从 4096×2048 变为 16384×2048）
-- 显存增量: ~500MB/卡（DINOv3 frozen，只多存 3 个中间层输出）
-- **可在 P1 验证期间并行开发代码**
+### 已完成/作废
 
-**P3: 投影层加 LN + BN**（论文标准做法，改动小）
-- DINOv3 特征提取后先 LN（已有），再加 learned BN
-- 可捎带 P1 或 P2 一起测试
-
-**P4: 加重投影层**（谨慎评估）
-- 论文用 12 层 Transformer (100M)，但有 Objects365 2.5M 图预训练
-- nuScenes ~28k 张可能不足以支撑 100M 参数 → 先尝试 2-4 层 Transformer
-- **等 P1/P2 数据后再决定是否需要**
-
-### 其他中期待办
-5. **CEO 提出的 loss 加权方案**: 对分配了很多 grid 的实例的边缘 grid 给更小的 loss 贡献（soft 版本的边缘过滤）。当前用 hard 过滤（直接删除 cell），如果训练效果不理想可考虑 soft loss 权重作为改进
-6. **Deep supervision config 准备**: `loss_out_indices=[8,10,11]` + `aux_weight=0.4`，ORCH_029 到 @8000 如果 car_P 仍未突破 0.12 则启用
-7. **置信度阈值后处理**: CEO 指出 FP/FN 可用置信度过滤，评估时尝试不同 confidence threshold 看 P/R tradeoff
-
-### 已作废/搁置
-- ~~ORCH_024 center-based 标签训练~~ — 终止于 @12000，数据已保留作对比 baseline
-- ~~AUDIT_REQUEST_OVERLAP_THRESHOLD~~ — VERDICT PROCEED, 已归档
-- ~~AUDIT_REQUEST_TWO_STAGE_FILTER~~ — VERDICT CONDITIONAL (BUG-52/53), 已归档, ORCH_029 继续
-- ~~所有旧决策矩阵阈值~~ — 基于 center-based 标签，两阶段过滤标签需重建 baseline
+- ~~ORCH_024~~ — center-based baseline, TERMINATED @12000, 数据保留
+- ~~ORCH_028~~ — 断电 kill @1180, 无 ckpt, 被 ORCH_029 替代
+- ~~ORCH_029~~ — overlap+vis 标签, 计划跑到 @2000 后切换多层 (不再跑到 40000)
+- ~~ORCH_030~~ — 多层特征代码实现, DONE (commit `8a961de`)
+- ~~ORCH_031~~ — BUG-54/55 修复, DONE (commit `dba4760`)
+- ~~AUDIT_REQUEST_OVERLAP_THRESHOLD~~ — PROCEED, 已归档
+- ~~AUDIT_REQUEST_TWO_STAGE_FILTER~~ — CONDITIONAL, 已归档
+- ~~AUDIT_REQUEST_MULTILAYER_FEATURE~~ — STOP→BUG-54/55 已修复
+- ~~所有旧决策矩阵阈值~~ — 需 ORCH_032 数据重建
 
 ### ★★★★★ BUG-51: Grid 分辨率过粗 — FIXED + 阈值优化 (Cycle #141-#143 + 2026-03-11)
 **根因**: `generate_occ_flow_labels.py:312-315` center-based 分配要求 cell 中心落在投影内。`grid_resolution_perwin=(4,4)` → 20×20 grid, 每 cell 56×56 px。物体投影 <56px 时 `c_start > c_end` → 零 cell（兜底仅给 1 cell）。
