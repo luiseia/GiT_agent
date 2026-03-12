@@ -1,6 +1,23 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-11 ~18:50 (ORCH_029 已启动, Critic TWO_STAGE_FILTER 审计完成)
+> 最后更新: 2026-03-11 ~19:40 (DINOv3 论文分析: 多层特征拼接可能是 car_P 根因)
+
+## ★★★★★ DINOv3 多层特征发现 — 可能是 car_P 瓶颈根因 (2026-03-11, CEO 论文分析)
+
+> **来源**: CEO 阅读 DINOv3 论文 (2025)，完整分析见 `shared/logs/reports/dinov3_paper_analysis.md`
+>
+> **核心发现**:
+> 1. **论文 4/4 下游任务都用多层特征拼接 [10,20,30,40]**（4×4096=16384维），我们只用 Layer 16 单层 4096维
+> 2. **Layer 16 在几何任务上远未达峰** — Per-layer 分析显示深度估计在 Layer 30-35 最优，分类在 Layer 35-40 最优。BEV 占用预测是几何+语义混合任务，Layer 16 两方面都不是最优
+> 3. **多层拼接是 DINOv3 特有优势** — D.12 VGGT 实验证明对 DINOv2 无效，说明这是 DINOv3 训练方法带来的层间互补性
+> 4. **适配层差距悬殊** — 论文用 12 层 Transformer (100M 参数) 做特征精炼，我们用 2 层 MLP (10M)
+> 5. **论文标准做法包含 LN + BN**，我们缺失
+>
+> **代码可行性**: DINOv3 `get_intermediate_layers(n=[10,20,30,40])` **已原生支持多层提取**，无需改 DINOv3 代码。改动集中在 `OnlineDINOv3Embed` 和投影层。显存增量 ~500MB/卡，完全可承受。
+>
+> **与 ORCH_029 的关系**: 标签质量 (overlap+vis) 与特征质量 (多层拼接) 是**正交改进**，ORCH_029 继续训练，同时并行准备特征改进实验。
+>
+> **行动计划见下方"DINOv3 特征改进路线"**
 
 ## ✅ Overlap 阈值审计完成 + 代码已合入 (2026-03-11)
 > **问题**: BUG-51 的 `grid_assign_mode='overlap'` 将任何有重叠的 cell 都标为前景，大量边缘 cell 仅与 2D bbox 有微小重叠，不含实际目标像素，制造噪声训练标签。
@@ -45,9 +62,32 @@
 3. **如果改善明显 (car_P > ORCH_024 peak 0.090)**: 验证两阶段过滤有效，继续训练到 LR decay
 4. **如果无明显变化或恶化**: 标签噪声不是主要瓶颈，回到架构改进路线（deep supervision 优先）
 
-### 中期待办（ORCH_028 训练期间可并行准备）
+### ★★★★★ DINOv3 特征改进路线（ORCH_029 训练期间并行准备）
+
+**P1: Layer 32 单层快速验证**（最小改动，最快获得数据）
+- 仅改 config: `online_dinov3_layer_idx=32`（论文几何任务最优区间）
+- 在 mini 上跑对比: Layer 16 vs Layer 32，看 loss 收敛和初期指标
+- 预期: 如果 Layer 32 有明显改善，证实 Layer 选择是瓶颈
+- **签发 ORCH 实现此验证**
+
+**P2: 多层 [10,20,30,40] 拼接**（论文核心做法，潜在收益最大）
+- 修改 `OnlineDINOv3Embed.forward()`: 调用 `get_intermediate_layers(n=[10,20,30,40])`
+- 投影层输入: 16384→2048→GELU→768（第一层 Linear 参数从 4096×2048 变为 16384×2048）
+- 显存增量: ~500MB/卡（DINOv3 frozen，只多存 3 个中间层输出）
+- **可在 P1 验证期间并行开发代码**
+
+**P3: 投影层加 LN + BN**（论文标准做法，改动小）
+- DINOv3 特征提取后先 LN（已有），再加 learned BN
+- 可捎带 P1 或 P2 一起测试
+
+**P4: 加重投影层**（谨慎评估）
+- 论文用 12 层 Transformer (100M)，但有 Objects365 2.5M 图预训练
+- nuScenes ~28k 张可能不足以支撑 100M 参数 → 先尝试 2-4 层 Transformer
+- **等 P1/P2 数据后再决定是否需要**
+
+### 其他中期待办
 5. **CEO 提出的 loss 加权方案**: 对分配了很多 grid 的实例的边缘 grid 给更小的 loss 贡献（soft 版本的边缘过滤）。当前用 hard 过滤（直接删除 cell），如果训练效果不理想可考虑 soft loss 权重作为改进
-6. **Deep supervision config 准备**: `loss_out_indices=[8,10,11]` + `aux_weight=0.4`，ORCH_028 到 @8000 如果 car_P 仍未突破 0.12 则启用
+6. **Deep supervision config 准备**: `loss_out_indices=[8,10,11]` + `aux_weight=0.4`，ORCH_029 到 @8000 如果 car_P 仍未突破 0.12 则启用
 7. **置信度阈值后处理**: CEO 指出 FP/FN 可用置信度过滤，评估时尝试不同 confidence threshold 看 P/R tradeoff
 
 ### 已作废/搁置
