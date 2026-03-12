@@ -764,6 +764,9 @@ sender BEV occ box → 2D 刚体变换 (旋转+平移, 用两车相对 pose) →
 | **BUG-51** | **CRITICAL → FIXED v2** | Grid 20×20, center-based 分配导致 35.5% 物体零 cell, 70.1% 投影<56px. **修复 v1**: `grid_assign_mode='overlap'` (commit `ec9a035`). **修复 v2**: 两阶段过滤 (commit `a64a226`). 实际生效: convex hull + vis≥10% |
 | **BUG-52** | **HIGH → ACCEPTED** | IoF/IoB 过滤是死代码: `use_rotated_polygon=True` 使 99.4% GT 走 convex hull 路径, 跳过 IoF/IoB 分支 (elif). Convex hull 提供等效保护 (Mean IoF=0.845). **不修复**: 改代码无增量收益 (<0.1%), 不重启训练 (VERDICT_TWO_STAGE_FILTER) |
 | **BUG-53** | **MEDIUM → NOTED** | `explore_final.py` 用 AABB 而非 convex hull, FG=41.0/frame vs 实际训练 FG=33.1/frame. 验证数据偏高但方向一致 (实际更严格). 不影响训练 (VERDICT_TWO_STAGE_FILTER) |
+| **BUG-54** | **CRITICAL → 待修复** | `layer_indices=[10,20,30,40]` 索引越界 + 偏移一位。代码 0-indexed, 论文 1-indexed。block 40 不存在 (0-39)，assertion crash。**修复**: `[9,19,29,39]` (VERDICT_MULTILAYER_FEATURE) |
+| **BUG-55** | **MEDIUM → 决策: load_from=None** | 多层 config `load_from` P5b 导致 proj 部分加载（proj.0.weight 跳过, bias/proj.2 加载）。**决策**: 多层 config 从头训练, 与 ORCH_029 一致 (VERDICT_MULTILAYER_FEATURE) |
+| **BUG-56** | **LOW → 仅记录** | 单层 `layer_idx=16` 实为 block 16 (0-indexed) = 论文 Layer 17。不改, 避免破坏历史实验可比性 (VERDICT_MULTILAYER_FEATURE) |
 
 ## 活跃任务
 | ID | 目标 | 状态 |
