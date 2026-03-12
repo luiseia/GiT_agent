@@ -120,11 +120,19 @@ done
 # =============================================================
 # 检测方式 3: Context 剩余监控 + 保存上下文 + /compact + 恢复
 # 注意: /compact 是 CLI 命令，必须由 bash 直接发送，不能让 Agent 自己执行
+# 支持两种格式: "Context left until auto-compact: X%" 和 "X% until auto-compact"
 # =============================================================
+
 for session in "${SESSIONS[@]}"; do
     if tmux has-session -t "$session" 2>/dev/null; then
-        PANE_OUTPUT=$(tmux capture-pane -t "$session" -p -S -20)
-        CTX_LEFT=$(echo "$PANE_OUTPUT" | grep -oiP 'Context left[^:]*:\s*\d+' | grep -oP '\d+' | tail -1)
+        PANE_OUTPUT=$(tmux capture-pane -t "$session" -p | tail -10)
+        CTX_LEFT=""
+        # 格式 1: "8% until auto-compact"
+        CTX_LEFT=$(echo "$PANE_OUTPUT" | grep -oP '\d+(?=%\s*until auto-compact)' | tail -1)
+        # 格式 2: "Context left until auto-compact: 8%"  或 "Context left: 8"
+        if [ -z "$CTX_LEFT" ]; then
+            CTX_LEFT=$(echo "$PANE_OUTPUT" | grep -oiP 'Context left[^:]*:\s*\d+' | grep -oP '\d+' | tail -1)
+        fi
         if [ -n "$CTX_LEFT" ] && [ "$CTX_LEFT" -lt 15 ]; then
             agent_name=$(echo "$session" | sed 's/agent-//')
             log "⚠️ ${session} context 剩余 ${CTX_LEFT}%"
