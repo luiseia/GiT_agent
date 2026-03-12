@@ -2,3 +2,4 @@
 [20:17:11] DONE: ORCH_031 - BUG-54 0-indexed fix + BUG-55 load_from=None
 [23:35:43] DONE: ORCH_032 - stopped ORCH_029, started multilayer training (4 GPU)
 [04:59:04] DONE: ORCH_033 - killed ORCH_032, fixed BUG-57/58/59/60, restarted multilayer v2 (4 GPU, loss@10=4.06)
+[05:25:23] DONE: ORCH_034 - killed ORCH_033, deployed BUG-52 IoF/IoB fix, restarted multilayer v3 (loss@10=3.88)
