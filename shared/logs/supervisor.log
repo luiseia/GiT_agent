@@ -501,3 +501,4 @@
 [259] 2026-03-12 07:45 | ORCH_034 @1290/40000 | loss_floor_dropping (1.87 low) | reg0=6.9% | warmup_64.5% | @2000_val_ETA~09:00 | GPU_OK | Disk_94%
 [260] 2026-03-12 08:15 | ORCH_034 @1560/40000 | loss_new_low=2.22 (cls=0.61) | reg0=3.8% | grad_spike_143.6 (single) | warmup_78% | @2000_ETA~08:55 | GPU_OK | Disk_94%
 [261] 2026-03-12 08:40 | ORCH_034 @1830/40000 | reg0_CLUSTER@1700-1760 (3rd_confirm) | warmup_91.5% | @2000_val_ETA~08:55 | GPU_OK | Disk_94%
+[262] 2026-03-12 09:09 | ⭐ ORCH_034 @2000 WARMUP_DONE | val 190/753 (25%) ETA_09:47 | loss=5.11 reg=1.91 | LR=2.5e-6 locked | GPU_OK | Disk_95%_209GB
