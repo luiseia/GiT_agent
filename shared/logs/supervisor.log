@@ -513,3 +513,12 @@
 [271] 2026-03-12 13:28 | ⭐ ORCH_034 @4000 REACHED | val 100/753 (13%) ETA_14:18 | reg0@3960-3990(3x) | loss@4000=5.02 | GPU_OK | Disk_95%_194GB
 [272] 2026-03-12 13:57 | ORCH_034 @4000 val 480/753 (64%) ETA_14:18 | val_stable | GPU_OK | Disk_95%_194GB
 [273] 2026-03-12 14:26 | ⭐⭐ ORCH_034 @4000 VAL | car_R=0.8195 ped=0.024 bus=0.070 cv=0.110 cone=0.130 | ⚠️ bg_FA=0.3240 RED_LINE | off_th=0.1598✅ | AWAITING_CONDUCTOR
+[14:28:35] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: 034_AT4000_BGFA
+[14:28:50] → Critic 已重启并发送审计指令: 034_AT4000_BGFA
+[14:29:51] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[14:30:51] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[14:31:51] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[14:32:52] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[14:33:52] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[14:34:52] 🔔 通知 Critic: REQUEST_034_AT4000_BGFA
+[274] 2026-03-12 14:56 | ORCH_034 @4350/40000 | post-val_healthy | 0_reg0 | loss_avg~4.5 | critic_reviewing_@4000 | GPU_OK | Disk_95%
