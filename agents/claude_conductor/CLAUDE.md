@@ -47,7 +47,7 @@
 1.  PULL:       git pull（获取 Critic 可能产出的 VERDICT）
 2.  RE-THINK:   读取 shared/audit/pending/ 下所有 VERDICT_*.md 并纳入决策
 3.  ARCHIVE:    读取后将 VERDICT 和对应的 AUDIT_REQUEST 一起移到 shared/audit/processed/
-4.  PLAN:       更新 MASTER_PLAN.md
+4.  PLAN:       更新 MASTER_PLAN.md（仅活跃内容，历史归档到 shared/logs/archive/）
 5.  ACT:        决定签发 ORCH 指令（此时已有完整信息）或者不做任何动作
 6.  CONTEXT:    检查 Context 剩余（见安全机制）
 7.  SYNC:       git add && git commit && git push
@@ -159,7 +159,7 @@ git add shared/audit/ && git commit -m "conductor: audit request <ID>" && git pu
 
 ## 超时兜底
 
-- 若任何环节（审计等待、Admin 执行）超过 **20 分钟** 无响应，必须在 MASTER_PLAN.md 中标记告警。
+- 若任何环节（审计等待、Admin 执行）超过 **20 分钟** 无响应，记录到 shared/logs/supervisor.log 并在 Phase 2 决策时处理。
 
 ## 安全机制
 
@@ -189,21 +189,20 @@ git add shared/audit/ && git commit -m "conductor: audit request <ID>" && git pu
 ### 研究方向
 - **任务**: 基于 DinoV3 特征的 BEV grid occupancy 预测
 - **流程**: DinoV3 提取多视图图像特征 → 选取某一层特征图 → 切分为 20×20 图像 grid → 送入 GiT 的 ViT 结构 → 配合文本解码每个 grid → 得到 occupancy 预测结果
-- **数据集**: nuScenes-mini，323 张图像，~3500 个 3D 框标注
+- **数据集**: nuScenes full（mini 仅用于 debug，不做架构决策）
 - **图像 Grid**: 20×20 cells（ViT 输入的空间划分）
 - **BEV Grid**: 10×10 cells, 100m×100m, 每 cell 3 个深度 slot (NEAR/MID/FAR)
 
 ### 实验计划与 BUG 跟踪
-实验计划演化、BUG 状态、红线指标等动态信息全部维护在 `MASTER_PLAN.md` 中。
-本文件不重复记录，避免滞后。每轮循环必须以 MASTER_PLAN.md 为准。
+活跃的实验路线图、ORCH 状态、BUG 跟踪维护在 `MASTER_PLAN.md` 中（保持精简）。
+历史 VERDICT/训练数据/架构审计详情归档在 `shared/logs/archive/verdict_history.md`。
+历史指标参考/决策日志归档在 `shared/logs/archive/experiment_history.md`。
+每轮循环以 MASTER_PLAN.md 为准，需要历史数据时查阅归档文件。
 
-### 红线指标
-| 指标 | 红线 | 说明 |
-|------|------|------|
-| truck_recall | < 0.08 | 多次触发，truck 被 car/bus 吸收是根本问题 |
-| bg_false_alarm | > 0.25 | Plan C 爆表(0.294) |
-| offset_theta | ≤ 0.20 | 角度精度 |
-| avg_precision | ≥ 0.20 | 持续瓶颈(~0.09) |
+### 评判规则
+- 不再以 Recall/Precision 为最高目标，不再高度预警红线（CEO 战略方向）
+- 主目标是 **BEV box 属性**，周边 grid FP/FN 通过置信度阈值或 loss 加权处理
+- 具体评判规则见 MASTER_PLAN.md "实验评判规则" 章节
 
 ## 宪法保护
 agents/*/CLAUDE.md 为宪法文件。仅 CEO 可直接编辑，或 CEO 通过 CEO_CMD.md 明确授权 Conductor 修改。
