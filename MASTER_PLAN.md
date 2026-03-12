@@ -1,9 +1,10 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~17:55
+> 最后更新: 2026-03-12 ~18:30
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
+> **审计全集**: `shared/audit/processed/VERDICT_*.md`
 
 ---
 
@@ -16,7 +17,7 @@
 
 ---
 
-## 当前阶段: ORCH_035 等待 Admin 执行 (Label Pipeline 大修)
+## 当前阶段: ORCH_035 训练中 (Label Pipeline 大修)
 
 ### ⭐ ORCH_035 Label Pipeline 改动清单
 
@@ -41,8 +42,8 @@ min_iob=0.10,
 grid_assign_mode='overlap',
 ```
 
-### 训练计划
-- **Resume from ORCH_034@4000** (backbone/projection 有效, head 适应新标签)
+### 训练状态
+- **Resume from ORCH_034@4000**, 训练已启动 (4 GPU 100%)
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 - 评估点: @8000 (从 resume 算 @4000 新 iter)
 
@@ -57,7 +58,9 @@ grid_assign_mode='overlap',
 
 > 注: ORCH_034 使用旧 label pipeline (BUG-19v3 未修, AABB IoF/IoB, filter_invisible=True)。数值不直接可比。
 
-## 实验路线图
+---
+
+## 短期实验路线图
 
 | 阶段 | 时间 | 实验 | 内容 | 决策依据 |
 |------|------|------|------|---------|
@@ -65,7 +68,7 @@ grid_assign_mode='overlap',
 | ❌ | 03/12 ~04:00 | ORCH_032 @2000 | 全面坍缩 | BUG-57/58/59/60 |
 | ✅ | 03/12 09:47 | ORCH_034 @2000 | car_R=0.8124, bg_FA=0.2073 | 多层特征方向正确 |
 | ✅ | 03/12 14:18 | ORCH_034 @4000 | car_R=0.82, 4类激活 | Critic: PROCEED |
-| **当前** | 03/12 17:50 | ORCH_035 | Label pipeline 大修 + resume 034@4000 | DELIVERED |
+| **当前** | 03/12 17:53 | ORCH_035 | Label pipeline 大修 + resume 034@4000 | IN_PROGRESS |
 | **里程碑 6** | ~03/13 | ORCH_035 @8000 | 新标签效果评估 | 重点: car_P 改善, bg_FA |
 
 ### @8000 决策树
@@ -81,6 +84,88 @@ ORCH_035 @8000 (新 label pipeline):
 │
 └─ car_P 下降 → z-fix 可能改变 recall/precision 平衡, 检查 recall
 ```
+
+---
+
+## 长期战略路线图
+
+> 综合所有 VERDICT 审计结论。按阶段排列，每阶段内按优先级排序。
+> 各阶段之间有依赖关系，但同阶段内的项目可并行或独立决策。
+
+### Phase 1: 基础修正 (当前 — ORCH_035)
+> 目标: 修正 label pipeline 根本性错误, 建立可靠 baseline
+
+| 项目 | 难度 | 影响 | 状态 | 审计来源 |
+|------|------|------|------|---------|
+| BUG-19v3 z-convention fix | 低 | 极高 | ✅ 已部署 | CEO 审查 |
+| Hull-based IoF/IoB (Sutherland-Hodgman) | 中 | 高 | ✅ 已部署 | VERDICT_TWO_STAGE_FILTER, VERDICT_OVERLAP_THRESHOLD |
+| filter_invisible=False | 低 | 中 | ✅ 已部署 | CEO 审查 |
+| vis + cell_count 组合过滤 | 低 | 中 | ✅ 已部署 | CEO 审查 |
+| score_thr 消融 (0.1/0.2/0.3) | 零 | 中 | 待 @8000 eval | VERDICT_034_AT4000_BGFA |
+
+### Phase 2: 训练优化 (ORCH_035 @8000 后)
+> 目标: 零/低成本的训练改进, 不改模型架构
+
+| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
+|------|------|------|------|---------|
+| **Deep Supervision** `loss_out_indices=[8,10,11]` | **零** (改一行) | 中-高 | 无 | VERDICT_CEO_ARCH_QUESTIONS (P1) |
+| **BUG-45 fix**: 推理时加显式 attn_mask | 低 (2-4h) | 中 | 无 | VERDICT_CEO_ARCH_QUESTIONS |
+| **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
+| BUG-17 修复: bicycle balance 权重 ~11x | 中 | 中 | 分析 bg_FA 来源 | VERDICT_3D_ANCHOR |
+
+### Phase 3: Attention 机制优化 (Phase 2 验证后)
+> 目标: 改善 AR 解码质量, 提升 precision
+
+| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
+|------|------|------|------|---------|
+| **Slot Attention Mask** (CEO Hard Mask 方案) | 低 (2-4h) | 中 | Deep Supervision baseline | VERDICT_CEO_ARCH_QUESTIONS (P4) |
+| Exposure Bias 缓解 (Scheduled Sampling) | 中 (2-3天) | 中 | Per-slot 分析确认问题 | VERDICT_AR_SEQ_REEXAMINE (P5) |
+
+### Phase 4: 3D 空间编码 (Phase 2-3 训练稳定后)
+> 目标: 引入 3D 先验, 从根本改善 BEV 预测质量
+> 审计来源: VERDICT_3D_ANCHOR
+
+| 项目 | 难度 | 影响 | 依赖 | 说明 |
+|------|------|------|------|------|
+| **BEV 坐标 Positional Encoding** | 低 (0.5-1天) | 中-高 | 无 | 最小可行实验: grid_reference 从 2D 图像坐标扩展为 BEV 物理坐标, MLP 编码为 PE |
+| **相机投影 3D Anchor** | 中 (2-3天) | 高 | BEV PE 验证 | 每个 BEV grid 中心沿 z 轴采样 K=4 高度点, 通过相机内外参投影到图像, 替代 grid_sample 位置 |
+
+### Phase 5: 时序信息 (Phase 4 基础稳定后)
+> 目标: 引入历史帧信息, 理解运动模式
+> 审计来源: VERDICT_CEO_STRATEGY_NEXT (方案 D, CEO 评为最有前途)
+
+| 项目 | 难度 | 影响 | 依赖 | 说明 |
+|------|------|------|------|------|
+| **历史 Occ Box 时间编码 (2帧, 1.0s)** | 高 (1-2周) | 极高 | 数据加载修改, 标签生成修改 | CEO 最看好方向。编码历史 2 帧 BEV 占据为条件信号, 推荐轻量条件信号方案 |
+
+### Phase 6: 特征微调 (Phase 2+ 训练稳定后, 可与 Phase 4/5 并行探索)
+> 目标: 让 DINOv3 特征更适配 BEV 任务
+
+| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
+|------|------|------|------|---------|
+| **LoRA 域适应** (rank=16, ~12M 参数) | 中 (2-3天) | 中 | Full nuScenes | VERDICT_CEO_STRATEGY_NEXT (方案 E) |
+| BUG-49 fix: DINOv3 early break (只跑需要的 blocks) | 低 | 性能优化 | 无 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
+| BUG-50 fix: unfreeze 时条件 no_grad | 低 | 显存优化 | 无 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
+| BUG-48 fix: unfreeze 目标改为 extraction point 附近 | 低 | 中 | 多层模式下重评估 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
+
+### Phase 7: 架构扩展 (长期, 需要数据支撑决策)
+> 目标: 更精细的实例理解和预测
+
+| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
+|------|------|------|------|---------|
+| **Instance Grouping** (SLOT_LEN 10→11, instance_id token) | 中 (2-3天) | 中 | BUG-17 修复 | VERDICT_INSTANCE_GROUPING |
+| Instance Consistency 指标 | 低 | 诊断 | 无 | VERDICT_INSTANCE_GROUPING |
+| 异构 Q/K/V cross-attention (DETR decoder 风格) | 高 (3-5天) | 中 | 架构重构 | VERDICT_ARCH_REVIEW |
+| FPN 多尺度特征融合 | 高 (4-6天) | 中 | 小目标性能瓶颈时 | VERDICT_CEO_STRATEGY_NEXT (方案 F) |
+
+### Phase 8: 多车协作 (远期, 需要 V2X 数据集)
+> 目标: 利用多视角信息解决遮挡问题
+> 审计来源: VERDICT_3D_ANCHOR
+
+| 项目 | 难度 | 影响 | 依赖 | 说明 |
+|------|------|------|------|------|
+| **V2X 融合**: Sender OCC box → BEV 特征图, cross-attention 融合 | 高 (3-5天) | 极高 | Phase 4 完成, V2X 数据集可用 | 多车协作的核心模块 |
+| V2X 轨迹编码: 历史轨迹→条件信号 | 高 | 高 | V2X 融合基础 | 利用协作车辆轨迹预测 |
 
 ---
 
@@ -136,7 +221,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000 |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
 | ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
-| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **DELIVERED, 等 Admin** |
+| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **IN_PROGRESS** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
@@ -148,13 +233,13 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 ### 活跃 BUG
 
-| BUG | 严重性 | 摘要 |
-|-----|--------|------|
-| **BUG-17** | HIGH | bicycle sqrt balance ~11x 权重, 不影响 car_P 但导致 bg_FA 膨胀/振荡 |
-| **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None vs 训练有 mask, 不一致 |
-| **BUG-48** | HIGH | unfreeze_last_n 解冻 blocks 38-39 但 layer 16 不受影响, 梯度不流经 |
-| **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks 但只需前 17 个, 浪费 58% |
-| **BUG-50** | MEDIUM | unfreeze 时移除 no_grad, 全部 40 blocks 构建计算图, +10-15GB |
+| BUG | 严重性 | 摘要 | 计划修复阶段 |
+|-----|--------|------|------------|
+| **BUG-17** | HIGH | bicycle sqrt balance ~11x 权重, bg_FA 膨胀 | Phase 2 |
+| **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
+| **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | Phase 6 (多层模式下重评估) |
+| **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | Phase 6 |
+| **BUG-50** | MEDIUM | unfreeze 时全部 blocks 构建计算图, +10-15GB | Phase 6 |
 
 ### 已修复 BUG (本轮)
 
@@ -163,21 +248,10 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | BUG-19v3 | z = box BOTTOM, corners z ∈ [z, z+h] (commit `80b1e23`) |
 | BUG-51v2 | overlap + vis + convex hull |
 | BUG-52v2 | IoF/IoB 对 hull polygon 计算 (Sutherland-Hodgman) (commit `80b1e23`) |
+| BUG-54 | layer_indices [10,20,30,40]→[9,19,29,39] |
 | BUG-57 | proj lr_mult=5.0 |
 | BUG-58 | load_from=ORCH_029@2000 |
 | BUG-59 | proj 4:1 compression |
 | BUG-60 | clip_grad=30.0 |
 
 ### 已关闭 BUG (BUG-2~46, 详见 `shared/logs/archive/verdict_history.md`)
-
----
-
-## 未来方向 (低优先级, 不阻塞当前)
-
-| 方向 | 说明 | 触发条件 |
-|------|------|---------|
-| LoRA/Adapter | DINOv3 域适应, rank=16, ~12M 参数 | 多层特征验证后 |
-| 历史 occ box (方案 D) | 2 帧 1.0s, CEO 最有前途 | 特征问题解决后 |
-| 3D 空间编码 | 词汇表扩展 230→238, 先验 token 注入 | 长期 |
-| V2X 融合 | BEV 2D 刚体变换 | 长期 |
-| Instance Grouping | SLOT_LEN 10→11, instance_id token | 低优先级 |
