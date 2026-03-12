@@ -496,3 +496,4 @@
 [05:19:16] 📨 投递: ORCH_0312_0500_034.md → admin
 [255] 2026-03-12 05:50 | ⭐ ORCH_034 @200/40000 (multilayer_v3) | warm_start OK | loss=3.5-7.1 | reg0=NEVER | grad_norm~28 | VRAM_30.6GB | GPU_OK | Disk_94%
 [256] 2026-03-12 06:15 | ORCH_034 @460/40000 | loss=3.5-6.5 STABLE | reg0=4.3% (DDP) | grad_norm~34 | warmup_23% | GPU_OK | Disk_94%
+[257] 2026-03-12 06:45 | ORCH_034 @740/40000 | loss=3.2-8.6 | reg0_cluster@580-660 (13.8%) | grad_norm~35 | warmup_37% | GPU_OK | Disk_94%
