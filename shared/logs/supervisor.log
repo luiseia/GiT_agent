@@ -472,3 +472,6 @@
 [249] 2026-03-12 02:49 | ORCH_032 @1840/40000 | loss=5.84 | reg0=9.8% (cluster@1700-1760) | LR=2.30e-6 | GPU_OK | Disk_94%
 [250] 2026-03-12 03:19 | ⭐ ORCH_032 @2000 WARMUP_DONE | val 180/753 | loss=6.14 | reg0=9.0% | Disk_224GB
 [251] 2026-03-12 03:48 | ORCH_032 @2000 val 600/753 (80%) | ETA_val_03:58 | GPU_OK | Disk_94%
+[04:18:38] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: MULTILAYER_032_COLLAPSE
+[04:18:53] → Critic 已重启并发送审计指令: MULTILAYER_032_COLLAPSE
+[252] 2026-03-12 04:17 | ⚠️⚠️ ORCH_032 @2000 VAL CRISIS — MODE_COLLAPSE | car_R=0 car_P=0 bg_FA=0.3181 off_th=0.2308 | ped_R=0.83 only | RED_LINES_BREACHED | @2180 training resumed | AWAITING_CONDUCTOR

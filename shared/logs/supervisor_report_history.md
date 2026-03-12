@@ -4681,3 +4681,6 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 
 ---
 ### Cycle #251 | 2026-03-12 03:48 | ORCH_032 @2000 val 600/753 (80%) ETA ~03:58 | GPU ✅ | Disk 94% (224GB)
+
+---
+### Cycle #252 | 2026-03-12 04:17 | ⚠️⚠️ ORCH_032 @2000 VAL CRISIS — MODE COLLAPSE | car_R=0.0000 car_P=0.0000 | bg_FA=0.3181 (>0.25 RED LINE) | off_th=0.2308 (>0.20 RED LINE) | ONLY pedestrian has recall (0.8328, P=0.006) | All other 9 classes R=P=0 | vs ORCH_029@2000: car_R=0.37→0.00, bg_FA=0.16→0.32 | Training resumed post-val @2180 | Awaiting Conductor decision: continue to @4000 or stop?
