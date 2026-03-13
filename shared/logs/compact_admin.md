@@ -1,5 +1,5 @@
 # Admin Agent 工作上下文快照
-**时间**: 2026-03-12 18:40
+**时间**: 2026-03-12 19:00
 **状态**: 训练监控中，无 pending ORCH
 
 ---
@@ -9,7 +9,7 @@
 ### ORCH_035: Label Pipeline 大修后重启训练 — IN PROGRESS
 - **Config**: `configs/GiT/plan_full_nuscenes_multilayer.py`
 - **Work dir**: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
-- **当前 iter**: ~4420/40000 (从 ORCH_034@4000 resume)
+- **当前 iter**: ~4600/40000 (从 ORCH_034@4000 resume)
 - **显存**: 30610 MB/GPU (39.5 GB/GPU 含优化器)
 - **速度**: ~6.3-6.7 s/iter
 - **ETA**: ~2 days 15h (预计 3/15 ~10:00 完成)
@@ -88,4 +88,4 @@ filter_invisible=False
 
 ---
 
-*Admin Agent 上下文快照 | 2026-03-12 18:40*
+*Admin Agent 上下文快照 | 2026-03-12 19:00*
