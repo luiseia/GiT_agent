@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~22:45
+> 最后更新: 2026-03-13 07:52
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -43,9 +43,9 @@ grid_assign_mode='overlap',
 ```
 
 ### 训练状态
-- **Resume from ORCH_034@4000**, 当前 iter 8090 (post-@8000 val, 训练已恢复)
+- **Resume from ORCH_034@4000**, 当前 iter ~10270 (post-@10000 val, CONDITIONAL PROCEED)
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
-- 下一评估点: **@12000** (Critic PROCEED)
+- 下一评估点: **@12000** (ETA ~09:50) — STOP 条件: car_P<0.04 或 car_R<0.35
 
 ### ⭐ ORCH_035 @6000 Val 结果 (新标签首次评估)
 
@@ -331,7 +331,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-17** | HIGH | bicycle sqrt balance ~11x 权重, bg_FA 膨胀 | Phase 2 |
+| **BUG-17** | **CRITICAL** | per-batch sqrt balance 类别竞争, @10000 cone 449K FP 挤压 car/ped/truck | Phase 2 (ORCH_036 第一优先) |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
