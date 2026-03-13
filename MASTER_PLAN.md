@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 11:50
+> 最后更新: 2026-03-13 15:40
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -43,7 +43,8 @@ grid_assign_mode='overlap',
 ```
 
 ### 训练状态
-- **Resume from ORCH_034@4000**, 当前 iter ~12010 (post-@12000 val, Critic PROCEED)
+- **Resume from ORCH_034@4000**, 🔴 **训练暂停** iter 12160 (12:04 OOM 崩溃, eval 占满 GPU)
+- Eval 已完成 15:36, **GPU 空闲**, 等待 Admin 执行 ORCH_038 恢复训练
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 - 下一评估点: **@14000** (快速检查) → **@16000** (决策级)
 - **@12000 ckpt 已标记为重要存档** (car_P=0.100 历史最佳)
@@ -99,11 +100,11 @@ grid_assign_mode='overlap',
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
 | ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
-| **当前** | 03/13 11:48 | ORCH_035 @12010 | 训练继续 → @16000 | IN_PROGRESS |
-| 并行 | 03/13 12:00 | score_thr 消融 | @12k ckpt 上跑 0.1/0.2/0.3/0.5 | ORCH_036 |
-| 并行 | 03/13 12:00 | BUG-17 weight cap | mini 数据验证 max_w=3.0 | ORCH_037 |
-| 里程碑 | ~03/13 ~15:20 | ORCH_035 @14000 | 快速检查 (非决策级) |
-| **里程碑** | ~03/13 ~18:50 | ORCH_035 @16000 | **@16000 决策级 eval** |
+| **当前** | 03/13 15:40 | ORCH_035 @12160 | 🔴 训练暂停, 等待恢复 (ORCH_038) | PAUSED |
+| ❌ | 03/13 12:05-15:36 | score_thr 消融 | **失败**: 模型无置信度 (scores=1.0), evaluator 未实现 score_thr | ORCH_036 无效 |
+| 待执行 | — | BUG-17 weight cap | mini 数据验证 max_w=3.0 | ORCH_037 DELIVERED |
+| 里程碑 | ETA 待定 | ORCH_035 @14000 | 快速检查 (非决策级) | 依赖训练恢复 |
+| **里程碑** | ETA 待定 | ORCH_035 @16000 | **@16000 决策级 eval** | 依赖训练恢复 |
 
 ### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
 - car_R=0.620 ≥ 0.55 ✅, car_P=0.100 ≥ 0.06 ✅, bg_FA=0.283 < 0.40 ✅
@@ -159,7 +160,7 @@ ORCH_035 @16000:
 | Hull-based IoF/IoB (Sutherland-Hodgman) | 中 | 高 | ✅ 已部署 | VERDICT_TWO_STAGE_FILTER, VERDICT_OVERLAP_THRESHOLD |
 | filter_invisible=False | 低 | 中 | ✅ 已部署 | CEO 审查 |
 | vis + cell_count 组合过滤 | 低 | 中 | ✅ 已部署 | CEO 审查 |
-| score_thr 消融 (0.1/0.2/0.3/0.5) | 零 | 中 | ⏳ **ORCH_036 签发, @12k ckpt 执行中** (三次 VERDICT 要求) | VERDICT @8k/@10k/@12k |
+| score_thr 消融 (0.1/0.2/0.3/0.5) | **需代码改动** | 中 | ❌ **ORCH_036 失败**: 模型 scores=1.0, evaluator 未实现 thr 过滤。需在 `_predict_single` 中提取 token softmax 置信度 | VERDICT @8k/@10k/@12k |
 
 ### Phase 2: 训练优化 (ORCH_035 @12000 eval 后部署)
 > 目标: 零/低成本的训练改进, 不改模型架构
@@ -329,7 +330,12 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000 |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
 | ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
-| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **IN_PROGRESS** |
+| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **PAUSED** (iter 12160, 等待恢复) |
+| ORCH_036 | score_thr 消融 @12k ckpt | ❌ **FAILED** — 模型无置信度, eval 无 thr 过滤 |
+| ORCH_037 | BUG-17 Weight Cap (max_w=3.0) | DELIVERED |
+| ORCH_038 | 恢复训练 (resume iter_12000) | DELIVERED (未执行) |
+| **ORCH_039** | **紧急恢复训练** (重签 038) | **DELIVERED** |
+| ORCH_040 | score_thr 消融代码修复 + 重新执行 | PENDING |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
