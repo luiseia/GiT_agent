@@ -1899,3 +1899,9 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-13 03:10:01] watchdog: === 用量检查开始 ===
 [2026-03-13 03:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-13 03:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 03:20:01] watchdog: === 用量检查开始 ===
+[2026-03-13 03:20:07] watchdog: 用量: 3%  |  Resets 8am (America/Chicago)
+[2026-03-13 03:20:08] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 03:30:01] watchdog: === 用量检查开始 ===
+[2026-03-13 03:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-13 03:30:01] watchdog: ✅ 用量正常，无需休眠
