@@ -528,3 +528,4 @@
 [2026-03-12 18:47:00] Cycle #277 | ORCH_035 @4480 stable | loss ~5.2 | 1x reg0@4440 | 0 PENDING
 [2026-03-12 19:16:00] Cycle #278 | ORCH_035 @4750 | loss improving ~4.3 | 3x reg0 DDP cluster | 0 PENDING
 [2026-03-12 19:17:51] WARN: watchdog missing from crontab, detected in Phase 1 cycle
+[2026-03-12 19:45:00] Cycle #279 | ORCH_035 @5020 (5000 milestone) | loss ~4.4 | grad_norm spike 78.7@4790 | 0 PENDING
