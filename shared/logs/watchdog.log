@@ -3729,3 +3729,7 @@ baseline comparison" completed (exit code 0)
 [2026-03-13 05:20:01] watchdog: === 用量检查开始 ===
 [2026-03-13 05:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-13 05:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 05:30:01] watchdog: === 用量检查开始 ===
+[2026-03-13 05:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-13 05:30:01] watchdog: ⚠️ agent-supervisor context 剩余 12%
+[2026-03-13 05:30:01] watchdog: → agent-supervisor: 已发送保存指令，等待 60 秒

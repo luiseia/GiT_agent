@@ -140,15 +140,16 @@ ORCH_035 @12000:
 | Hull-based IoF/IoB (Sutherland-Hodgman) | 中 | 高 | ✅ 已部署 | VERDICT_TWO_STAGE_FILTER, VERDICT_OVERLAP_THRESHOLD |
 | filter_invisible=False | 低 | 中 | ✅ 已部署 | CEO 审查 |
 | vis + cell_count 组合过滤 | 低 | 中 | ✅ 已部署 | CEO 审查 |
-| score_thr 消融 (0.1/0.2/0.3) | 零 | 中 | 待 @8000 eval | VERDICT_034_AT4000_BGFA |
+| score_thr 消融 (0.1/0.2/0.3/0.5) | 零 | 中 | ⏳ **@12000 eval 时执行** (原计划 @8000, 因 PROCEED 遗漏) | VERDICT_034_AT4000_BGFA, VERDICT_ORCH035_AT8000 |
 
-### Phase 2: 训练优化 (ORCH_035 @8000 后)
+### Phase 2: 训练优化 (ORCH_035 @12000 eval 后部署)
 > 目标: 零/低成本的训练改进, 不改模型架构
+> 注: 原计划 @8000 后启动, 因 Conductor 决策遗漏推迟。将在 @12000 eval 后作为 ORCH_036 统一部署
 
 | 项目 | 难度 | 影响 | 依赖 | 审计来源 |
 |------|------|------|------|---------|
 | **Deep Supervision** `loss_out_indices=[8,10,11]` | **零** (改一行) | 中-高 | 无 | VERDICT_CEO_ARCH_QUESTIONS (P1) |
-| **BUG-45 fix**: 推理时加显式 attn_mask | 低 (2-4h) | 中 | 无 | VERDICT_CEO_ARCH_QUESTIONS |
+| **BUG-45 fix**: 推理时加显式 attn_mask | 低 (2-4h) | 中 | ⏳ **可立即开发** (不影响训练) | VERDICT_CEO_ARCH_QUESTIONS |
 | **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
 | BUG-17 修复: bicycle balance 权重 ~11x | 中 | 中 | 分析 bg_FA 来源 | VERDICT_3D_ANCHOR |
 
