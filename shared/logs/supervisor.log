@@ -555,3 +555,4 @@
 [295] 03:30 | @8350 | loss~4.3 | Conductor PROCEED→@12000 | post-val OK
 [296] 03:58 | @8620 | loss~4.4 | 0 reg=0 | clean | cruising→@12000
 [297] 04:28 | @8900 | loss~4.1↓ | 0 reg=0 | clean | @10000 ETA~06:28
+[298] 04:57 | @9170 | loss~3.9↓↓ | 0 reg=0 | clean x2 | @10000 ETA~06:26
