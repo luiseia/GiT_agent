@@ -4768,3 +4768,6 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 
 ---
 ### Cycle #280 | 2026-03-12 20:14 | ORCH_035 @5300/40000 | loss avg ~4.3 stable | spike 8.74@5280 (single, recovered) | 2x reg0 @5050,5130 | grad_norm 52.6 max | GPU 39.5GB 100% | Disk SSD 95% /home 99%
+
+---
+### Cycle #281 | 2026-03-12 20:43 | ORCH_035 @5570/40000 | very clean window | loss avg ~4.2 (improving) | 1x reg0@5520 | no spikes | grad_norm stable 13-46 | GPU 39.5GB 100% | Disk SSD 95% /home 99%
