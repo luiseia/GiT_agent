@@ -4809,3 +4809,5 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 - **Cycle #295** (03:30) | ORCH_035 @8350/40000 (20.9%) | Conductor: PROCEED→@12000 | loss ~4.3 | 1x reg=0 @8030 | post-val 训练正常 | GPU 4x100% | SSD=163GB home=68GB⚠️ | 0 PENDING
 
 - **Cycle #296** (03:58) | ORCH_035 @8620/40000 (21.6%) | loss ~4.4 | 0 reg=0 | 0 spike | 极干净窗口 | GPU 4x100% | SSD=163GB home=68GB⚠️ | 0 PENDING
+
+- **Cycle #297** (04:28) | ORCH_035 @8900/40000 (22.3%) | loss ~4.1 ↓ | 0 reg=0 | 0 spike | 极干净 | GPU 4x100% | SSD=163GB home=68GB⚠️ | @10000 ETA~06:28 | 0 PENDING
