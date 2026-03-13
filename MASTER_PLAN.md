@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-12 ~18:30
+> 最后更新: 2026-03-12 ~19:30
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -113,7 +113,65 @@ ORCH_035 @8000 (新 label pipeline):
 | **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
 | BUG-17 修复: bicycle balance 权重 ~11x | 中 | 中 | 分析 bg_FA 来源 | VERDICT_3D_ANCHOR |
 
-### Phase 3: Attention 机制优化 (Phase 2 验证后)
+### Phase 3: ★ DINOv3 ViT-L Finetune (CEO 优先, Phase 2 后立即启动)
+> 目标: 从 7B frozen + 10M adapter 切换到 ViT-L finetune, 解决 adapter 容量瓶颈
+> 依据: DINOv3 论文 VGGT 实验 — ViT-L finetune 仅做最小改动即在 3 项 3D 任务超越 SOTA
+> CEO 决策: 2026-03-12, 分析论文后确认优先路线 B
+
+#### 核心论据
+
+| 方案 | Backbone | Adapter 规模 | 训练方式 | 结果 |
+|------|----------|-------------|---------|------|
+| Plain-DETR (论文) | 7B | **100M** (6L enc+dec) | frozen | COCO SOTA |
+| VGGT (论文) | ViT-L (300M) | 整个 backbone | **finetune** | 3D SOTA |
+| **我们 (当前)** | **7B** | **~10M** MLP | **frozen** | **car_P 瓶颈** |
+| **我们 (目标)** | **ViT-L (300M)** | 全部可训练 | **finetune** | — |
+
+**瓶颈分析**: 论文用 7B frozen 时需 100M 解码器; 我们只有 10M, 差 10x。ViT-L finetune 让 300M 参数全部可训练, 彻底解决适配能力不足问题。
+
+#### 显存对比
+
+| 组件 | 7B frozen (当前) | ViT-L finetune (目标) |
+|------|-----------------|---------------------|
+| Backbone 权重 (fp16) | ~14 GB | ~0.6 GB |
+| 梯度 | 0 (frozen) | ~0.6 GB |
+| 优化器状态 (Adam fp32) | 0 | ~2.4 GB |
+| Activations (backprop) | 0 | ~3-6 GB (可 gradient checkpoint) |
+| **小计** | **~14 GB** | **~4-10 GB** |
+| 投影层 | 16384→4096→768 (~70M) | 4096→768 (~3M) |
+
+**结论: ViT-L finetune 显存 ≤ 7B frozen, A6000 48GB 完全可行**
+
+#### 代码改动清单
+
+| 文件 | 改动 | 难度 |
+|------|------|------|
+| `vit_git.py` L137 | `vit_7b()` → `vit_large()` (需加 config param 控制) | 低 |
+| `vit_git.py` L158-170 | `unfreeze_last_n=24` (finetune 全部 24 层) | 零 |
+| config | `online_dinov3_layer_indices=[5,11,17,23]` (ViT-L 24 层) | 零 |
+| config | `online_dinov3_weight_path` → ViT-L 权重 | 零 |
+| config | 投影层 4096→768 (4 层×1024=4096, 无需 hidden dim) | 零 |
+| config | backbone LR=1e-4 (VGGT 做法), task head LR 更高 | 低 |
+| `vision_transformer.py` | 确认 `vit_large()` 工厂函数可用 (已存在 L357-366) | 零 |
+
+**权重**: `dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth` (~1.2GB, 链接在 `dinov3/ckpts.md`)
+
+#### 实验计划
+
+| 步骤 | 内容 | 预计耗时 |
+|------|------|---------|
+| 3a | 下载 ViT-L 权重, 修改代码支持 ViT-L variant 选择 | 2-3h |
+| 3b | Mini 数据 smoke test: ViT-L finetune 能否正常训练 | 1h |
+| 3c | Full nuScenes 训练, 继承 Phase 1-2 的 label pipeline 改动 | 从头训练 |
+| 3d | @4000 eval 对比 7B frozen baseline | 决策点 |
+
+#### VGGT 论文要点 (D.12)
+1. 图像分辨率 518→592 (适配 patch_size=16)
+2. 学习率 0.0002→0.0001 (更保守, 防漂移)
+3. **4 层中间层拼接** (DINOv3 有收益, DINOv2 无收益)
+4. 即使不调参, 仅替换 backbone 也超越原 VGGT
+
+### Phase 4: Attention 机制优化 (Phase 3 验证后)
 > 目标: 改善 AR 解码质量, 提升 precision
 
 | 项目 | 难度 | 影响 | 依赖 | 审计来源 |
@@ -121,7 +179,7 @@ ORCH_035 @8000 (新 label pipeline):
 | **Slot Attention Mask** (CEO Hard Mask 方案) | 低 (2-4h) | 中 | Deep Supervision baseline | VERDICT_CEO_ARCH_QUESTIONS (P4) |
 | Exposure Bias 缓解 (Scheduled Sampling) | 中 (2-3天) | 中 | Per-slot 分析确认问题 | VERDICT_AR_SEQ_REEXAMINE (P5) |
 
-### Phase 4: 3D 空间编码 (Phase 2-3 训练稳定后)
+### Phase 5: 3D 空间编码 (Phase 3-4 训练稳定后)
 > 目标: 引入 3D 先验, 从根本改善 BEV 预测质量
 > 审计来源: VERDICT_3D_ANCHOR
 
@@ -130,23 +188,13 @@ ORCH_035 @8000 (新 label pipeline):
 | **BEV 坐标 Positional Encoding** | 低 (0.5-1天) | 中-高 | 无 | 最小可行实验: grid_reference 从 2D 图像坐标扩展为 BEV 物理坐标, MLP 编码为 PE |
 | **相机投影 3D Anchor** | 中 (2-3天) | 高 | BEV PE 验证 | 每个 BEV grid 中心沿 z 轴采样 K=4 高度点, 通过相机内外参投影到图像, 替代 grid_sample 位置 |
 
-### Phase 5: 时序信息 (Phase 4 基础稳定后)
+### Phase 6: 时序信息 (Phase 5 基础稳定后)
 > 目标: 引入历史帧信息, 理解运动模式
 > 审计来源: VERDICT_CEO_STRATEGY_NEXT (方案 D, CEO 评为最有前途)
 
 | 项目 | 难度 | 影响 | 依赖 | 说明 |
 |------|------|------|------|------|
 | **历史 Occ Box 时间编码 (2帧, 1.0s)** | 高 (1-2周) | 极高 | 数据加载修改, 标签生成修改 | CEO 最看好方向。编码历史 2 帧 BEV 占据为条件信号, 推荐轻量条件信号方案 |
-
-### Phase 6: 特征微调 (Phase 2+ 训练稳定后, 可与 Phase 4/5 并行探索)
-> 目标: 让 DINOv3 特征更适配 BEV 任务
-
-| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
-|------|------|------|------|---------|
-| **LoRA 域适应** (rank=16, ~12M 参数) | 中 (2-3天) | 中 | Full nuScenes | VERDICT_CEO_STRATEGY_NEXT (方案 E) |
-| BUG-49 fix: DINOv3 early break (只跑需要的 blocks) | 低 | 性能优化 | 无 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
-| BUG-50 fix: unfreeze 时条件 no_grad | 低 | 显存优化 | 无 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
-| BUG-48 fix: unfreeze 目标改为 extraction point 附近 | 低 | 中 | 多层模式下重评估 | VERDICT_DINOV3_LAYER_AND_UNFREEZE |
 
 ### Phase 7: 架构扩展 (长期, 需要数据支撑决策)
 > 目标: 更精细的实例理解和预测
@@ -157,6 +205,7 @@ ORCH_035 @8000 (新 label pipeline):
 | Instance Consistency 指标 | 低 | 诊断 | 无 | VERDICT_INSTANCE_GROUPING |
 | 异构 Q/K/V cross-attention (DETR decoder 风格) | 高 (3-5天) | 中 | 架构重构 | VERDICT_ARCH_REVIEW |
 | FPN 多尺度特征融合 | 高 (4-6天) | 中 | 小目标性能瓶颈时 | VERDICT_CEO_STRATEGY_NEXT (方案 F) |
+| LoRA 域适应 (rank=16, ~12M) | 中 (2-3天) | 中 | 仅在保留 7B frozen 时适用 | VERDICT_CEO_STRATEGY_NEXT (方案 E) |
 
 ### Phase 8: 多车协作 (远期, 需要 V2X 数据集)
 > 目标: 利用多视角信息解决遮挡问题
@@ -164,7 +213,7 @@ ORCH_035 @8000 (新 label pipeline):
 
 | 项目 | 难度 | 影响 | 依赖 | 说明 |
 |------|------|------|------|------|
-| **V2X 融合**: Sender OCC box → BEV 特征图, cross-attention 融合 | 高 (3-5天) | 极高 | Phase 4 完成, V2X 数据集可用 | 多车协作的核心模块 |
+| **V2X 融合**: Sender OCC box → BEV 特征图, cross-attention 融合 | 高 (3-5天) | 极高 | Phase 5 完成, V2X 数据集可用 | 多车协作的核心模块 |
 | V2X 轨迹编码: 历史轨迹→条件信号 | 高 | 高 | V2X 融合基础 | 利用协作车辆轨迹预测 |
 
 ---
@@ -237,9 +286,9 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 |-----|--------|------|------------|
 | **BUG-17** | HIGH | bicycle sqrt balance ~11x 权重, bg_FA 膨胀 | Phase 2 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
-| **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | Phase 6 (多层模式下重评估) |
-| **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | Phase 6 |
-| **BUG-50** | MEDIUM | unfreeze 时全部 blocks 构建计算图, +10-15GB | Phase 6 |
+| **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
+| **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
+| **BUG-50** | MEDIUM | unfreeze 时全部 blocks 构建计算图, +10-15GB | 仅 7B frozen 适用, ViT-L finetune 无此问题 |
 
 ### 已修复 BUG (本轮)
 
