@@ -1,109 +1,127 @@
 # Supervisor Compact Context Snapshot
-> Timestamp: 2026-03-09 15:58
-> Supervisor cycles: #89 — #214 (本轮 session 覆盖 #199-#214)
+> Timestamp: 2026-03-13 00:40
+> Supervisor cycles: #276 — #289 (本轮 session)
 > Role: claude_supervisor — 信息中枢
-> Reason: 用户请求保存工作上下文
+> Reason: 上下文接续保存
 
 ---
 
 ## 当前任务
 
 **角色**: claude_supervisor, 按 `shared/commands/supervisor_cmd.md` 严格执行监控循环
-**循环**: git pull 两仓库 → 读训练日志 → 写 supervisor_report_latest.md → 检查 ORCH (grep PENDING) → 深度监控 (GPU + df -h + 进程存活) → git push
+**循环**: git stash+pull+pop → 读训练日志 → 写 supervisor_report_latest.md → 检查 ORCH (grep PENDING) → 深度监控 (GPU + df -h + 进程存活) → git push
 **写入边界**: 只可写 `shared/logs/supervisor_*`, `shared/pending/` status 字段; GiT/ 只读
 
 ---
 
 ## 正在进行的实验
 
-### Full nuScenes 训练 (ORCH_024) — 核心任务
+### ORCH_035 — Label Pipeline 大修后训练 (当前在跑)
 
-- **Config**: `plan_full_nuscenes_gelu.py`
-- **架构**: 在线 DINOv3 frozen + Linear(4096,2048)→GELU→Linear(2048,768)
+- **Config**: `plan_full_nuscenes_multilayer.py` (multilayer_v4)
+- **架构**: DINOv3 frozen + proj_hidden_dim=4096 + multilayer feature
 - **数据**: Full nuScenes (28130 train, 6019 val)
-- **GPU**: 0+1+2+3 DDP, ~6.28-6.52 s/iter, ~28.8 GB/GPU (A6000 48GB)
-- **max_iters**: 40000, warmup=2000, milestones=[15000,25000]
-- **val_interval**: 2000, checkpoint_interval=2000
-- **LR**: base=5.0e-05, lr=2.5e-06, lr_mult=2.0 for proj, gamma=0.1
-- **load_from**: P5b@3000
-- **当前进度**: iter **9960/40000** (24.9%), LR=2.5e-06, **@10000 val 即将触发!**
-- **ETA**: ~3/12 02:30
-- **训练日志**: `/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/20260308_163535/20260308_163535.log`
-
-### Val 结果汇总 (DDP) — 含 @8000 新数据
-
-| 指标 | @2000 | @4000 | @6000 | @8000 | 趋势 |
-|------|-------|-------|-------|-------|------|
-| **car_P** | 0.079 | 0.078 | **0.090** | **0.060** | ⚠️ @8000 回落 (P/R tradeoff) |
-| **car_R** | 0.627 | 0.419 | 0.455 | **0.718** | ✅ @8000 历史最高 |
-| truck_R | 0.000 | 0.059 | 0.138 | 0.000 | ⚠️ 类间振荡 |
-| bus_R | 0.000 | 0.000 | 0.287 | 0.002 | ⚠️ @6000 爆发→@8000 崩塌 |
-| ped_R | 0.067 | 0.026 | 0.145 | **0.276** | ✅ 持续增长 |
-| ped_P | 0.001 | 0.001 | 0.024 | 0.016 | 振荡 |
-| cone_R | 0.000 | 0.000 | 0.160 | 0.000 | 振荡 |
-| **bg_FA** | 0.222 | **0.199** | **0.331** | **0.311** | ✅ @8000 开始回落! |
-| **off_th** | 0.174 | **0.150** | 0.169 | **0.140** | ✅✅ @8000 历史最低! |
-| off_cx | 0.056 | 0.039 | 0.056 | **0.045** | ✅ 改善 |
-
-> **@8000 结论**: 类间注意力振荡 — @6000 多类模式 (car+truck+bus+ped+cone) → @8000 双类模式 (car+ped). car_P 回落但 car_R 大增 (P/R tradeoff). **结构指标持续改善** (bg_FA↓, off_th 历史最低). 常数 LR 下振荡幅度大, 预期 LR decay @17000 后收窄.
-> **注意**: DDP val 有 BUG-33 偏差 (±10%), 可能放大振荡. 建议 @10000 后做单 GPU re-eval.
-
-### GPU 1 被占事件 (已解决, 历史记录)
-
-- iter ~4840 — ~6000, 外部 PID 908307, ~5h, 累计损失 ~2-3h
-- ETA 已完全恢复正常
+- **GPU**: 0+1+2+3 DDP, ~6.27-6.61 s/iter, ~37.8 GB/GPU
+- **max_iters**: 40000, val_interval=2000, checkpoint_interval=2000
+- **LR**: base=5e-05, effective=2.5e-06 (post-warmup), lr_mult=5.0 for proj
+- **clip_grad**: max_norm=30.0
+- **load_from**: ORCH_034 iter_4000.pth (resume=True, 从 iter 4001 开始)
+- **Label Pipeline 改动 (5 项)**:
+  1. BUG-19v3 z-convention fix (box BOTTOM vs center)
+  2. Convex hull 替代 AABB (use_rotated_polygon=True)
+  3. Sutherland-Hodgman hull-based IoF/IoB
+  4. filter_invisible=False
+  5. vis+cell_count 组合过滤 (vis<10% AND cells<6)
+- **当前进度**: iter **7270/40000** (18.2%)
+- **ETA**: ~2d 10h (~03/15 11:00)
+- **@8000 预计**: ~01:55 (03/13)
+- **训练日志**: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4/20260312_175353/20260312_175353.log`
+- **工作目录**: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 
 ---
 
-## Mini 阶段总结 (ORCH_001-023 全部 COMPLETED)
+## Val 结果汇总
 
-### P5b 真实基线: car_P=**0.116**, bg_FA=0.189, off_th=0.195
-### P6 FINAL (2048, 无 GELU): car_P=**0.129** @6000 DDP, 超 P5b +11%
-### Plan P2 FINAL (2048+GELU): car_P=**0.112** @1500, GELU 加速收敛
+### ORCH_029 @2000 (warm start 基线)
+- car_R=0.3737, bg_FA=0.1615, off_th=0.1447
 
-### 已完成实验汇总
+### ORCH_034 @2000
+- car_R=0.8124 ✅ (突破!), bg_FA=0.2073 ✅, off_th=0.1655 ✅, 其余类=0
 
-| 实验 | 路径 | proj | GELU | car_P@best | 结论 |
-|------|------|------|------|-----------|------|
-| P5b | 预提取 | 1024 | ✅ | 0.116 (true) | 基线 |
-| Plan K | 预提取 | 1024 | ✅ | 0.064 | 类竞争非瓶颈 |
-| Plan L | 预提取 | 2048 | ✅ | 0.140/@1000 | 宽投影+GELU 帮助 (有 BUG-28) |
-| Plan M | 在线 unfreeze | 1024 | ✅ | 0.049 | 在线不如预提取 |
-| Plan N | 在线 frozen | 1024 | ✅ | 0.050 | 在线不如预提取 |
-| P6 | 预提取 | 2048 | ❌ | **0.129** @6000 | BUG-39 但仍超 P5b +11% |
-| Plan O | 在线 frozen | 2048 | ❌ | 0.000 | BUG-40 无效 |
-| Plan P | 预提取 | 2048 | ✅ | 0.004 | 超参错误 |
-| Plan P2 | 预提取 | 2048 | ✅ | 0.112 @1500 | GELU 加速收敛 |
-| **Plan Q** | 预提取 | 2048 | ✅ | 0.083 | **类竞争无关** (ORCH_026) |
+### ORCH_034 @4000 (Rule #6 首个可靠 checkpoint)
+- car_R=0.8195 ✅, bg_FA=0.3240 🔴红线, off_th=0.1598 ✅
+- 4 新类激活: bus=0.070, cv=0.110, ped=0.024, cone=0.130
 
-### 重大 BUG 记录
-- **BUG-33**: DDP val 缺 sampler → GT+P 偏差. 修复: 加 DefaultSampler
-- **BUG-39**: P6 无 GELU → 两层 Linear 退化为单层. 修复: Plan P2 加 GELU
-- **BUG-40**: Plan O warmup=max_iters → LR 从未达标. 结果无效
+### ORCH_035 @6000 (新标签首次 val) ⭐
+- car_R=**0.2329** 🔴(-71.6%), bg_FA=**0.0938** ✅✅(-71.1%), off_th=**0.2848** 🔴红线
+- cv=0.2581 ✅(+136%), 其余类=0
+- car_P=0.0822 (vs 034@4000 的 0.0451, +82%)
+- **解读**: 新标签大幅减少 false alarm 但也砍了 recall
+- 仅 2000 iter 适应新标签, 可能不够 — 等 @8000
+
+---
+
+## 训练趋势摘要 (ORCH_035)
+
+| 窗口 | loss 均值 | reg=0 | spike>8 | 备注 |
+|------|----------|-------|---------|------|
+| 4010-4210 | ~5.0 | 0 | 0 | 新标签初期, 略高 |
+| 4250-4480 | ~5.2 | 1x | 0 | |
+| 4500-4750 | ~4.3 | 3x cluster | 0 | 改善 |
+| 4800-5020 | ~4.4 | 2x | 0 | 5000 milestone |
+| 5050-5300 | ~4.3 | 2x | 1(8.74) | |
+| 5310-5570 | ~4.2 | 1x | 0 | 干净 |
+| 5580-5840 | ~3.8 | **6x dense!** | 0 | @5700-5760 最密集 |
+| 6010-6440 | ~4.6 | 0 | 1(9.87) | post-val |
+| 6450-6720 | ~4.5 | 1x | 0 | |
+| 6730-6990 | ~4.3 | 2x pair | 0 | |
+| 7000-7270 | ~4.4 | 1x | 0 | 非常干净 |
+
+**总体趋势**: loss 从 ~5.0 降至 ~4.3-4.4, 模型在适应新标签
+
+---
+
+## reg=0 现象
+- DDP deterministic data ordering artifact
+- 某些 iter foreground 稀疏 → reg_loss=0
+- 密集区: @5700-5760 (5/7 iter), @4620-4630 (3x), @6860-6870 (2x pair)
+- 均立即恢复, 不影响训练
+
+## 红线指标
+- bg_false_alarm > 0.25
+- avg_offset_theta > 0.20
+
+## Rule #6 (关键规则)
+- @2000: 太早, 不可靠
+- @4000: 首个可靠 checkpoint
+- **@8000: 架构决策级 checkpoint** ← 下一关键节点
 
 ---
 
 ## ORCH 指令状态
 
-| 指令 | 状态 | 内容 |
+| 指令 | 状态 | 说明 |
 |------|------|------|
-| ORCH_001-023 | COMPLETED | Mini 阶段全部完成 |
-| **ORCH_024** | **IN PROGRESS** | Full nuScenes (9960/40000), @2000/@4000/@6000/@8000 val ✅ |
-| ORCH_025 | COMPLETED | 自动化测试框架 (pytest) |
-| ORCH_026 | COMPLETED | Plan Q 单类诊断: car_P=0.083, 类竞争无关 |
+| ORCH_029 | COMPLETED | 基线, @2000 warm start 来源 |
+| ORCH_032 | COMPLETED | 全面坍缩 (BUG-57/58/59/60) |
+| ORCH_033 | COMPLETED | 修复 BUG-57-60, multilayer_v2 |
+| ORCH_034 | COMPLETED | BUG-52 IoF/IoB fix, multilayer_v3, 停@4620 |
+| **ORCH_035** | **COMPLETED** (在跑) | Label Pipeline 大修, multilayer_v4, @7270 |
 
 ---
 
-## GPU 状态 (Cycle #214)
+## GPU 状态 (Cycle #289)
 
-| GPU | Used | Task |
-|-----|------|------|
-| 0 | 36.8 GB | **Full nuScenes** (9960/40000) |
-| 1 | 36.8 GB | **Full nuScenes** |
-| 2 | 37.3 GB | **Full nuScenes** |
-| 3 | 36.8 GB | **Full nuScenes** |
+| GPU | Used | Utilization |
+|-----|------|-------------|
+| 0 | 37.8 GB | 100% |
+| 1 | 37.8 GB | 100% |
+| 2 | 38.0 GB | 100% |
+| 3 | 37.8 GB | 100% |
 
-磁盘: /mnt/SSD 282 GB 可用 (93%) — checkpoint @2000/@4000/@6000/@8000 已保存
+磁盘:
+- /mnt/SSD: 96% (178GB free) — checkpoint ~16GB each
+- /home: 99% (68GB free) ⚠️ 持续下降
 
 ---
 
@@ -113,7 +131,7 @@
 |------|------|
 | 调度仓库 | `/home/UNT/yz0370/projects/GiT_agent/` (读写) |
 | 研究代码 | `/home/UNT/yz0370/projects/GiT/` (只读) |
-| Full nuScenes log | `/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/20260308_163535/20260308_163535.log` |
+| ORCH_035 log | `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4/20260312_175353/20260312_175353.log` |
 | 报告输出 | `shared/logs/supervisor_report_latest.md` |
 | 报告历史 | `shared/logs/supervisor_report_history.md` |
 | 循环指令 | `shared/commands/supervisor_cmd.md` |
@@ -121,23 +139,20 @@
 ---
 
 ## 恢复指南
-1. 读 `agents/claude_supervisor/CLAUDE.md` 确认角色
-2. 读 `shared/commands/supervisor_cmd.md` 确认循环步骤
-3. `git pull` 两仓库
-4. 读 Full nuScenes 日志尾部: `tail -30 .../20260308_163535.log`
-5. 搜 val 结果: `grep "753/753" .../20260308_163535.log`
-6. 检查新 ORCH 指令 (`ls -lt shared/pending/`)
-7. 深度监控: `nvidia-smi`, `df -h /mnt/SSD`, `pgrep -c -f train.py`
-8. 写 supervisor_report_latest.md + 追加 history
-9. git push
-10. 继续循环
-11. **关注**:
-    - ~~**@2000 val** — ✅ car_P=0.079, 在线 DINOv3 确认有效~~
-    - ~~**@4000 val** — ✅ car_P=0.078 停滞, truck_P=0.057 新类出现~~
-    - ~~**@6000 val** — ✅ car_P=0.090 突破! 多类爆发! bg_FA=0.331 恶化~~
-    - ~~**@8000 val** — ✅ car_P=0.060 (P/R tradeoff), bg_FA=0.311 回落, off_th=0.140 最低~~
-    - **@10000 val ~3/9 16:01** — 即将触发! 类间振荡方向? 多类是否恢复?
-    - **LR decay @17000 ~3/10 10:00** — milestone 15000 + begin 2000, gamma=0.1
-    - **训练完成 @40000 ~3/12 03:00**
-    - DDP val 注意 BUG-33: 建议 @10000 后做单 GPU re-eval 确认真实值
-    - **关键发现**: @8000 显示类间注意力振荡, 但结构指标 (bg_FA, offset) 持续改善
+
+1. 读 `shared/commands/supervisor_cmd.md` 确认循环步骤
+2. `git stash && git pull --rebase && git stash pop` (后台 cron 改日志)
+3. 读 ORCH_035 日志尾部: `tail -30 .../20260312_175353.log`
+4. 搜 val 结果: `grep "753/753" .../20260312_175353.log`
+5. 检查新 ORCH: `grep -l "PENDING" shared/pending/*.md`
+6. 检查 CEO_CMD: `cat CEO_CMD.md`
+7. 深度监控: `nvidia-smi`, `df -h /mnt/SSD /home`, `ps aux | grep plan_full`
+8. 写 report + 追加 history + supervisor.log
+9. git add/commit/push
+10. 继续循环, 下一 cycle #290
+
+**关注重点**:
+- **@8000 val (~01:55)** — Rule #6 关键! 新标签是否开始恢复 recall?
+- **@8000 后 Conductor 决策** — 继续? 调参? 回滚?
+- /home 磁盘 99% — 可能需要清理
+- Conductor 已将 @6000 val 结果记入 MASTER_PLAN
