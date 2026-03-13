@@ -124,3 +124,12 @@ CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 ## [2026-03-12 ~04:45] CEO 指令
 我不确定Convex hull真的等效，所以我要求部署新的过滤方式Stage 2 的 IoF/IoB 过滤。必须修改，因此之前的实验可能要重做
 **执行结果**: 已修复 BUG-52。在 convex hull 分支内追加 IoF/IoB 双重过滤 (`generate_occ_flow_labels.py` L387-401)。当 `min_iof>0 or min_iob>0` 时，cell 必须同时通过 convex hull center-check 和 IoF≥0.30 OR IoB≥0.20。向后兼容：无 IoF/IoB 参数时行为不变。ORCH_033 需要基于此修复重启训练。
+
+---
+## [2026-03-13 ~05:00] CEO 指令
+给我一个报告文件到shared/logs/reports中，说明为什么8000跑完了之后没有按照计划执行Phase 1: 基础修正中的score_thr 消融 (0.1/0.2/0.3)实验以及Phase 2的训练优化。还有dinov3的vit-l 好像不是300M
+**执行结果**: 报告写入 shared/logs/reports/report_post8000_missed_actions.md。根因：Conductor 将 Critic PROCEED 误解为"维持现状"，忽略 MASTER_PLAN 已排期任务。ViT-L 实测 303M (代码实例化确认)。
+
+## CEO_CMD — 2026-03-13 ~05:00 (Supervisor Cycle #299 处理)
+> 给我一个报告文件到shared/logs/reports中，说明为什么8000跑完了之后没有按照计划执行Phase 1: 基础修正 (当前 — ORCH_035)中的score_thr 消融 (0.1/0.2/0.3)实验以及Phase 2: 的训练优化。还有dionv3的vit-l 好像不是300M
+- **处理**: 报告已写入 shared/logs/reports/post_8000_plan_deviation_report.md
