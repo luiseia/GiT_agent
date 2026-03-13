@@ -43,8 +43,8 @@ grid_assign_mode='overlap',
 ```
 
 ### 训练状态
-- **Resume from ORCH_034@4000**, 🔴 **训练暂停** iter 12160 (12:04 OOM 崩溃, eval 占满 GPU)
-- Eval 已完成 15:36, **GPU 空闲**, 等待 Admin 执行 ORCH_038 恢复训练
+- **Resume from ORCH_034@4000**, ✅ 训练恢复 iter 12200 (15:41 resume from iter_12000)
+- 新训练日志: `20260313_154113/20260313_154113.log`
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 - 下一评估点: **@14000** (快速检查) → **@16000** (决策级)
 - **@12000 ckpt 已标记为重要存档** (car_P=0.100 历史最佳)
@@ -100,11 +100,12 @@ grid_assign_mode='overlap',
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
 | ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
-| **当前** | 03/13 15:40 | ORCH_035 @12160 | 🔴 训练暂停, 等待恢复 (ORCH_038) | PAUSED |
-| ❌ | 03/13 12:05-15:36 | score_thr 消融 | **失败**: 模型无置信度 (scores=1.0), evaluator 未实现 score_thr | ORCH_036 无效 |
-| 待执行 | — | BUG-17 weight cap | mini 数据验证 max_w=3.0 | ORCH_037 DELIVERED |
-| 里程碑 | ETA 待定 | ORCH_035 @14000 | 快速检查 (非决策级) | 依赖训练恢复 |
-| **里程碑** | ETA 待定 | ORCH_035 @16000 | **@16000 决策级 eval** | 依赖训练恢复 |
+| **当前** | 03/13 16:04 | ORCH_035 @12200 | ✅ 训练恢复, 正常运行 | IN_PROGRESS |
+| ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
+| ✅ | 03/13 15:52 | score_thr 代码修复 (ORCH_040) | commit `ae45b0d`, 消融待 @14000 val 窗口执行 | 代码完成 |
+| 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0, 待 GPU 空闲 | DELIVERED |
+| 里程碑 | ~03/13 ~19:16 | ORCH_035 @14000 | 快速检查 (非决策级) + val 窗口执行消融/BUG-17 |
+| **里程碑** | ~03/13 ~22:50 | ORCH_035 @16000 | **@16000 决策级 eval** |
 
 ### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
 - car_R=0.620 ≥ 0.55 ✅, car_P=0.100 ≥ 0.06 ✅, bg_FA=0.283 < 0.40 ✅
@@ -331,11 +332,11 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
 | ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
 | **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **PAUSED** (iter 12160, 等待恢复) |
-| ORCH_036 | score_thr 消融 @12k ckpt | ❌ **FAILED** — 模型无置信度, eval 无 thr 过滤 |
-| ORCH_037 | BUG-17 Weight Cap (max_w=3.0) | DELIVERED |
-| ORCH_038 | 恢复训练 (resume iter_12000) | DELIVERED (未执行) |
-| **ORCH_039** | **紧急恢复训练** (重签 038) | **DELIVERED** |
-| ORCH_040 | score_thr 消融代码修复 + 重新执行 | PENDING |
+| ORCH_036 | score_thr 消融 @12k ckpt | ❌ FAILED — 模型无置信度, eval 无 thr 过滤 |
+| ORCH_037 | BUG-17 Weight Cap (max_w=3.0) | DELIVERED (待 GPU 空闲) |
+| ORCH_038 | 恢复训练 (resume iter_12000) | ✅ DONE (被 ORCH_039 合并) |
+| ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
+| ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
