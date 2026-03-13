@@ -43,7 +43,7 @@ grid_assign_mode='overlap',
 ```
 
 ### 训练状态
-- **Resume from ORCH_034@4000**, 当前 iter 6170 (post-val 已恢复训练)
+- **Resume from ORCH_034@4000**, 当前 iter 7270 (post-@6000 val, 平稳巡航)
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 - 下一评估点: @8000
 
@@ -77,8 +77,8 @@ grid_assign_mode='overlap',
 | ✅ | 03/12 09:47 | ORCH_034 @2000 | car_R=0.8124, bg_FA=0.2073 | 多层特征方向正确 |
 | ✅ | 03/12 14:18 | ORCH_034 @4000 | car_R=0.82, 4类激活 | Critic: PROCEED |
 | ⭐ | 03/12 22:20 | ORCH_035 @6000 | bg_FA -71%, car_P +82% | 标签修复成功 |
-| **当前** | 03/12 22:40 | ORCH_035 | 继续训练 → @8000 | IN_PROGRESS |
-| **里程碑 7** | ~03/13 | ORCH_035 @8000 | 架构决策点 | car_R 是否回升 |
+| **当前** | 03/13 00:36 | ORCH_035 @7270 | loss ~4.4, 质量优秀 → @8000 | IN_PROGRESS |
+| **里程碑 7** | ~03/13 01:55 | ORCH_035 @8000 | 架构决策点 | car_R 是否回升 |
 
 ### @8000 决策树 (基于 @6000 结果更新)
 
