@@ -1724,3 +1724,18 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-12 18:41:01] watchdog: → agent-admin: 已发送 /compact，等待 30 秒
 [2026-03-12 18:41:31] watchdog: → agent-admin: 已发送恢复指令
 [2026-03-12 18:41:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-12 18:50:01] watchdog: === 用量检查开始 ===
+[2026-03-12 18:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-12 18:50:01] watchdog: ⚠️ agent-admin context 剩余 2%
+[2026-03-12 18:50:01] watchdog: → agent-admin: 需要 compact 但正在忙碌，下轮再试
+[2026-03-12 18:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-12 19:00:01] watchdog: === 用量检查开始 ===
+[2026-03-12 19:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-12 19:00:01] watchdog: ⚠️ agent-admin context 剩余 2%
+[2026-03-12 19:00:01] watchdog: → agent-admin: 已发送保存指令，等待 60 秒
+[2026-03-12 19:01:01] watchdog: → agent-admin: 已发送 /compact，等待 30 秒
+[2026-03-12 19:01:31] watchdog: → agent-admin: 已发送恢复指令
+[2026-03-12 19:01:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-12 19:10:01] watchdog: === 用量检查开始 ===
+[2026-03-12 19:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-12 19:10:01] watchdog: ✅ 用量正常，无需休眠

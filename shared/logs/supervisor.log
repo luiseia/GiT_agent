@@ -527,3 +527,4 @@
 [2026-03-12 18:18:00] Cycle #276 | ORCH_035 @4210 running | resume 034@4000 OK | label pipeline overhaul | loss ~5.0 | 0 PENDING
 [2026-03-12 18:47:00] Cycle #277 | ORCH_035 @4480 stable | loss ~5.2 | 1x reg0@4440 | 0 PENDING
 [2026-03-12 19:16:00] Cycle #278 | ORCH_035 @4750 | loss improving ~4.3 | 3x reg0 DDP cluster | 0 PENDING
+[2026-03-12 19:17:51] WARN: watchdog missing from crontab, detected in Phase 1 cycle
