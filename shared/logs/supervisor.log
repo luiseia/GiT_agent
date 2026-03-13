@@ -543,3 +543,4 @@
 [291] 01:34 | @7810 | loss~4.5 | 1x reg=0 | @8000 ETA~01:53 (20min!) | OK
 [292] 02:03 ⭐ | @8000 CKPT SAVED! Val 110/753 ETA~02:52 | loss~4.1 | 4x reg=0 | Rule #6!
 [293] 02:33 | @8000 val 490/753 (65%) ETA~02:52 | waiting for Rule #6 results
+[294] 03:01 ⭐⭐⭐ @8000 VAL RESULTS | car_R=0.60(+158%) ped=0.20(NEW) bg_FA=0.257🔴 off_th=0.208🔴 | MIXED, trend positive

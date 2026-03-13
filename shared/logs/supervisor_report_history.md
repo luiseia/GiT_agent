@@ -4803,3 +4803,5 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 - **Cycle #292** (02:03) ⭐ | ORCH_035 **@8000 CHECKPOINT SAVED** 01:52:55 | Val 进行中 110/753 (14.6%) ETA~02:52 | loss~4.1 | 4x reg=0 cluster @7870-7990 | GPU 4x97-100% | SSD=163GB(↓15GB ckpt) home=68GB⚠️ | Rule #6!
 
 - **Cycle #293** (02:33) | @8000 Val 进行中 490/753 (65.1%) ETA~02:52 | GPU 4x100% | SSD=163GB home=68GB⚠️ | 0 PENDING | Rule #6 结果即将出炉!
+
+- **Cycle #294** (03:01) ⭐⭐⭐ | **@8000 VAL RESULTS** | car_R=0.6012(+158%✅) ped_R=0.2002(NEW✅) bus_R=0.0886(+430%✅) | cv_R=0.0000🔴 bg_FA=0.2568🔴红线 off_th=0.2083🔴红线 off_cy=0.1591🔴(+99%) | 混合信号, 趋势向好 | 训练已恢复@8080
