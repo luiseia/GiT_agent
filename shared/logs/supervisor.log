@@ -587,3 +587,4 @@ Phase 1 cycle @ 2026-03-13 11:48:47 — 🔴 @12000 VAL COMPLETE! car_R=0.6203 c
 Phase 2 @ 2026-03-13 12:00:03 — @12000 VERDICT: PROCEED to @16k. 签发 ORCH_036 (score_thr 消融) + ORCH_037 (BUG-17 weight cap). MASTER_PLAN 已更新.
 Phase 1 cycle @ 2026-03-13 12:12:42 — iter 12160, post-@12k 平稳, ORCH_036/037 DELIVERED 执行中, @14k ETA ~15:25
 🔴 Phase 1 cycle @ 2026-03-13 12:41:59 — 训练已崩溃! ORCH_036 4个 eval 抢占全部 GPU, train.py 进程已死 (iter 12160 @ 12:04). eval ETA ~13:01, 之后需 resume 训练.
+Phase 2 @ 2026-03-13 12:43:59 — eval 仍运行中, 训练仍停止. 签发 ORCH_038 恢复训练 (eval 完成后执行).
