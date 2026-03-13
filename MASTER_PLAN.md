@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 15:40
+> 最后更新: 2026-03-13 18:30
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -100,9 +100,9 @@ grid_assign_mode='overlap',
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
 | ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
-| **当前** | 03/13 16:04 | ORCH_035 @12200 | ✅ 训练恢复, 正常运行 | IN_PROGRESS |
+| **当前** | 03/13 18:30 | ORCH_035 @13570 | ✅ 训练正常, @14000 ETA ~19:15 | IN_PROGRESS |
 | ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
-| ✅ | 03/13 15:52 | score_thr 代码修复 (ORCH_040) | commit `ae45b0d`, 消融待 @14000 val 窗口执行 | 代码完成 |
+| ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs, 消融待执行 | 代码完成 |
 | 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0, 待 GPU 空闲 | DELIVERED |
 | 里程碑 | ~03/13 ~19:16 | ORCH_035 @14000 | 快速检查 (非决策级) + val 窗口执行消融/BUG-17 |
 | **里程碑** | ~03/13 ~22:50 | ORCH_035 @16000 | **@16000 决策级 eval** |
@@ -161,7 +161,7 @@ ORCH_035 @16000:
 | Hull-based IoF/IoB (Sutherland-Hodgman) | 中 | 高 | ✅ 已部署 | VERDICT_TWO_STAGE_FILTER, VERDICT_OVERLAP_THRESHOLD |
 | filter_invisible=False | 低 | 中 | ✅ 已部署 | CEO 审查 |
 | vis + cell_count 组合过滤 | 低 | 中 | ✅ 已部署 | CEO 审查 |
-| score_thr 消融 (0.1/0.2/0.3/0.5) | **需代码改动** | 中 | ❌ **ORCH_036 失败**: 模型 scores=1.0, evaluator 未实现 thr 过滤。需在 `_predict_single` 中提取 token softmax 置信度 | VERDICT @8k/@10k/@12k |
+| score_thr 消融 (0.1/0.2/0.3/0.5) | 零 (代码已就绪) | 中 | ✅ 代码完成 (`9974e3a`): cls_probs softmax 置信度过滤。**消融待执行** (GPU 被训练占满) | VERDICT @8k/@10k/@12k |
 
 ### Phase 2: 训练优化 (ORCH_035 @12000 eval 后部署)
 > 目标: 零/低成本的训练改进, 不改模型架构
