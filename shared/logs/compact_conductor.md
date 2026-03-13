@@ -1,75 +1,96 @@
 # Conductor 上下文快照
-> 时间: 2026-03-13 15:10
+> 时间: 2026-03-13 18:35
 > 原因: CEO 请求上下文保存
 
 ## 当前状态
 
-**ORCH_035** — IN_PROGRESS, 训练暂停 (iter 12160), 等待恢复
+**ORCH_035** — IN_PROGRESS, 训练正常 iter ~13570, @14000 ETA ~19:15
 - Label pipeline 大修 (5 项改动) + resume from ORCH_034@4000
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
 - Config: `configs/GiT/plan_full_nuscenes_multilayer.py`
-- 4 GPU DDP, A6000 ~37.8GB/GPU
+- 4 GPU DDP, A6000 ~39.5GB/GPU
+- **新训练日志** (resume 后): `20260313_154113/20260313_154113.log`
 
-### 🔴 训练暂停事件
-- **原因**: ORCH_036 score_thr 消融同时启动 4 个 eval 进程, 占满 4 GPU, 训练 OOM 崩溃
-- **停止时间**: 12:04 (iter 12160)
-- **eval 进度**: 4 个 eval 均 ~87% (2620/3010), ETA ~15:35
-- **恢复**: ORCH_038 已签发 (DELIVERED), eval 完成后 Admin 自动 resume from iter_12000
-- **教训**: 并行 eval 必须用 CUDA_VISIBLE_DEVICES 隔离; 1-GPU eval 数据量 = 4x (3010 iter vs 753)
+### 今日重大事件
+1. **12:04 训练 OOM 崩溃** — ORCH_036 的 4 个并行 eval 占满 GPU
+2. **ORCH_036 score_thr 消融彻底失败** — 模型 scores=1.0, evaluator score_thr 是死代码
+3. **15:41 训练恢复** (ORCH_039), 从 iter_12000 resume
+4. **score_thr 代码修复** — CEO 修正: 用 cls_probs 而非 marker_probs (commit `9974e3a`)
+5. **CEO 认知修正**: offset 指标 (cx,cy,w,h,th) 才是最重要的, 直接决定 occ 图 mIoU
 
-## 关键数据 — Val 历史
+## ⭐ CEO 核心指示: offset 指标优先
+
+**5 个 offset 指标直接影响 occ 图 mIoU, 是最重要的评估标准。**
+
+评估优先级: offset (cx,cy,w,h,th) > car_R > car_P/bg_FA
+
+### 综合最优权重评估: ORCH_024 @8000
+
+| 指标 | ORCH_024 @8000 | ORCH_035 @12000 | 胜者 |
+|------|---------------|----------------|------|
+| **off_cx** | **0.045** | 0.082 | 024 (+82%) |
+| **off_cy** | **0.074** | 0.107 | 024 (+45%) |
+| off_w | 无数据 | 0.036 | — |
+| off_h | 无数据 | 0.011 | — |
+| **off_th** | **0.140** | 0.162 | 024 (+16%) |
+| car_R | **0.718** | 0.620 | 024 |
+| car_P | 0.060 | **0.100** | 035 |
+| bg_FA | 0.311 | **0.283** | 035 |
+
+**结论: ORCH_024 @8000 当前综合最优** (offset 全面碾压 + car_R 更高)
+
+## 关键数据 — ORCH_035 Val 历史 (含完整 offset)
 
 | 指标 | @6000 | @8000 | @10000 | **@12000** | 趋势 |
 |------|-------|-------|--------|----------|------|
-| car_R | 0.2329 | 0.6012 | 0.4202 | **0.6203** | ✅✅ V 形反弹, 历史最优 |
-| car_P | 0.0822 | 0.0822 | 0.0531 | **0.0995** | ✅✅ 历史最优! 超越 ORCH_024 峰值 0.090 |
-| bg_FA | 0.0938 | 0.2568 | 0.2534 | **0.2831** | 🔴 缓升, <0.40 安全 |
-| off_th | 0.2848 | 0.2083 | 0.1862 | **0.1622** | ✅✅ 持续改善, 历史最优 |
-| ped_R | — | 0.2002 | 0.0000 | 0.0003 | 🔴 BUG-17 压制 |
-| truck_R | — | 0.0243 | 0.0000 | 0.0477 | ✅ 恢复 |
-| bus_R | — | 0.0886 | 0.1404 | 0.1491 | ✅ 但 bus FP 922K 成最大 FP 源 |
-| cone_R | — | 0.0000 | 0.3823 | 0.0000 | ⚡ BUG-17 跷跷板 |
+| **off_cx** | — | 0.061 | **0.046** | 0.082 🔴 | V 形 (采样偏差) |
+| **off_cy** | — | 0.159 | 0.113 | **0.107** | ✅ 持续改善 |
+| **off_w** | — | 0.033 | **0.026** | 0.036 🔴 | V 形 |
+| **off_h** | — | **0.010** | 0.016 | 0.011 | ✅ 恢复 |
+| **off_th** | 0.285 | 0.208 | 0.186 | **0.162** | ✅✅ 持续改善 |
+| car_R | 0.233 | 0.601 | 0.420 | **0.620** | ✅ V 形反弹 |
+| car_P | 0.082 | 0.082 | 0.053 | **0.100** | ✅ 历史最优 |
+| bg_FA | 0.094 | 0.257 | 0.253 | **0.283** | 🔴 缓升 |
+| ped_R | — | 0.200 | 0.000 | 0.000 | 🔴 BUG-17 |
+| truck_R | — | 0.024 | 0.000 | 0.048 | ⚠️ |
+| bus_R | — | 0.089 | 0.140 | 0.149 | ✅ 但 FP 922K |
 
-### ORCH_024 对比 (@12000)
-| 指标 | ORCH_024 | ORCH_035 |
-|------|----------|----------|
-| car_R | 0.526 | **0.620** ✅ +18% |
-| car_P | 0.081 | **0.100** ✅ +23% |
-| bg_FA | **0.278** | 0.283 ≈ |
-| off_th | **0.128** | 0.162 🔴 |
+### ORCH_024 Val 历史 (offset)
 
-### Critic 判决历史
-- **@8000**: PROCEED — car_R 0.60, 4 类激活
-- **@10000**: CONDITIONAL PROCEED — car_R/P 暴跌, cone 449K FP (BUG-17)
-- **@12000**: ⭐ **PROCEED** — car_P=0.100 历史最优, 决策树最优分支命中
-  - car 改善真实: FP -25% + TP +48%, FP/TP 比 9.1 (最低)
-  - BUG-17 跷跷板确认: @10k cone↑car↓ → @12k car↑cone↓bus↑
-  - 总 FP 1.88M→2.06M (+9.5%), bg_FA 线性外推 @20k ≈ 0.40
-  - peak_car_P = 0.100, 超越 ORCH_024 全程峰值 0.090
-
-### Loss 趋势
-- iter 10000-12000: 均值 ~4.0, 缓降
-- 零 spike, 零 reg=0 (除 BUG-61 偶发), grad_norm 8-52 (clip=30)
+| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | @12000 |
+|------|-------|-------|-------|-------|--------|--------|
+| off_cx | 0.056 | **0.039** | 0.056 | 0.045 | — | — |
+| off_cy | **0.069** | 0.097 | 0.082 | 0.074 | — | — |
+| off_th | 0.174 | 0.150 | 0.169 | 0.140 | 0.160 | **0.128** |
+| car_R | 0.627 | 0.419 | 0.455 | 0.718 | 0.726 | 0.526 |
+| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | 0.081 |
 
 ## 活跃 ORCH 指令
 
 | ORCH | 任务 | 状态 | 说明 |
 |------|------|------|------|
-| **036** | score_thr 消融 @12k ckpt (0.1/0.2/0.3/0.5) | DELIVERED — eval ~87% | 4 个 eval 并行, ETA ~15:35 |
-| **037** | BUG-17 Weight Cap (max_w=3.0) + mini 验证 | DELIVERED | 待 eval 完成后执行 |
-| **038** | 恢复训练 (resume from iter_12000) | DELIVERED | 待 eval 完成后执行 |
+| **037** | BUG-17 Weight Cap (max_w=3.0) 代码 | COMPLETED (代码) | mini 验证待 GPU |
+| **039** | 紧急恢复训练 | ✅ DONE | 15:41 恢复 |
+| **040** | score_thr 代码修复 | ✅ DONE (代码) | CEO 修正: cls_probs (9974e3a) |
+| **041** | @14000 val 后 score_thr 消融 | DELIVERED | 4-GPU DDP 串行, ~4h |
 
-## ⚠️ BUG-17: CRITICAL — 修复方案确定
+## score_thr 消融 — 代码已就绪
 
-Critic @12000 推荐 **方案 A: Weight Cap max_w=3.0** (一行改动):
+- **ORCH_036 失败原因**: `_predict_single` 输出 scores=1.0, evaluator score_thr 从未使用
+- **ORCH_040 修复**: marker_probs 传递 (错误)
+- **CEO 修正 (commit 9974e3a)**: 用 `cls_probs = F.softmax(cls_logits)` 的 max 作为置信度
+- **代码变更**: `pred_scores[..., 0]` → `pred_scores[..., 1]`, 变量名 grid_marker_scores → grid_cls_scores
+- **消融执行**: ORCH_041, @14000 val 后暂停训练, 4-GPU DDP 串行跑 score_thr={0.1,0.2,0.3,0.5}
+- **config 路径**: `--cfg-options val_evaluator.score_thr=X`
+
+## BUG-17: CRITICAL — 代码已完成, 待 mini 验证
+
+修复方案 A: Weight Cap max_w=3.0 (一行改动):
 ```python
-# 文件: GiT/mmdet/models/dense_heads/git_occ_head.py ~L832
-# 当前: _class_weights[c] = 1.0 / _math.sqrt(cnt / _min_count)
-# 修改: _class_weights[c] = min(1.0 / _math.sqrt(cnt / _min_count), 3.0)
+_class_weights[c] = min(1.0 / _math.sqrt(cnt / _min_count), 3.0)
 ```
-- 直接防止极端权重 (当前小类可达 10x+)
-- 向后兼容, mini 验证后 @16k 部署
-- 备选: B=Dataset-level sqrt, C=关闭 sqrt (核选项)
+- ORCH_037 代码已提交, mini 验证待 GPU 空闲
+- 计划 @16k eval 后部署
 
 ### BUG-17 跷跷板证据
 | Iter | FP 主要来源 | 总 FP |
@@ -78,9 +99,20 @@ Critic @12000 推荐 **方案 A: Weight Cap max_w=3.0** (一行改动):
 | @10k | car 1.14M + cone 449K | 1.90M |
 | @12k | **bus 922K (45%)** + car 849K | **2.06M** |
 
-## BUG-61 (NEW, LOW)
-- 偶发 reg_loss=0 (iter 8030, 12030), 间隔 4000 iter
-- 0.025% 频率, 不影响训练, BUG-17 后调查
+## BUG-61 (LOW, 频率加速)
+- iter 8030, 12030, 12440, **13520** — reg_loss=0
+- 间隔: 4000 → 410 → 1080
+- 仍 <0.1% 频率, 不影响收敛, BUG-17 后调查
+
+## Loss 趋势
+- iter 12000-13570: 均值 ~3.9, 缓降
+- grad_norm 6-38, 正常
+- 零 spike (除 BUG-61 偶发 reg=0)
+
+## @14000 快速检查 (非决策级) — ETA ~19:15
+- car_R < 0.35 → 提前预警
+- car_P < 0.03 → 考虑提前 STOP
+- **重点关注 offset 指标变化** (cx,cy,w,h,th)
 
 ## @16000 决策树
 
@@ -95,21 +127,14 @@ ORCH_035 @16000:
 ├─ bg_FA > 0.40 → CONDITIONAL
 └─ peak_car_P(@12k) = 0.100 (Rule #6)
 ```
+**注**: 需增加 offset 指标判断条件
 
-### @14000 快速检查 (非决策级)
-- car_R < 0.35 → 提前预警
-- car_P < 0.03 → 考虑提前 STOP
-
-## Phase 2 待办 (@16000 eval 后部署)
-1. **🔴 BUG-17 Weight Cap** — ORCH_037 开发中
-2. Deep Supervision `loss_out_indices=[8,10,11]` (零成本)
-3. BUG-45 fix: OCC head 推理 attn_mask
-4. Per-slot 性能分析
-
-## Phase 3: ViT-L Finetune (CEO 优先)
-- car_P=0.100 超越 ORCH_024, 当前架构仍有潜力, 不急切换
-- Critic 建议: 先完成 BUG-17, 若 ORCH_036 @12k car_P>0.10 且 bg_FA<0.25 则当前架构足够
-- 代码/Config 已就绪, **权重未下载** (403 过期)
+## Phase 2 待办
+1. **🔴 BUG-17 Weight Cap** — 代码完成, 待 mini 验证
+2. **score_thr 消融** — 代码完成 (cls_probs), ORCH_041 待执行
+3. Deep Supervision `loss_out_indices=[8,10,11]` (零成本)
+4. BUG-45 fix: OCC head 推理 attn_mask
+5. Per-slot 性能分析
 
 ## 基础设施
 - 全 agent UP (conductor/critic/supervisor/admin/ops)
@@ -119,15 +144,11 @@ ORCH_035 @16000:
 
 ## 关键文件索引
 - MASTER_PLAN: `/home/UNT/yz0370/projects/GiT_agent/MASTER_PLAN.md`
-- ORCH_035: `shared/pending/ORCH_0312_1750_035.md` (COMPLETED)
-- ORCH_036: `shared/pending/ORCH_0313_1150_036.md` (score_thr 消融)
-- ORCH_037: `shared/pending/ORCH_0313_1150_037.md` (BUG-17 fix)
-- ORCH_038: `shared/pending/ORCH_0313_1250_038.md` (恢复训练)
-- @8000 verdict: `shared/audit/processed/VERDICT_ORCH035_AT8000.md`
-- @10000 verdict: `shared/audit/processed/VERDICT_ORCH035_AT10000.md`
+- 训练日志 (新): `/mnt/SSD/.../full_nuscenes_multilayer_v4/20260313_154113/20260313_154113.log`
+- 训练日志 (旧): `/mnt/SSD/.../full_nuscenes_multilayer_v4/20260312_175353/20260312_175353.log`
+- ORCH_041: `shared/pending/ORCH_0313_1830_041.md` (score_thr 消融)
 - @12000 verdict: `shared/audit/processed/VERDICT_ORCH035_AT12000.md`
-- Eval 日志: `/home/UNT/yz0370/projects/GiT/work_dirs/plan_full_nuscenes_multilayer/20260313_*/`
-- 训练日志: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4/20260312_175353/20260312_175353.log`
+- score_thr 修复: GiT commit `9974e3a`
 
 ## 恢复指令
 1. 读取本文件恢复上下文
@@ -135,7 +156,8 @@ ORCH_035 @16000:
 3. 检查 CEO_CMD.md
 4. 继续 Phase 1/Phase 2 循环
 5. **重点关注**:
-   - eval 是否完成 → 读取 score_thr 消融结果
-   - 训练是否已恢复 (ORCH_038)
-   - ORCH_037 BUG-17 weight cap 验证结果
-   - @14000 快速检查 → @16000 决策级 eval
+   - @14000 val 是否触发 → 读取结果 (重点看 5 个 offset)
+   - ORCH_041 score_thr 消融是否执行
+   - ORCH_037 BUG-17 mini 验证
+   - **offset 指标是核心评判标准** (CEO 指示)
+   - 综合最优仍是 ORCH_024 @8000, ORCH_035 需要证明 offset 能追上
