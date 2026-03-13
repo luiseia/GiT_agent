@@ -544,3 +544,11 @@
 [292] 02:03 ⭐ | @8000 CKPT SAVED! Val 110/753 ETA~02:52 | loss~4.1 | 4x reg=0 | Rule #6!
 [293] 02:33 | @8000 val 490/753 (65%) ETA~02:52 | waiting for Rule #6 results
 [294] 03:01 ⭐⭐⭐ @8000 VAL RESULTS | car_R=0.60(+158%) ped=0.20(NEW) bg_FA=0.257🔴 off_th=0.208🔴 | MIXED, trend positive
+[03:02:59] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: ORCH035_AT8000
+[03:03:14] → Critic 已重启并发送审计指令: ORCH035_AT8000
+[03:04:14] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
+[03:05:14] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
+[03:06:15] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
+[03:07:15] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
+[03:08:15] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
+[03:09:16] 🔔 通知 Critic: REQUEST_ORCH035_AT8000
