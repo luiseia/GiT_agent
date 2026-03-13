@@ -4777,3 +4777,6 @@ ec9a035 fix: BUG-51 overlap-based grid assignment for small objects
 
 ---
 ### Cycle #283 | 2026-03-12 21:41 | ⭐ ORCH_035 @6000 CHECKPOINT SAVED + VAL STARTED | val 170/753 (22.6%) | first val with new label pipeline | loss@6000=4.65 | zero reg0 this window | SSD 96% (178GB, -16GB checkpoint) | GPU 86-97%
+
+---
+### Cycle #284 | 2026-03-12 22:10 | ORCH_035 @6000 VAL 600/753 (79.7%) | ~10 min to results | first new-label eval | GPU 88-100% | Disk SSD 96% /home 99%
