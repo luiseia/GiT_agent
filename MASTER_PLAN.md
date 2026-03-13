@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 07:52
+> 最后更新: 2026-03-13 11:50
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -43,9 +43,10 @@ grid_assign_mode='overlap',
 ```
 
 ### 训练状态
-- **Resume from ORCH_034@4000**, 当前 iter ~10270 (post-@10000 val, CONDITIONAL PROCEED)
+- **Resume from ORCH_034@4000**, 当前 iter ~12010 (post-@12000 val, Critic PROCEED)
 - 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
-- 下一评估点: **@12000** (ETA ~09:50) — STOP 条件: car_P<0.04 或 car_R<0.35
+- 下一评估点: **@14000** (快速检查) → **@16000** (决策级)
+- **@12000 ckpt 已标记为重要存档** (car_P=0.100 历史最佳)
 
 ### ⭐ ORCH_035 @6000 Val 结果 (新标签首次评估)
 
@@ -97,39 +98,50 @@ grid_assign_mode='overlap',
 | ⭐ | 03/12 22:20 | ORCH_035 @6000 | bg_FA -71%, car_P +82% | 标签修复成功 |
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
-| **当前** | 03/13 07:23 | ORCH_035 @10010 | 训练已恢复 → @12000 | IN_PROGRESS |
-| **里程碑 8** | ~03/13 ~10:50 | ORCH_035 @12000 | @12000 eval — **STOP 条件: car_P<0.04 或 car_R<0.35** |
+| ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
+| **当前** | 03/13 11:48 | ORCH_035 @12010 | 训练继续 → @16000 | IN_PROGRESS |
+| 并行 | 03/13 12:00 | score_thr 消融 | @12k ckpt 上跑 0.1/0.2/0.3/0.5 | ORCH_036 |
+| 并行 | 03/13 12:00 | BUG-17 weight cap | mini 数据验证 max_w=3.0 | ORCH_037 |
+| 里程碑 | ~03/13 ~15:20 | ORCH_035 @14000 | 快速检查 (非决策级) |
+| **里程碑** | ~03/13 ~18:50 | ORCH_035 @16000 | **@16000 决策级 eval** |
 
-### @12000 决策树 (Critic 更新 — 含 @10000 CONDITIONAL PROCEED 条件)
+### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
+- car_R=0.620 ≥ 0.55 ✅, car_P=0.100 ≥ 0.06 ✅, bg_FA=0.283 < 0.40 ✅
+- **决策: 继续训练 + 并行开发 BUG-17 修复**
+
+### @16000 决策树 (Critic @12000 VERDICT)
 
 ```
-ORCH_035 @12000:
+ORCH_035 @16000:
 │
-├─ car_R ≥ 0.55 + car_P ≥ 0.06 + bg_FA < 0.40 → ★ 继续训练 + 部署 BUG-17 修复
+├─ car_P ≥ 0.08 + car_R ≥ 0.50 + bg_FA < 0.40
+│   → ★ PROCEED + 部署 BUG-17 fix (ORCH_038 resume from best ckpt)
 │
-├─ car_R 0.35-0.55 + car_P ≥ 0.04 → ⚠️ 继续但必须部署 BUG-17
+├─ car_P ≥ 0.06 + car_R ≥ 0.45
+│   → PROCEED, 但 BUG-17 fix 为必要前提
 │
-├─ car_R < 0.35 → 🔴 **STOP** — 部署 BUG-17 后重启 (Critic @10000 条件)
+├─ car_R < 0.40 (低于 @10k 底)
+│   → STOP, 回退到 @12k, 部署 BUG-17 fix 再训练
 │
-├─ car_P < 0.04 → 🔴 **STOP** — FP 工厂失控 (Critic @10000 条件)
+├─ car_P < 0.04 (FP 失控)
+│   → STOP, 审查 loss 权重
 │
-├─ bg_FA > 0.40 → 🔴 误报率过高
+├─ bg_FA > 0.40
+│   → CONDITIONAL, 先跑 score_thr 消融判断是否可后处理挽救
 │
-├─ off_th > 0.25 (回退) → z-fix 适应失败
-│
-└─ 注: 类别振荡 (ped/truck 消失, cone 激活) 是 BUG-17 症状, 非架构问题
+└─ peak_car_P(@12k) = 0.100 (Rule #6 参照)
 ```
 
-### @12000 附加测试 (Critic 建议 — 两次强调)
-1. **score_thr 消融**: @10000 + @12000 checkpoint 上跑 0.1/0.2/0.3/0.5 eval (零训练成本!)
-2. per-class confusion matrix (cone FP 落在哪些 GT cells)
-3. per-class FP 目标分析
+### @14000 快速检查 (非决策级)
+- car_R < 0.35 → 提前预警
+- car_P < 0.03 → 考虑提前 STOP
+- 否则继续到 @16k
 
-### ⚠️ BUG-17 升级: HIGH → **CRITICAL**
-- **证据**: @10000 cone 激活 (R=0.38, P=0.008) 产生 449K FP, 挤压 car/ped/truck
-- **原因**: per-batch sqrt balance 导致小类权重 10x+
-- **影响**: car_R -30%, car_P -35%, ped/truck 消失
-- **必须在 @12000 后作为 ORCH_036 第一优先项部署**
+### ⚠️ BUG-17: CRITICAL — 并行修复中
+- **证据汇总**: @10k cone 449K FP 挤压 car; @12k bus 922K FP 成最大 FP 源; 总 FP 1.88M→2.06M 持续上升
+- **跷跷板周期**: ~2000 iter, @10k cone↑car↓, @12k car↑cone↓bus↑
+- **修复方案**: Weight Cap max_w=3.0 (一行改动), mini 验证后 @16k 部署
+- **ped_R 连续 3 eval ≈ 0**: BUG-17 系统性压制, 修复后关注
 
 ---
 
@@ -147,7 +159,7 @@ ORCH_035 @12000:
 | Hull-based IoF/IoB (Sutherland-Hodgman) | 中 | 高 | ✅ 已部署 | VERDICT_TWO_STAGE_FILTER, VERDICT_OVERLAP_THRESHOLD |
 | filter_invisible=False | 低 | 中 | ✅ 已部署 | CEO 审查 |
 | vis + cell_count 组合过滤 | 低 | 中 | ✅ 已部署 | CEO 审查 |
-| score_thr 消融 (0.1/0.2/0.3/0.5) | 零 | 中 | ⏳ **@12000 eval 时执行** (原计划 @8000, 因 PROCEED 遗漏) | VERDICT_034_AT4000_BGFA, VERDICT_ORCH035_AT8000 |
+| score_thr 消融 (0.1/0.2/0.3/0.5) | 零 | 中 | ⏳ **ORCH_036 签发, @12k ckpt 执行中** (三次 VERDICT 要求) | VERDICT @8k/@10k/@12k |
 
 ### Phase 2: 训练优化 (ORCH_035 @12000 eval 后部署)
 > 目标: 零/低成本的训练改进, 不改模型架构
@@ -158,7 +170,7 @@ ORCH_035 @12000:
 | **Deep Supervision** `loss_out_indices=[8,10,11]` | **零** (改一行) | 中-高 | 无 | VERDICT_CEO_ARCH_QUESTIONS (P1) |
 | **BUG-45 fix**: 推理时加显式 attn_mask | 低 (2-4h) | 中 | ⏳ **可立即开发** (不影响训练) | VERDICT_CEO_ARCH_QUESTIONS |
 | **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
-| **🔴 BUG-17 修复**: per-batch sqrt balance 类别竞争 | 中 | **极高 (CRITICAL)** | ⏳ **@12000 后第一优先** — @10000 已证明即时危害 | VERDICT_3D_ANCHOR, VERDICT_ORCH035_AT10000 |
+| **🔴 BUG-17 修复**: Weight Cap max_w=3.0 | 低 (一行) | **极高 (CRITICAL)** | ⏳ **ORCH_037 签发, mini 验证中** → @16k 后部署 | VERDICT @10k/@12k |
 
 ### Phase 3: ★ DINOv3 ViT-L Finetune (CEO 优先, Phase 2 后立即启动)
 > 目标: 从 7B frozen + 10M adapter 切换到 ViT-L finetune, 解决 adapter 容量瓶颈
@@ -331,7 +343,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-17** | **CRITICAL** | per-batch sqrt balance 类别竞争, @10000 cone 449K FP 挤压 car/ped/truck | Phase 2 (ORCH_036 第一优先) |
+| **BUG-17** | **CRITICAL** | per-batch sqrt 类别竞争: bus 922K FP (@12k), 总FP 2.06M↑ | Phase 2 — ORCH_037 Weight Cap 开发中 |
+| **BUG-61** | LOW | 偶发 reg_loss=0 (2次/8000 iter), 空 batch 或 mask 问题 | 低优先, BUG-17 后调查 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
