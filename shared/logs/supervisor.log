@@ -557,3 +557,11 @@
 [297] 04:28 | @8900 | loss~4.1↓ | 0 reg=0 | clean | @10000 ETA~06:28
 [298] 04:57 | @9170 | loss~3.9↓↓ | 0 reg=0 | clean x2 | @10000 ETA~06:26
 [299] 05:26 | @9450 | loss~3.9 | CEO_CMD processed→report | clean x3
+[07:24:47] ⚠️ Critic Claude Code 已退出，重启并发送审计指令: ORCH035_AT10000
+[07:25:02] → Critic 已重启并发送审计指令: ORCH035_AT10000
+[07:26:02] 🔔 通知 Critic: REQUEST_ORCH035_AT10000
+[07:27:03] 🔔 通知 Critic: REQUEST_ORCH035_AT10000
+[07:28:03] 🔔 通知 Critic: REQUEST_ORCH035_AT10000
+[07:29:03] 🔔 通知 Critic: REQUEST_ORCH035_AT10000
+[07:30:04] 🔔 通知 Critic: REQUEST_ORCH035_AT10000
+[07:31:04] 🔔 通知 Critic: REQUEST_ORCH035_AT10000

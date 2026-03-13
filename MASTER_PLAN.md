@@ -96,33 +96,40 @@ grid_assign_mode='overlap',
 | ✅ | 03/12 14:18 | ORCH_034 @4000 | car_R=0.82, 4类激活 | Critic: PROCEED |
 | ⭐ | 03/12 22:20 | ORCH_035 @6000 | bg_FA -71%, car_P +82% | 标签修复成功 |
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
-| **当前** | 03/13 03:02 | ORCH_035 @8090 | 训练已恢复 → @12000 | IN_PROGRESS |
-| **里程碑 8** | ~03/13 ~07:00 | ORCH_035 @12000 | @12000 eval | 见下方监控项 |
+| ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
+| **当前** | 03/13 07:23 | ORCH_035 @10010 | 训练已恢复 → @12000 | IN_PROGRESS |
+| **里程碑 8** | ~03/13 ~10:50 | ORCH_035 @12000 | @12000 eval — **STOP 条件: car_P<0.04 或 car_R<0.35** |
 
-### @12000 决策树 (Critic 定义)
+### @12000 决策树 (Critic 更新 — 含 @10000 CONDITIONAL PROCEED 条件)
 
 ```
 ORCH_035 @12000:
 │
-├─ car_R 0.65-0.75 + car_P ≥ 0.06 + bg_FA < 0.40 → ★ 继续训练
+├─ car_R ≥ 0.55 + car_P ≥ 0.06 + bg_FA < 0.40 → ★ 继续训练 + 部署 BUG-17 修复
 │
-├─ car_R < 0.55 (回退) → 🔴 异常, 审查
+├─ car_R 0.35-0.55 + car_P ≥ 0.04 → ⚠️ 继续但必须部署 BUG-17
 │
-├─ car_P < 0.04 → 🔴 FP 工厂失控
+├─ car_R < 0.35 → 🔴 **STOP** — 部署 BUG-17 后重启 (Critic @10000 条件)
+│
+├─ car_P < 0.04 → 🔴 **STOP** — FP 工厂失控 (Critic @10000 条件)
 │
 ├─ bg_FA > 0.40 → 🔴 误报率过高
 │
 ├─ off_th > 0.25 (回退) → z-fix 适应失败
 │
-├─ 活跃类 < 4 (退步) → 类别学习倒退
-│
-└─ grad_norm > 30 → 训练不稳定
+└─ 注: 类别振荡 (ped/truck 消失, cone 激活) 是 BUG-17 症状, 非架构问题
 ```
 
-### @12000 附加测试 (Critic 建议)
-1. score_thr 消融: 0.1/0.2/0.3/0.5 eval
-2. per-class confusion matrix
-3. car 预测热力图可视化
+### @12000 附加测试 (Critic 建议 — 两次强调)
+1. **score_thr 消融**: @10000 + @12000 checkpoint 上跑 0.1/0.2/0.3/0.5 eval (零训练成本!)
+2. per-class confusion matrix (cone FP 落在哪些 GT cells)
+3. per-class FP 目标分析
+
+### ⚠️ BUG-17 升级: HIGH → **CRITICAL**
+- **证据**: @10000 cone 激活 (R=0.38, P=0.008) 产生 449K FP, 挤压 car/ped/truck
+- **原因**: per-batch sqrt balance 导致小类权重 10x+
+- **影响**: car_R -30%, car_P -35%, ped/truck 消失
+- **必须在 @12000 后作为 ORCH_036 第一优先项部署**
 
 ---
 
@@ -151,7 +158,7 @@ ORCH_035 @12000:
 | **Deep Supervision** `loss_out_indices=[8,10,11]` | **零** (改一行) | 中-高 | 无 | VERDICT_CEO_ARCH_QUESTIONS (P1) |
 | **BUG-45 fix**: 推理时加显式 attn_mask | 低 (2-4h) | 中 | ⏳ **可立即开发** (不影响训练) | VERDICT_CEO_ARCH_QUESTIONS |
 | **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
-| BUG-17 修复: bicycle balance 权重 ~11x | 中 | 中 | 分析 bg_FA 来源 | VERDICT_3D_ANCHOR |
+| **🔴 BUG-17 修复**: per-batch sqrt balance 类别竞争 | 中 | **极高 (CRITICAL)** | ⏳ **@12000 后第一优先** — @10000 已证明即时危害 | VERDICT_3D_ANCHOR, VERDICT_ORCH035_AT10000 |
 
 ### Phase 3: ★ DINOv3 ViT-L Finetune (CEO 优先, Phase 2 后立即启动)
 > 目标: 从 7B frozen + 10M adapter 切换到 ViT-L finetune, 解决 adapter 容量瓶颈
