@@ -1976,3 +1976,38 @@ Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_2026
 03/13 20:55:18 - mmengine - INFO - Iter(test) [ 10/753]    eta: 0:57:05  time: 4.5871  data_time: 0.0029  memory: 21722  
 03/13 20:56:05 - mmengine - INFO - Iter(test) [ 20/753]    eta: 0:56:32  time: 4.6461  data_time: 0.0189  memory: 21722  
 03/13 20:56:51 - mmengine - INFO - Iter(test) [ 30/753]    eta: 0:55:50  time: 4.6221  data_time: 0.0003  memory: 21722  
+03/13 20:57:38 - mmengine - INFO - Iter(test) [ 40/753]    eta: 0:55:05  time: 4.6365  data_time: 0.0197  memory: 21722  
+03/13 20:58:24 - mmengine - INFO - Iter(test) [ 50/753]    eta: 0:54:18  time: 4.6025  data_time: 0.0004  memory: 21722  
+03/13 20:59:10 - mmengine - INFO - Iter(test) [ 60/753]    eta: 0:53:30  time: 4.6216  data_time: 0.0214  memory: 21722  
+03/13 20:59:57 - mmengine - INFO - Iter(test) [ 70/753]    eta: 0:52:43  time: 4.6009  data_time: 0.0004  memory: 21722  
+03/13 21:00:43 - mmengine - INFO - Iter(test) [ 80/753]    eta: 0:51:55  time: 4.6215  data_time: 0.0214  memory: 21722  
+03/13 21:01:29 - mmengine - INFO - Iter(test) [ 90/753]    eta: 0:51:08  time: 4.5992  data_time: 0.0004  memory: 21722  
+03/13 21:02:15 - mmengine - INFO - Iter(test) [100/753]    eta: 0:50:21  time: 4.6206  data_time: 0.0194  memory: 21722  
+03/13 21:03:01 - mmengine - INFO - Iter(test) [110/753]    eta: 0:49:35  time: 4.5975  data_time: 0.0004  memory: 21722  
+03/13 21:03:48 - mmengine - INFO - Iter(test) [120/753]    eta: 0:48:48  time: 4.6108  data_time: 0.0214  memory: 21722  
+03/13 21:04:34 - mmengine - INFO - Iter(test) [130/753]    eta: 0:48:01  time: 4.5956  data_time: 0.0004  memory: 21722  
+03/13 21:05:20 - mmengine - INFO - Iter(test) [140/753]    eta: 0:47:14  time: 4.6244  data_time: 0.0208  memory: 21722  
+03/13 21:06:06 - mmengine - INFO - Iter(test) [150/753]    eta: 0:46:28  time: 4.5964  data_time: 0.0003  memory: 21722  
+03/13 21:06:52 - mmengine - INFO - Iter(test) [160/753]    eta: 0:45:41  time: 4.6188  data_time: 0.0194  memory: 21722  
+03/13 21:07:38 - mmengine - INFO - Iter(test) [170/753]    eta: 0:44:55  time: 4.5967  data_time: 0.0003  memory: 21722  
+03/13 21:08:25 - mmengine - INFO - Iter(test) [180/753]    eta: 0:44:08  time: 4.6180  data_time: 0.0206  memory: 21722  
+03/13 21:09:11 - mmengine - INFO - Iter(test) [190/753]    eta: 0:43:22  time: 4.5946  data_time: 0.0003  memory: 21722  
+03/13 21:09:57 - mmengine - INFO - Iter(test) [200/753]    eta: 0:42:35  time: 4.6062  data_time: 0.0203  memory: 21722  
+03/13 21:10:43 - mmengine - INFO - Iter(test) [210/753]    eta: 0:41:49  time: 4.6028  data_time: 0.0003  memory: 21722  
+03/13 21:11:29 - mmengine - INFO - Iter(test) [220/753]    eta: 0:41:03  time: 4.6186  data_time: 0.0224  memory: 21722  
+03/13 21:12:15 - mmengine - INFO - Iter(test) [230/753]    eta: 0:40:16  time: 4.6040  data_time: 0.0003  memory: 21722  
+03/13 21:13:01 - mmengine - INFO - Iter(test) [240/753]    eta: 0:39:30  time: 4.6119  data_time: 0.0205  memory: 21722  
+03/13 21:13:48 - mmengine - INFO - Iter(test) [250/753]    eta: 0:38:44  time: 4.5972  data_time: 0.0003  memory: 21722  
+03/13 21:14:34 - mmengine - INFO - Iter(test) [260/753]    eta: 0:37:57  time: 4.6126  data_time: 0.0213  memory: 21722  
+03/13 21:15:20 - mmengine - INFO - Iter(test) [270/753]    eta: 0:37:11  time: 4.5949  data_time: 0.0003  memory: 21722  
+03/13 21:16:06 - mmengine - INFO - Iter(test) [280/753]    eta: 0:36:25  time: 4.6218  data_time: 0.0216  memory: 21722  
+03/13 21:16:52 - mmengine - INFO - Iter(test) [290/753]    eta: 0:35:39  time: 4.5918  data_time: 0.0003  memory: 21722  
+03/13 21:17:38 - mmengine - INFO - Iter(test) [300/753]    eta: 0:34:52  time: 4.6160  data_time: 0.0204  memory: 21722  
+03/13 21:18:25 - mmengine - INFO - Iter(test) [310/753]    eta: 0:34:06  time: 4.6008  data_time: 0.0003  memory: 21722  
+03/13 21:19:11 - mmengine - INFO - Iter(test) [320/753]    eta: 0:33:20  time: 4.6129  data_time: 0.0212  memory: 21722  
+03/13 21:19:57 - mmengine - INFO - Iter(test) [330/753]    eta: 0:32:34  time: 4.6024  data_time: 0.0003  memory: 21722  
+03/13 21:20:43 - mmengine - INFO - Iter(test) [340/753]    eta: 0:31:47  time: 4.6152  data_time: 0.0200  memory: 21722  
+03/13 21:21:29 - mmengine - INFO - Iter(test) [350/753]    eta: 0:31:01  time: 4.5951  data_time: 0.0004  memory: 21722  
+03/13 21:22:16 - mmengine - INFO - Iter(test) [360/753]    eta: 0:30:15  time: 4.6154  data_time: 0.0208  memory: 21722  
+03/13 21:23:02 - mmengine - INFO - Iter(test) [370/753]    eta: 0:29:29  time: 4.6007  data_time: 0.0004  memory: 21722  
+03/13 21:23:48 - mmengine - INFO - Iter(test) [380/753]    eta: 0:28:43  time: 4.6300  data_time: 0.0215  memory: 21722  
