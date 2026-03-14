@@ -18,7 +18,7 @@
 
 ---
 
-## 当前阶段: GiT-Large v1 训练中 (P0+P1: 抗 Mode Collapse)
+## 当前阶段: GiT-Large v1 训练已停止 — 等待 P2+P3 修复后重启
 
 ### 🚨 Mode Collapse 根因诊断 (2026-03-14)
 
@@ -40,14 +40,14 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | 架构 | GiT-Large (1024-dim, 30 layers) + DINOv3 ViT-L frozen |
 | P0 修复 | PhotoMetricDistortion 数据增强 + train/test pipeline 分离 |
 | P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
-| BUG 修复 | clip_grad=30, filter_invisible=False, max_class_weight=3.0 (commit `4ad3b0f`) |
+| BUG 修复 | clip_grad=10 (回退, `c416818`), filter_invisible=False, max_class_weight=3.0 (commit `4ad3b0f`) |
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **iter 6000+/40000** — @6000 eval 完成, CONDITIONAL PROCEED to @8000 |
+| 进度 | **🚨 训练已停止 @iter ~6590** — P2+P3 已修复 (`d9d7f7d`), 等待从 iter_4000 重启 |
 | 显存 | ~27GB/49GB per GPU |
-| ETA | ~3 天 (2 GPU) |
-| PID | 1312401 |
+| ETA | — |
+| PID | — (已停止) |
 
 ### 架构变化 (vs ORCH_024/035)
 
@@ -60,13 +60,29 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | 数据增强 | 无 ← 根因 | **PhotoMetricDistortion** |
 | train=test | 是 (BUG) | **否 (修复)** |
 
-### 待实施改进 (P2-P4, 可并行准备)
+### 🚨 GPU 特征流诊断结果 (2026-03-14 — 3 个 checkpoint)
 
-| 优先级 | 改动 | 位置 | 说明 |
-|--------|------|------|------|
-| **P2** | occ 任务加 position embedding | `git.py:334` | 去掉 `if self.mode != 'occupancy_prediction'` |
-| **P3** | 每步注入 grid_interpolate_feats | `git_occ_head.py` L1111,1115 | 去掉 `pos_id == 0` 限制 |
-| **P4** | Scheduled Sampling | 较大改动 | 缓解 teacher forcing 暴露偏差 |
+| 指标 | @2000 (clip=10) | @4000 (clip=10) | @6000 (clip=30) |
+|------|-----------------|-----------------|-----------------|
+| diff/Margin | — | 7.9% | 0.16 |
+| % identical | — | ~97% | ~99% |
+| detections/sample | — | 120-132 | 21-27 |
+| margin (top1-top2) | — | 19.73 | 0.16 |
+
+**关键发现**:
+- **clip_grad 10→30 (BUG-62 "修复") 实际摧毁了分类器** — margin 从 19.73 暴跌到 0.16
+- **Frozen predictions 在所有 checkpoint 持续存在** — P0 (数据增强) 不足以解决 mode collapse
+- **可视化确认**: iter_4000 和 iter_6000 的 5 个样本预测完全相同，无论 GT 不同
+- **clip_grad 已回退到 10** (commit `c416818`)
+- **P2+P3 是解决 frozen predictions 的必要条件** — 没有位置信息，模型无法区分 BEV grid 位置
+
+### 待实施改进 (P2-P4) — P2+P3 为重启前提
+
+| 优先级 | 改动 | 位置 | 说明 | 状态 |
+|--------|------|------|------|------|
+| **P2** ✅ | occ 任务加 position embedding | `git.py:334` | 去掉 `if self.mode != 'occupancy_prediction'` — 根因: 所有 grid cell 起始 embedding 完全相同 | ✅ commit `d9d7f7d` |
+| **P3** ✅ | 每步注入 grid_interpolate_feats | `git_occ_head.py` L1111,1115 | 去掉 `pos_id == 0` 限制 — 29/30 解码步无图像特征 | ✅ commit `d9d7f7d` |
+| **P4** | Scheduled Sampling | 较大改动 | 缓解 teacher forcing 暴露偏差 | 延后 |
 
 ### ⚠️ @2000 Eval 结果 (2026-03-14 05:40)
 
@@ -283,11 +299,6 @@ GiT-Large v1 @8000:
 
 ### Phase 4: Attention 机制优化 (Phase 3 验证后)
 > 目标: 改善 AR 解码质量, 提升 precision
-
-| 项目 | 难度 | 影响 | 依赖 | 审计来源 |
-|------|------|------|------|---------|
-| **Slot Attention Mask** (CEO Hard Mask 方案) | 低 (2-4h) | 中 | Deep Supervision baseline | VERDICT_CEO_ARCH_QUESTIONS (P4) |
-| Exposure Bias 缓解 (Scheduled Sampling) | 中 (2-3天) | 中 | Per-slot 分析确认问题 | VERDICT_AR_SEQ_REEXAMINE (P5) |
 
 ### Phase 5: 3D 空间编码 (Phase 3-4 训练稳定后)
 > 目标: 引入 3D 先验, 从根本改善 BEV 预测质量

@@ -10,6 +10,22 @@ git pull（获取 Critic 可能产出的 VERDICT）
 - 有 → 逐个读取内容，纳入本轮决策
 - 无 → 记录"无审计反馈"，基于已有信息决策
 
+### ⚠️ 紧急停止规则（优先于一切）
+读取 VERDICT 时，如果发现以下任一条件，**立即停止训练**，不需等待其他分析：
+1. **FROZEN PREDICTIONS / mode collapse 确认**: Critic 判定跨样本预测一致 → 立即 kill 训练进程
+2. **diff/Margin < 10%**: 图像特征无法影响决策 → 立即 kill 训练进程
+3. **VERDICT 结论为 STOP**: → 立即 kill 训练进程
+
+停止训练的方式：
+```bash
+# 找到训练 PID 并终止
+ps aux | grep train.py | grep -v grep
+kill <PID>
+```
+停止后记录原因到 MASTER_PLAN.md，然后继续 Phase 2 剩余步骤（ARCHIVE → PLAN → ACT）。
+
+**绝对不要因为"等 @8000 再看"或"可能还有转机"而推迟停止。浪费 GPU 时间是不可接受的。**
+
 ## 3. ARCHIVE
 将已读取的 VERDICT 和对应的 AUDIT_REQUEST 移到 shared/audit/processed/：
 ```bash

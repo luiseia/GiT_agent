@@ -90,14 +90,56 @@ python scripts/diagnose_v3c_single_ckpt.py iter_8000 <dir> <config>
 - [ ] `grid_interpolate_feats` 是否只在 pos_id==0 注入（检查 occ_head 的 decoder_inference）
 - [ ] 是否使用 scheduled sampling → 没有则 ⚠️ MEDIUM
 
-## 6. 审计请求专项审查
+## 6. 跨样本预测一致性检查（CRITICAL — 防止 frozen predictions）
+
+每次审计 MUST 运行此检查。Frozen predictions (模型对所有输入产生相同输出) 是本项目已确认的致命问题。
+
+### 6.1 运行可视化
+```bash
+cd /home/UNT/yz0370/projects/GiT
+# 用 visualize_pred_vs_gt.py 生成 5 个样本的预测可视化
+/home/UNT/yz0370/anaconda3/envs/GiT/bin/python scripts/visualize_pred_vs_gt.py \
+    --config <config_path> \
+    --checkpoint <最新checkpoint_path> \
+    --num-samples 5 \
+    --out-dir /home/UNT/yz0370/projects/GiT_agent/shared/logs/viz_<checkpoint_name>
+```
+
+### 6.2 比较预测结果
+**必须检查以下内容**：
+1. **视觉比较**: 打开 5 个样本的 BEV 预测图，查看预测模式是否跨样本一致
+   - 如果 5 个样本的非背景预测位置基本相同 → 🔴 **FROZEN PREDICTIONS**
+   - 如果预测位置随 GT 变化而变化 → ✅ 模型在学习
+
+2. **数值量化**: 统计每个样本的预测数量和位置
+   - 检测数差异 < 10%: ⚠️ 可疑
+   - 所有样本检测数完全相同 + 空间分布相同: 🔴 **FROZEN PREDICTIONS**
+
+3. **与 diagnose_v3c 交叉验证**:
+   - diff/Margin < 10% + 视觉一致 → 🔴 确认 mode collapse
+   - diff/Margin > 10% + 视觉差异化 → ✅ 正常
+
+### 6.3 VERDICT 中必须包含
+```markdown
+## 跨样本预测一致性
+- 可视化路径: shared/logs/viz_<name>/
+- 样本数: 5
+- 每样本检测数: [N1, N2, N3, N4, N5]
+- 空间分布差异: 是/否
+- 判定: ✅ 正常 / 🔴 FROZEN PREDICTIONS
+- 截图对比: (描述关键观察)
+```
+
+**⚠️ 如果判定为 FROZEN PREDICTIONS，verdict 必须为 STOP，无论其他指标如何。**
+
+## 7. 审计请求专项审查
 按 AUDIT_REQUEST 中的具体要求，深度审查 GiT/ 代码，追踪完整调用链
 
-## 7. 调试验证（如需）
+## 8. 调试验证（如需）
 调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_20260314/
 文件名必须以 debug_ 前缀
 
-## 8. 写入判决
+## 9. 写入判决
 写入 shared/audit/pending/VERDICT_LARGE_V1_AT6000.md
 判决必须包含以下所有部分：
 
@@ -119,6 +161,13 @@ python scripts/diagnose_v3c_single_ckpt.py iter_8000 <dir> <config>
 - [ ] 特征注入频率: 每步/仅首步 → <判定>
 - [ ] Scheduled sampling: 有/无 → <判定>
 
+## 跨样本预测一致性 (步骤 6)
+- 可视化路径: shared/logs/viz_<name>/
+- 样本数: 5
+- 每样本检测数: [N1, N2, N3, N4, N5]
+- 空间分布差异: 是/否
+- 判定: ✅ 正常 / 🔴 FROZEN PREDICTIONS
+
 ## 发现的问题
 1. **BUG-XX**: <描述>
    - 严重性: CRITICAL / HIGH / MEDIUM / LOW
@@ -131,6 +180,6 @@ python scripts/diagnose_v3c_single_ckpt.py iter_8000 <dir> <config>
 - 有无遗漏的风险
 ```
 
-## 9. 提交
+## 10. 提交
 cd /home/UNT/yz0370/projects/GiT_agent
 git add shared/audit/pending/ && git commit -m "critic: verdict LARGE_V1_AT6000" && git push
