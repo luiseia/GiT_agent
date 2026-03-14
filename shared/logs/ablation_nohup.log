@@ -4023,3 +4023,4 @@ Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_2026
 03/13 21:22:16 - mmengine - INFO - Iter(test) [360/753]    eta: 0:30:15  time: 4.6154  data_time: 0.0208  memory: 21722  
 03/13 21:23:02 - mmengine - INFO - Iter(test) [370/753]    eta: 0:29:29  time: 4.6007  data_time: 0.0004  memory: 21722  
 03/13 21:23:48 - mmengine - INFO - Iter(test) [380/753]    eta: 0:28:43  time: 4.6300  data_time: 0.0215  memory: 21722  
+03/13 21:24:34 - mmengine - INFO - Iter(test) [390/753]    eta: 0:27:57  time: 4.6121  data_time: 0.0003  memory: 21722  
