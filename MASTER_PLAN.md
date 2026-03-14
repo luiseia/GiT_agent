@@ -389,6 +389,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
+| **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | **EXECUTING** — commit `4ad3b0f`, resume 11:10 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
