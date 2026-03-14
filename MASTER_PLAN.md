@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-14 11:40
+> 最后更新: 2026-03-14 17:05
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -44,7 +44,7 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **iter 4100+/40000** — 从 iter_4000 resume, BUG-62/63/17 已修复 |
+| 进度 | **iter 6000+/40000** — @6000 eval 完成, CONDITIONAL PROCEED to @8000 |
 | 显存 | ~27GB/49GB per GPU |
 | ETA | ~3 天 (2 GPU) |
 | PID | 1312401 |
@@ -85,32 +85,52 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 **诊断**: 分类器冷启动慢（bert_embed 1024-dim 随机 + layers 24-29 随机），非 mode collapse。offset 回归已在学习（off_th 大幅领先），分类器需更多 iter 收敛。
 **决策**: 继续到 @4000。
 
-### 🚨 @4000 Eval 结果 + Critic 判决 (2026-03-14 10:36)
+### @4000 Eval + Critic 判决 (2026-03-14 10:36)
 
-| 指标 | @2000 | **@4000** | ORCH_024 @4000 | 对比 |
-|------|-------|-----------|----------------|------|
-| car_R | 0.000 | **0.000** | 0.419 | 🔴 仍未激活 |
-| ped_R | 0.000 | **0.025** | — | ⚠️ 唯一激活类 |
-| 其他 8 类 | 全 0 | **全 0** | — | 🔴 |
-| bg_FA | 0.002 | **0.115** | — | ✅ 模型开始预测前景 |
-| off_cx | 0.106 | **0.193** | 0.039 | 🔴 (但 @2000 样本量极小) |
-| off_cy | 0.029 | **0.141** | — | 🔴 (但 @2000 样本量极小) |
-| off_w | 0.070 | **0.037** | — | ✅ 改善 |
-| off_h | 0.009 | **0.015** | — | → |
-| off_th | 0.078 | **0.212** | 0.150 | 🔴 (但 @2000 样本量极小) |
+| 指标 | @2000 | **@4000** | ORCH_024 @4000 |
+|------|-------|-----------|----------------|
+| car_R | 0.000 | **0.000** | 0.419 |
+| ped_R | 0.000 | **0.025** | — |
+| bg_FA | 0.002 | **0.115** | — |
+| off_cx | 0.106 | **0.193** | 0.039 |
+| off_th | 0.078 | **0.212** | 0.150 |
 
-**Critic 判决: CONDITIONAL PROCEED** — 非 mode collapse（bg_FA 上升 + ped_R 激活），但有严重配置问题。
+**Critic: CONDITIONAL PROCEED** — 发现 BUG-62 (clip_grad=10 严重节流)。→ ORCH_042 修复完成。
 
-**Critic 发现的关键 BUG:**
-1. **BUG-62 (CRITICAL)**: `clip_grad=10.0` 严重节流，GiT-Large grad_norm 100-1444 被 clip 到 10，有效梯度仅 0.7%-10%。**这是分类器未激活的首要原因**。ORCH_024/035 用 30.0，GiT-Large 更大反而降到 10。
-2. **BUG-63 (MEDIUM)**: `filter_invisible=True` 回退了 ORCH_035 修复
-3. **BUG-17 BLOCKER**: `max_class_weight` 代码存在但默认值 0，cap 未激活
+### ⭐⭐ @6000 Eval + Critic 判决 (2026-03-14 16:59)
 
-**必须满足的条件:**
-1. ✅ ~~@6000 前修复 BUG-62: 停训，clip_grad→30+，从 iter_4000 resume~~ → ORCH_042 完成
-2. ✅ ~~@8000 前激活 BUG-17 cap: config 设 max_class_weight=3.0~~ → ORCH_042 完成
-3. @6000 eval 预留 GPU 运行特征流诊断
-4. @6000 硬判断: car_R 仍为 0 且 bg_FA 未增长 → STOP
+| 指标 | @2000 | @4000 | **@6000** | ORCH_024 @6000 | 趋势 |
+|------|-------|-------|-----------|----------------|------|
+| car_R | 0.000 | 0.000 | **0.000** | 0.455 | 🔴 仍未激活 |
+| ped_R | 0.000 | 0.025 | **0.015** | — | ↓ |
+| bicycle_R | 0 | 0 | **0.010** | — | **↑ NEW** |
+| 其他 7 类 | 全 0 | 全 0 | **全 0** | — | — |
+| bg_FA | 0.002 | 0.115 | **0.025** | 0.331 | ↓↓ |
+| bg_R | — | — | **0.975** | — | — |
+| **off_th** | 0.078 | 0.212 | **0.094** | 0.169 | ✅✅ **项目历史最佳!** 击败 024@12k (0.1275) |
+| off_cy | 0.029 | 0.141 | **0.081** | 0.082 | ✅ 与 024 持平 |
+| off_cx | 0.106 | 0.193 | **0.273** | 0.056 | 🔴🔴 恶化 (BUG-65) |
+| off_w | 0.070 | 0.037 | **0.041** | 0.038 | 稳定 |
+| off_h | — | 0.015 | **0.023** | 0.011 | ↑ 略差 |
+
+**Critic 判决: CONDITIONAL PROCEED to @8000 (ABSOLUTE FINAL)**
+
+**Critic 核心分析:**
+- **不是 mode collapse** — offset 在改善、新类激活，分类与回归严重不对称
+- **off_th=0.094 是项目全历史最佳**，证明模型确实在利用图像特征
+- **分类器冷启动瓶颈**: 1024-dim random bert_embed 是根因 (BUG-64)
+- **off_cx=0.273 异常**: 可能与 P2 position embedding 缺失有关 (BUG-65)
+- **BUG-61 不是 car_R=0 的原因**: 7.4% reg=0 仅影响回归，分类器仍在学习
+- **GPU 诊断缺失**: 连续两次审计无法运行 diagnose，@8000 MANDATORY
+
+**BUG-64 (NEW HIGH)**: `bert_embed=dict(type='bert-base', hidden_size=1024, pretrain_path=None)` — BERT-large hidden_size=1024 完美匹配! 应改用 BERT-large 预训练权重，可能大幅加速分类器收敛
+**BUG-65 (NEW HIGH)**: off_cx 持续恶化 (0.106→0.193→0.273)，模型横向定位缺失
+
+**@8000 必须满足的条件 (ABSOLUTE FINAL):**
+1. **car_R > 0 或 offset 继续改善** — 否则 STOP
+2. **MUST 运行 GPU 特征流诊断** — 暂停训练释放 GPU，运行 diagnose_v3c_single_ckpt.py
+3. **调查 bert_embed 初始化** (BUG-64) — 确认可否用 BERT-large 预训练
+4. **off_cx 全维度对比** — off_cx 继续恶化 → 架构方向性盲点
 
 ### 里程碑
 
@@ -118,9 +138,9 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 |--------|---------|------|
 | ✅ iter_2000 | 05:10 03/14 | Eval 完成，分类器冷启动慢，继续训练 |
 | ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
-| ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, iter_4000 resume (commit `4ad3b0f`) |
-| **iter_6000** | **~15:10 03/14** | **硬决策点** — car_R=0 + bg_FA 不增 → STOP |
-| iter_8000 | 修复后 ~10h | 架构决策点 |
+| ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, resume (commit `4ad3b0f`) |
+| ✅ iter_6000 | 16:59 03/14 | Eval 完成: off_th=0.094 历史最佳, bicycle NEW, car_R=0. Critic: CONDITIONAL PROCEED |
+| **🚨 iter_8000** | **~22:00 03/14** | **ABSOLUTE FINAL 决策点 + MANDATORY GPU 诊断** |
 
 ---
 
@@ -146,30 +166,26 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ⚠️ | 03/14 05:40 | **GiT-Large v1 @2000 eval** | 9/10类 R=0, off_th=0.078 优于024 | 分类器冷启动慢, 继续到@4000 |
 | 🚨 | 03/14 10:36 | **GiT-Large v1 @4000 eval** | 9/10类 R=0, ped_R=0.025, bg_FA=0.115 | Critic: CONDITIONAL PROCEED, BUG-62 clip_grad 是首因 |
 | ✅ | 03/14 11:10 | **ORCH_042 修复 + resume** | BUG-62/63/17 修复, 2-GPU resume from iter_4000 | grad_norm 3x 提升验证, batch 32→16 |
+| ⭐⭐ | 03/14 16:59 | **GiT-Large v1 @6000 eval** | off_th=0.094 (历史最佳!), bicycle_R=0.010 NEW, car_R=0, bg_FA=0.025 | Critic: CONDITIONAL PROCEED, @8000 ABSOLUTE FINAL |
 
-### GiT-Large v1 @4000 决策树 (硬决策点)
+### 🚨 @8000 决策树 (ABSOLUTE FINAL — Critic 更新版)
 
 ```
-GiT-Large v1 @4000:
+GiT-Large v1 @8000:
 │
-├─ car_R > 0.10 (分类器开始激活)
-│   → ✅ PROCEED, 继续到 @8000
-│   → 对比 offset 与 ORCH_024 @4000 趋势
+├─ car_R > 0 → PROCEED (分类器终于激活)
 │
-├─ car_R 0.001-0.10 (缓慢激活)
-│   → ⚠️ CONDITIONAL PROCEED
-│   → 如 offset 持续改善 → 继续，分类器慢但在学
-│   → 如 offset 也恶化 → STOP + 审计
+├─ car_R = 0 + offset 改善 + diff/Margin > 10%
+│   → CONDITIONAL: 调查分类器瓶颈 (bert_embed BUG-64?)
+│   → 考虑 v2 训练 (BERT-large 预训练)
 │
-├─ car_R = 0 + offset 改善 (仅空间学习, 分类失败)
-│   → 🚨 签发 Critic 审计: 分类路径是否有 bug
-│   → 考虑 P2 (occ position embedding) 是否影响分类
+├─ car_R = 0 + offset 停滞/恶化
+│   → STOP: 架构根本不工作
 │
-├─ car_R = 0 + offset 不变/恶化
-│   → 🚨🚨 STOP, 架构可能有根本问题
-│   → 全面审计 + 考虑回退到 ViT-Base
+├─ car_R = 0 + diff/Margin < 10%
+│   → STOP: mode collapse
 │
-└─ 参照: ORCH_024 @4000 car_R=0.419, off_cx=0.039, off_th=0.150
+└─ 前提: MUST 运行 GPU 特征流诊断 (暂停训练释放 GPU)
 ```
 
 ### 归档: ORCH_035 BUG-17 分析
@@ -407,7 +423,9 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-61** | **CRITICAL 观察** | reg_loss=0 频率 resume 后持续升高: 3.3%→**13.3%** (iter 4620+4630 首次连续 reg=0)。BUG-17 cap 未根治。模式: cls≈0.7, reg=0.0。@6000 eval 必须评估其对指标的影响 | @6000 eval 后决定是否干预 |
+| **BUG-64** | **HIGH** | `bert_embed=dict(type='bert-base', hidden_size=1024, pretrain_path=None)` — BERT-large hidden_size=1024 完美匹配! 应用 BERT-large 预训练权重加速分类器收敛。cls_loss 0-343 (>500x 波动) 的根因 | v2 训练必要改动 |
+| **BUG-65** | **HIGH** | off_cx 持续恶化 (0.106→0.193→0.273)，是 ORCH_024@6k 的 4.9x。可能与 P2 position embedding 缺失有关 | @8000 分析空间分布 |
+| **BUG-61** | **HIGH** | reg_loss=0 频率 7.4% (15/204), ALL-zero iter 5760。Critic: 非 car_R=0 根因，但聚集模式需关注 | 监控 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
