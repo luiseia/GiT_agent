@@ -1,91 +1,108 @@
-# Admin Agent 工作上下文快照
-**时间**: 2026-03-12 19:00
-**状态**: 训练监控中，无 pending ORCH
+# Admin Agent 上下文快照
+- **时间**: 2026-03-13 23:45
+- **当前任务**: ORCH_041 — score_thr 消融 @14000
 
 ---
 
-## 当前活跃任务
-
-### ORCH_035: Label Pipeline 大修后重启训练 — IN PROGRESS
-- **Config**: `configs/GiT/plan_full_nuscenes_multilayer.py`
-- **Work dir**: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
-- **当前 iter**: ~4600/40000 (从 ORCH_034@4000 resume)
-- **显存**: 30610 MB/GPU (39.5 GB/GPU 含优化器)
-- **速度**: ~6.3-6.7 s/iter
-- **ETA**: ~2 days 15h (预计 3/15 ~10:00 完成)
-- **Loss**: 3.5-4.5 (label 变化后逐渐回落)
-- **4 GPU DDP**, PID 446772
-
-#### 本次训练核心改动 (vs ORCH_034)
-1. BUG-19v3: z-convention fix (box bottom, not center)
-2. Convex hull + Sutherland-Hodgman IoF/IoB
-3. filter_invisible=False (关闭 nuScenes vis_token)
-4. min_vis_cell_count=6 组合过滤
-5. min_iob=0.10 (从 0.20 降低)
-
-#### Config 关键参数
+## 训练状态
+- **训练已暂停**: 在 iter 14010 被 kill（为了释放 GPU 跑消融）
+- **Resume checkpoint**: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4/iter_14000.pth`
+- **Resume 命令**:
+```bash
+conda run -n GiT python -m torch.distributed.launch --nproc_per_node=4 --master_port=29500 \
+  tools/train.py configs/GiT/plan_full_nuscenes_multilayer.py \
+  --resume /mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4/iter_14000.pth \
+  --launcher pytorch
 ```
-online_dinov3_layer_indices = [9, 19, 29, 39]  # 多层拼接
-preextracted_proj_hidden_dim = 4096             # 16384->4096->GELU->768
-clip_grad = max_norm=30.0
-proj lr_mult = 5.0
-load_from = ORCH_034@4000 (resume=True)
-grid_assign_mode = 'overlap'
-min_iof=0.30, min_iob=0.10, min_vis_cell_count=6
-filter_invisible=False
-```
-
-#### 下一个 val 检查点
-- **@6000 val** (预计 ~3/12 21:20): 新 label pipeline 的首次 eval
-  - 关注: car_P 是否改善, bg_FA 是否下降
-  - 对比: ORCH_034 @4000 — car_R=0.8195, car_P=0.0451, bg_FA=0.3240
+- **日志目录**: `20260313_154113`
 
 ---
 
-## 历史 val 数据对比
+## @14000 Val Baseline (score_thr=0.0)
+```
+car_R=0.0000  car_P=0.0000   (从 @12000 的 0.62 坍缩！BUG-17 典型表现)
+truck_R=0.1916  truck_P=0.0136
+traffic_cone_R=0.8298  traffic_cone_P=0.0054
+bg_FA=0.3149
+bus/trailer/pedestrian/motorcycle/bicycle/barrier: 全部 R=0.0000
+construction_vehicle_R=0.0216
+```
+
+## ORCH_041 消融进度
+
+### 已完成
+| score_thr | car_R | truck_R | tc_R | bg_FA | 状态 |
+|-----------|-------|---------|------|-------|------|
+| 0.0 (baseline) | 0.0000 | 0.1916 | 0.8298 | 0.3149 | val 自动完成 |
+| 0.1 | - | - | - | - | OOM (CEO gelu eval 残留内存碎片) |
+| 0.2 | - | - | - | - | 管道问题只跑了 80/1505 iter |
+| 0.3 | 0.0000 | 0.1629 | 0.8298 | 0.3068 | 完成 |
+| 0.5 | - | - | - | - | 正在运行 (后台 bn20yibvk ~60min) |
+
+### 关键发现
+- **score_thr=0.3 vs baseline 几乎无差异**: bg_FA 仅从 0.3149→0.3068
+- **结论**: cls_probs 几乎全部 >= 0.3，score_thr 对 cls_probs 过滤无效
+- 可能原因: softmax 后最大类别概率通常很高（>0.5）
+
+---
+
+## 待办（按优先级）
+1. **等 score_thr=0.5 完成** → 提取结果
+2. **重跑 score_thr=0.1** → GPU 现在应该干净
+3. **写 ORCH_041 报告** → `shared/logs/report_ORCH_041.md`
+4. **恢复训练** → 从 iter_14000 resume
+5. **标记 ORCH_041 COMPLETED**
+
+---
+
+## 关键技术细节
+
+### Eval 独立运行必须参数
+- `--cfg-options resume=False` (否则加载 16GB 完整 checkpoint 含 optimizer state → OOM)
+- `test_dataloader.batch_size=1` (batch_size=2 在 DINOv3 attention softmax OOM)
+- `test_evaluator.score_thr=X` (不是 `val_evaluator`，因为深拷贝)
+- 用 bash 脚本直接运行（`conda run` 重定向有 bug）
+
+### CEO 代码修正 (commit 9974e3a)
+- 将 score 来源从 `grid_marker_scores` (marker softmax) 改为 `grid_cls_scores` (class softmax)
+- 变量名: `pred_grid_marker_scores` → `pred_grid_cls_scores`
+
+### 消融日志位置
+- `/tmp/eval_thr_0.1.log` — OOM 失败
+- `/tmp/eval_thr_0.2.log` — 管道中断
+- `/tmp/eval_thr_0.3.log` — 完整结果
+- `/tmp/eval_thr_0.5.log` — 正在写入
+- 消融脚本: `/tmp/run_ablation.sh`
+
+---
+
+## 历史 val 数据
 
 | 训练 | iter | car_R | car_P | bg_FA | 备注 |
 |------|------|-------|-------|-------|------|
-| ORCH_029 (单层) | @2000 | 0.3737 | 0.0514 | 0.1615 | 基线 |
-| ORCH_032 (多层v1) | @2000 | 0.0000 | 0.0000 | 0.3181 | 坍缩 (BUG-57/58/59/60) |
-| ORCH_034 (多层v3) | @2000 | 0.8124 | 0.0571 | 0.2073 | 暖启动有效 |
-| ORCH_034 (多层v3) | @4000 | 0.8195 | 0.0451 | 0.3240 | 更多类出现, bg_FA 升高 |
+| ORCH_034 | @4000 | 0.8195 | 0.0451 | 0.3240 | 暖启动 |
+| ORCH_035 | @6000 | 0.2287 | 0.0565 | 0.2519 | 新 label 首次 |
+| ORCH_035 | @8000 | 0.6015 | 0.0727 | 0.2599 | 恢复中 |
+| ORCH_035 | @10000 | 0.4198 | 0.0862 | 0.2879 | 振荡 |
+| ORCH_035 | @12000 | 0.6159 | 0.0999 | 0.2831 | 最佳 car_P |
+| ORCH_035 | @14000 | 0.0000 | 0.0000 | 0.3149 | car 坍缩！BUG-17 |
 
 ---
 
-## 本 session 完成的 ORCH
+## 已完成的 ORCH
 
 | ORCH | 状态 | 摘要 |
 |------|------|------|
-| ORCH_030 | COMPLETED | 多层 DINOv3 特征代码实现 + multilayer config |
-| ORCH_031 | COMPLETED | BUG-54 (0-indexed) + BUG-55 (load_from=None) |
-| ORCH_032 | COMPLETED | 停 ORCH_029, 启动多层训练 v1 → @2000 坍缩 |
-| ORCH_033 | COMPLETED | BUG-57/58/59/60 修复, 多层 v2 |
-| ORCH_034 | COMPLETED | BUG-52 IoF/IoB 修复, 多层 v3 → @2000 car_R=0.81 |
-| ORCH_035 | IN PROGRESS | Label pipeline 大修, resume from @4000 |
+| ORCH_036 | COMPLETED | superseded by 040 (scores=1.0) |
+| ORCH_037 | COMPLETED | BUG-17 weight cap code committed |
+| ORCH_038/039 | COMPLETED | 训练恢复 |
+| ORCH_040 | COMPLETED | score_thr 代码修复 (ae45b0d) |
+| ORCH_041 | IN PROGRESS | score_thr 消融 |
+
+## GiT 仓库关键 commits
+- `ae45b0d` — fix: ORCH_040 score_thr filtering
+- `9974e3a` (CEO) — 改用 cls_probs
 
 ---
 
-## 关键文件位置
-
-| 用途 | 路径 |
-|------|------|
-| ORCH_035 work dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4` |
-| ORCH_034 checkpoint | `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v3/iter_4000.pth` |
-| ORCH_029 checkpoint | `/mnt/SSD/GiT_Yihao/Train/Train_20260311/full_nuscenes_filtered/iter_2000.pth` |
-| Multilayer config | `configs/GiT/plan_full_nuscenes_multilayer.py` |
-| 核心代码 | `mmdet/models/backbones/vit_git.py` (OnlineDINOv3Embed) |
-| 标签生成 | `mmdet/datasets/pipelines/generate_occ_flow_labels.py` |
-
----
-
-## 注意事项
-
-1. **训练进程在后台运行** — 恢复后直接读日志检查进度
-2. @6000 val 是新 label pipeline 的首次 eval，结果关键
-3. 无未处理的 DELIVERED ORCH 指令
-4. 磁盘 `/mnt/SSD` 约 239GB 剩余
-
----
-
-*Admin Agent 上下文快照 | 2026-03-12 19:00*
+*Admin Agent 上下文快照 | 2026-03-13 23:45*
