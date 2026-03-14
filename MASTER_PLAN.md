@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 22:25
+> 最后更新: 2026-03-14 01:35
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,74 +18,60 @@
 
 ---
 
-## 当前阶段: ORCH_035 训练中 (Label Pipeline 大修)
+## 当前阶段: GiT-Large v1 训练中 (P0+P1: 抗 Mode Collapse)
 
-### ⭐ ORCH_035 Label Pipeline 改动清单
+### 🚨 Mode Collapse 根因诊断 (2026-03-14)
 
-CEO 亲自审核并确认的 5 项 label 生成改动 (GiT commit `80b1e23`):
+ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode collapse**:
+- **零数据增强**: train_pipeline = test_pipeline，模型记忆空间先验而非学习图像特征
+- **100% Teacher Forcing**: 自回归解码无 scheduled sampling，推理时暴露偏差
+- **证据**: diff/Margin 从 @4000 的 7.9% 跌至 @14000 的 2.3%，99.75% 预测完全相同
 
-| # | 改动 | 原因 | BUG |
-|---|------|------|-----|
-| 1 | **BUG-19v3 z-fix**: z = box BOTTOM (mmdet3d) | 修复前车辆只覆盖下半部分 cell | BUG-19v3 |
-| 2 | **Convex hull 替代 AABB** | AABB 对斜角车辆过大 ~25% | — |
-| 3 | **IoF/IoB 对 hull 多边形计算** (Sutherland-Hodgman) | 对 AABB 计算 IoF 永远 ~1.0, 过滤失效 | BUG-52v2 |
-| 4 | **filter_invisible=False** | nuScenes vis_token 过滤误杀可见车辆 | — |
-| 5 | **vis + cell_count 组合过滤** | 纯 vis<10% 误杀 29-cell 大目标 | — |
+详细诊断报告: `shared/logs/diagnosis_frozen_predictions.md`
 
-### 最终 config 参数
-```python
-filter_invisible=False,
-use_rotated_polygon=True,        # convex hull
-min_vis_ratio=0.10,              # vis < 10% 且 cells < 6 才过滤
-min_vis_cell_count=6,            # vis 低但占 >=6 cell 的大目标保留
-min_iof=0.30,                    # IoF/IoB 对 hull polygon 计算
-min_iob=0.10,
-grid_assign_mode='overlap',
-```
+### GiT-Large v1 训练 (P0+P1 修复)
 
-### 训练状态
-- **Resume from ORCH_034@4000**, ✅ 训练恢复 iter 12200 (15:41 resume from iter_12000)
-- 新训练日志: `20260313_154113/20260313_154113.log`
-- 工作目录: `/mnt/SSD/GiT_Yihao/Train/Train_20260312/full_nuscenes_multilayer_v4`
-- 下一评估点: **@14000** (快速检查) → **@16000** (决策级)
-- **@12000 ckpt 已标记为重要存档** (car_P=0.100 历史最佳)
+| 项目 | 值 |
+|------|-----|
+| Config | `configs/GiT/plan_full_nuscenes_large_v1.py` |
+| Work dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/full_nuscenes_large_v1` |
+| 日志 | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out` |
+| 架构 | GiT-Large (1024-dim, 30 layers) + DINOv3 ViT-L frozen |
+| P0 修复 | PhotoMetricDistortion 数据增强 + train/test pipeline 分离 |
+| P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
+| batch | 2/GPU × 4 GPU × accumulative_counts=4 = effective 32 |
+| iters | 40000, val@2000 |
+| 进度 | **iter 100/40000** (0.25%, warmup 中) |
+| 显存 | ~34GB/49GB per GPU |
+| ETA | ~3.3 天 |
+| PID | 1169092 |
 
-### ⭐ ORCH_035 @6000 Val 结果 (新标签首次评估)
+### 架构变化 (vs ORCH_024/035)
 
-| 指标 | ORCH_034@4000 (旧标签) | ORCH_035@6000 (新标签) | 变化 |
-|------|----------------------|----------------------|------|
-| car_R | 0.8195 | 0.2329 | 🔴 -71.6% |
-| car_P | 0.0451 | **0.0822** | ✅ **+82.3%** |
-| bg_FA | 0.3240 | **0.0938** | ✅✅ **-71.1%** |
-| off_th | 0.1598 | 0.2848 | 🔴 +78.2% |
-| cv_R | 0.1095 | 0.2581 | ✅ +136% |
+| 参数 | ORCH_024/035 (旧) | GiT-Large v1 (新) |
+|------|-------------------|-------------------|
+| backbone | ViT-Base (768, 12+6层) | **ViT-Large (1024, 24+6层)** |
+| DINOv3 | ViT-7B (4096) | **ViT-L (1024)** |
+| 投影 | 4096→2048→GELU→768 | **1024→1024 Linear (无损)** |
+| bert_embed | 768 | **1024** |
+| 数据增强 | 无 ← 根因 | **PhotoMetricDistortion** |
+| train=test | 是 (BUG) | **否 (修复)** |
 
-**解读**:
-1. bg_FA 0.32→0.09 — label pipeline 修复**核心目标达成**
-2. car_P 0.045→0.082 — 预测质量大幅提升, **@6000 已达到 @8000 决策树的最优分支**
-3. car_R 大幅下降 — 新标签更严格 + 仅 2000 iter 适应, 预期内
-4. off_th 恶化 — z-convention fix 改变角度参考, 需更多 iter
-5. 注意: 新旧标签评估标准不同, 数值不直接可比
+### 待实施改进 (P2-P4, 可并行准备)
 
-**决策: 继续到 @8000** (Rule #5: @6000 仅趋势参考)
+| 优先级 | 改动 | 位置 | 说明 |
+|--------|------|------|------|
+| **P2** | occ 任务加 position embedding | `git.py:334` | 去掉 `if self.mode != 'occupancy_prediction'` |
+| **P3** | 每步注入 grid_interpolate_feats | `git_occ_head.py` L1111,1115 | 去掉 `pos_id == 0` 限制 |
+| **P4** | Scheduled Sampling | 较大改动 | 缓解 teacher forcing 暴露偏差 |
 
-### ⭐⭐ ORCH_035 @8000 Val 结果 (Rule #6 架构决策级)
+### 里程碑
 
-| 指标 | @6000 (新标签) | @8000 (新标签) | 变化 |
-|------|---------------|---------------|------|
-| car_R | 0.2329 | **0.6012** | ✅✅ **+158%** |
-| car_P | 0.0822 | **0.0822** | → 持平 |
-| bg_FA | 0.0938 | **0.2568** | 🔴 +173% (类别激活FP) |
-| off_th | 0.2848 | **0.2083** | ✅ -27% |
-| ped_R | — | **0.2002** | 🆕 新类激活 |
-| truck_R | — | **0.0243** | 🆕 |
-| bus_R | — | **0.0886** | 🆕 |
-
-**Critic VERDICT: PROCEED** — 继续到 @12000
-- bg_FA 回升由类别激活 FP 完全解释，非标签问题
-- car 预测 46% cells (FP 工厂)，但在 ORCH_024 参照范围内
-- 4 类活跃 > ORCH_024 同期 3 类
-- grad_norm 30→14 持续下降，训练稳定
+| 里程碑 | 预计时间 | 行动 |
+|--------|---------|------|
+| iter_2000 | ~05:00 03/14 | 第一次 eval + 运行 `diagnose_v3c_single_ckpt.py` 检查 diff/Margin |
+| iter_4000 | ~09:00 03/14 | 第一可信评估点 |
+| iter_8000 | ~17:00 03/14 | 架构决策点 |
 
 ---
 
@@ -104,47 +90,33 @@ grid_assign_mode='overlap',
 | 🔴🔴 | 03/13 20:09 | ORCH_035 @14000 | **car_R=0.000! cone_R=0.830** BUG-17 灾难性崩溃 | 训练已终止 |
 | ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
 | ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs | 代码完成 |
-| **暂停** | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | ORCH_024@8k + ORCH_035@12k × thr={0.1,0.2,0.3,0.5} | ✅ thr=0.3 完成; ❌ thr=0.1/0.2 OOM; ⏸ thr=0.5 CEO 中断做可视化。**待恢复** |
-| ⭐ | 03/13 22:17 | **CEO 可视化 (ORCH_024@8k)** | 5 样本 BEV pred vs GT + 图像 TP/FP/FN grid | **发现**: 387-393/400 cell 正样本, marker 不拒绝 = car_P 根因 |
-| 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0 | BLOCKER — @14000 证明必须修复 |
+| ✅ | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | thr=0.5: bg_FA -47% 但 truck_R -77% | car_R=0 全阈值=BUG-17/mode collapse |
+| ⭐ | 03/13 22:17 | **CEO 可视化 (ORCH_024@8k)** | 5 样本 BEV pred vs GT | 387-393/400 cell 正样本 |
+| 🚨 | 03/14 00:30 | **Mode Collapse 根因诊断** | 零增强+teacher forcing→模型记忆先验 | diff/Margin 7.9%→2.3% |
+| ⭐⭐ | 03/14 01:08 | **GiT-Large v1 训练启动** | P0(增强)+P1(ViT-L 1024-dim) | iter 100, loss 下降中 |
 
-### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
-- car_R=0.620 ≥ 0.55 ✅, car_P=0.100 ≥ 0.06 ✅, bg_FA=0.283 < 0.40 ✅
-- **决策: 继续训练 + 并行开发 BUG-17 修复**
-
-### @16000 决策树 (Critic @12000 VERDICT)
+### GiT-Large v1 @2000 决策树
 
 ```
-ORCH_035 @16000:
+GiT-Large v1 @2000 (首次 eval + 诊断):
 │
-├─ car_P ≥ 0.08 + car_R ≥ 0.50 + bg_FA < 0.40
-│   → ★ PROCEED + 部署 BUG-17 fix (ORCH_038 resume from best ckpt)
+├─ diff/Margin > 7.9% (高于 ORCH_024 @4000)
+│   → ✅ 数据增强生效, PROCEED, 继续到 @4000
 │
-├─ car_P ≥ 0.06 + car_R ≥ 0.45
-│   → PROCEED, 但 BUG-17 fix 为必要前提
+├─ diff/Margin 3-7.9%
+│   → ⚠️ 部分改善, PROCEED + 准备部署 P2+P3
 │
-├─ car_R < 0.40 (低于 @10k 底)
-│   → STOP, 回退到 @12k, 部署 BUG-17 fix 再训练
+├─ diff/Margin < 3% (与旧模型相同)
+│   → 🚨 增强无效, STOP, 立即部署 P2+P3+P4 重训
 │
-├─ car_P < 0.04 (FP 失控)
-│   → STOP, 审查 loss 权重
-│
-├─ bg_FA > 0.40
-│   → CONDITIONAL, 先跑 score_thr 消融判断是否可后处理挽救
-│
-└─ peak_car_P(@12k) = 0.100 (Rule #6 参照)
+└─ 参照: ORCH_024 @4000=7.9%, @12000=3.0%, ORCH_035 @14000=2.3%
 ```
 
-### @14000 快速检查 (非决策级)
-- car_R < 0.35 → 提前预警
-- car_P < 0.03 → 考虑提前 STOP
-- 否则继续到 @16k
-
-### ⚠️ BUG-17: CRITICAL — 并行修复中
-- **证据汇总**: @10k cone 449K FP 挤压 car; @12k bus 922K FP 成最大 FP 源; 总 FP 1.88M→2.06M 持续上升
-- **跷跷板周期**: ~2000 iter, @10k cone↑car↓, @12k car↑cone↓bus↑
-- **修复方案**: Weight Cap max_w=3.0 (一行改动), mini 验证后 @16k 部署
-- **ped_R 连续 3 eval ≈ 0**: BUG-17 系统性压制, 修复后关注
+### 归档: ORCH_035 BUG-17 分析
+- @14000 car_R=0 的根因已重新定性为 **mode collapse** 而非 BUG-17 类别竞争
+- 零增强 + teacher forcing 导致模型逐步坍缩为统计先验输出
+- BUG-17 (per-batch sqrt weight) 仍可能是加速因素，但非根本原因
+- GiT-Large v1 通过 P0 (数据增强) 直接解决根因
 
 ---
 
@@ -153,7 +125,7 @@ ORCH_035 @16000:
 > 综合所有 VERDICT 审计结论。按阶段排列，每阶段内按优先级排序。
 > 各阶段之间有依赖关系，但同阶段内的项目可并行或独立决策。
 
-### Phase 1: 基础修正 (当前 — ORCH_035)
+### Phase 1: 基础修正 (已完成 — ORCH_035 终止)
 > 目标: 修正 label pipeline 根本性错误, 建立可靠 baseline
 
 | 项目 | 难度 | 影响 | 状态 | 审计来源 |
@@ -175,10 +147,10 @@ ORCH_035 @16000:
 | **Per-slot 性能分析**: Slot 1/2/3 的 car_P 对比 | 零 | 诊断 | eval 数据 | VERDICT_AR_SEQ_REEXAMINE (P1) |
 | **🔴 BUG-17 修复**: Weight Cap max_w=3.0 | 低 (一行) | **极高 (CRITICAL)** | ⏳ **ORCH_037 签发, mini 验证中** → @16k 后部署 | VERDICT @10k/@12k |
 
-### Phase 3: ★ DINOv3 ViT-L Finetune (CEO 优先, Phase 2 后立即启动)
-> 目标: 从 7B frozen + 10M adapter 切换到 ViT-L finetune, 解决 adapter 容量瓶颈
-> 依据: DINOv3 论文 VGGT 实验 — ViT-L finetune 仅做最小改动即在 3 项 3D 任务超越 SOTA
-> CEO 决策: 2026-03-12, 分析论文后确认优先路线 B
+### Phase 3: ★ DINOv3 ViT-L + GiT-Large (⭐ 当前 — GiT-Large v1 训练中)
+> 目标: 从 7B frozen + 10M adapter 切换到 ViT-L + GiT-Large, 同时修复 mode collapse
+> 状态: **P0+P1 已部署, 训练中 iter 100/40000**
+> CEO 决策: 2026-03-12, 分析论文后确认优先路线 B; 2026-03-14 批准立即实施
 
 #### 核心论据
 
@@ -360,7 +332,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_038 | 恢复训练 (resume iter_12000) | ✅ DONE (被 ORCH_039 合并) |
 | ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
-| **ORCH_041** | **score_thr 消融 (cls_probs, 4-GPU DDP)** | **暂停** — thr=0.3 ✅完成, thr=0.1/0.2 ❌OOM, thr=0.5 ⏸CEO中断。待恢复 |
+| ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
