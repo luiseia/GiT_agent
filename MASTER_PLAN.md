@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-14 10:45
+> 最后更新: 2026-03-14 11:40
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -35,16 +35,19 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 |------|-----|
 | Config | `configs/GiT/plan_full_nuscenes_large_v1.py` |
 | Work dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/full_nuscenes_large_v1` |
-| 日志 | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out` |
+| 日志 (resume) | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1_resume4k.out` |
+| 日志 (旧) | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out` |
 | 架构 | GiT-Large (1024-dim, 30 layers) + DINOv3 ViT-L frozen |
 | P0 修复 | PhotoMetricDistortion 数据增强 + train/test pipeline 分离 |
 | P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
-| batch | 2/GPU × 4 GPU × accumulative_counts=4 = effective 32 |
+| BUG 修复 | clip_grad=30, filter_invisible=False, max_class_weight=3.0 (commit `4ad3b0f`) |
+| GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
+| batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **iter 4040/40000** (10.1%) — @4000 eval 完成，等待修复后 resume |
+| 进度 | **iter 4100+/40000** — 从 iter_4000 resume, BUG-62/63/17 已修复 |
 | 显存 | ~27GB/49GB per GPU |
-| ETA | ~3 天 |
-| PID | 1169092 |
+| ETA | ~3 天 (2 GPU) |
+| PID | 1312401 |
 
 ### 架构变化 (vs ORCH_024/035)
 
@@ -104,8 +107,8 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 3. **BUG-17 BLOCKER**: `max_class_weight` 代码存在但默认值 0，cap 未激活
 
 **必须满足的条件:**
-1. @6000 前修复 BUG-62: 停训，clip_grad→30+，从 iter_4000 resume
-2. @8000 前激活 BUG-17 cap: config 设 max_class_weight=3.0
+1. ✅ ~~@6000 前修复 BUG-62: 停训，clip_grad→30+，从 iter_4000 resume~~ → ORCH_042 完成
+2. ✅ ~~@8000 前激活 BUG-17 cap: config 设 max_class_weight=3.0~~ → ORCH_042 完成
 3. @6000 eval 预留 GPU 运行特征流诊断
 4. @6000 硬判断: car_R 仍为 0 且 bg_FA 未增长 → STOP
 
@@ -115,8 +118,8 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 |--------|---------|------|
 | ✅ iter_2000 | 05:10 03/14 | Eval 完成，分类器冷启动慢，继续训练 |
 | ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
-| 🔧 **Config 修复** | **ASAP** | **停训→修 BUG-62/63/17→从 iter_4000 resume** |
-| **iter_6000** | **修复后 ~5h** | **硬决策点** — car_R=0 + bg_FA 不增 → STOP |
+| ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, iter_4000 resume (commit `4ad3b0f`) |
+| **iter_6000** | **~15:10 03/14** | **硬决策点** — car_R=0 + bg_FA 不增 → STOP |
 | iter_8000 | 修复后 ~10h | 架构决策点 |
 
 ---
@@ -142,6 +145,7 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ⭐⭐ | 03/14 01:08 | **GiT-Large v1 训练启动** | P0(增强)+P1(ViT-L 1024-dim) | 训练运行中 |
 | ⚠️ | 03/14 05:40 | **GiT-Large v1 @2000 eval** | 9/10类 R=0, off_th=0.078 优于024 | 分类器冷启动慢, 继续到@4000 |
 | 🚨 | 03/14 10:36 | **GiT-Large v1 @4000 eval** | 9/10类 R=0, ped_R=0.025, bg_FA=0.115 | Critic: CONDITIONAL PROCEED, BUG-62 clip_grad 是首因 |
+| ✅ | 03/14 11:10 | **ORCH_042 修复 + resume** | BUG-62/63/17 修复, 2-GPU resume from iter_4000 | grad_norm 3x 提升验证, batch 32→16 |
 
 ### GiT-Large v1 @4000 决策树 (硬决策点)
 
@@ -389,7 +393,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
-| **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | **EXECUTING** — commit `4ad3b0f`, resume 11:10 |
+| **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
@@ -403,10 +407,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-17** | **BLOCKER** | per-batch sqrt 类别竞争 — Weight Cap 代码存在 (`max_class_weight` 参数) 但 v1 config 未设置 (默认 0, cap 不生效) | **@8000 前必须在 config 中设 max_class_weight=3.0** |
-| **BUG-62** | **CRITICAL** | clip_grad=10.0 严重节流 — GiT-Large grad_norm 100-1444 被 clip 到 10, 有效梯度仅 0.7%-10%。**分类器未激活的首要原因**。ORCH_024/035 用 30.0 | **@6000 前必须修复: clip_grad→30+, 从 iter_4000 resume** |
-| **BUG-63** | MEDIUM | filter_invisible=True 回退了 ORCH_035 修复，减少训练 GT 多样性 | 与 BUG-62 一起修复 |
-| **BUG-61** | **HIGH** (升级) | reg_loss=0 频率升高 + **ALL-zero 新变体**: iter 3980 cls=0/reg=0/grad=0 (前所未有)。7.1% iter 出现 reg_loss=0 | 与 BUG-17 sqrt balance 相关，需 Admin 验证根因 |
+| **BUG-61** | **HIGH** (升级) | reg_loss=0 频率升高 + **ALL-zero 新变体**: iter 3980 cls=0/reg=0/grad=0 (前所未有)。7.1% iter 出现 reg_loss=0 | 与 BUG-17 sqrt balance 相关，BUG-17 已修复 (max_class_weight=3.0)，需验证 resume 后是否仍复现 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
@@ -424,5 +425,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | BUG-58 | load_from=ORCH_029@2000 |
 | BUG-59 | proj 4:1 compression |
 | BUG-60 | clip_grad=30.0 |
+| BUG-62 | clip_grad 10→30 (ORCH_042, commit `4ad3b0f`) |
+| BUG-63 | filter_invisible True→False (ORCH_042, commit `4ad3b0f`) |
+| BUG-17 | max_class_weight=3.0 激活 (ORCH_042, commit `4ad3b0f`) |
 
 ### 已关闭 BUG (BUG-2~46, 详见 `shared/logs/archive/verdict_history.md`)
