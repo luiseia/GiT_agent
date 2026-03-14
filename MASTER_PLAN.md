@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-14 05:50
+> 最后更新: 2026-03-14 10:45
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -41,9 +41,9 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
 | batch | 2/GPU × 4 GPU × accumulative_counts=4 = effective 32 |
 | iters | 40000, val@2000 |
-| 进度 | **iter 2080/40000** (5.2%, warmup 完成, lr=2.5e-6) |
-| 显存 | ~34GB/49GB per GPU |
-| ETA | ~3.3 天 |
+| 进度 | **iter 4040/40000** (10.1%) — @4000 eval 完成，等待修复后 resume |
+| 显存 | ~27GB/49GB per GPU |
+| ETA | ~3 天 |
 | PID | 1169092 |
 
 ### 架构变化 (vs ORCH_024/035)
@@ -82,13 +82,42 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 **诊断**: 分类器冷启动慢（bert_embed 1024-dim 随机 + layers 24-29 随机），非 mode collapse。offset 回归已在学习（off_th 大幅领先），分类器需更多 iter 收敛。
 **决策**: 继续到 @4000。
 
+### 🚨 @4000 Eval 结果 + Critic 判决 (2026-03-14 10:36)
+
+| 指标 | @2000 | **@4000** | ORCH_024 @4000 | 对比 |
+|------|-------|-----------|----------------|------|
+| car_R | 0.000 | **0.000** | 0.419 | 🔴 仍未激活 |
+| ped_R | 0.000 | **0.025** | — | ⚠️ 唯一激活类 |
+| 其他 8 类 | 全 0 | **全 0** | — | 🔴 |
+| bg_FA | 0.002 | **0.115** | — | ✅ 模型开始预测前景 |
+| off_cx | 0.106 | **0.193** | 0.039 | 🔴 (但 @2000 样本量极小) |
+| off_cy | 0.029 | **0.141** | — | 🔴 (但 @2000 样本量极小) |
+| off_w | 0.070 | **0.037** | — | ✅ 改善 |
+| off_h | 0.009 | **0.015** | — | → |
+| off_th | 0.078 | **0.212** | 0.150 | 🔴 (但 @2000 样本量极小) |
+
+**Critic 判决: CONDITIONAL PROCEED** — 非 mode collapse（bg_FA 上升 + ped_R 激活），但有严重配置问题。
+
+**Critic 发现的关键 BUG:**
+1. **BUG-62 (CRITICAL)**: `clip_grad=10.0` 严重节流，GiT-Large grad_norm 100-1444 被 clip 到 10，有效梯度仅 0.7%-10%。**这是分类器未激活的首要原因**。ORCH_024/035 用 30.0，GiT-Large 更大反而降到 10。
+2. **BUG-63 (MEDIUM)**: `filter_invisible=True` 回退了 ORCH_035 修复
+3. **BUG-17 BLOCKER**: `max_class_weight` 代码存在但默认值 0，cap 未激活
+
+**必须满足的条件:**
+1. @6000 前修复 BUG-62: 停训，clip_grad→30+，从 iter_4000 resume
+2. @8000 前激活 BUG-17 cap: config 设 max_class_weight=3.0
+3. @6000 eval 预留 GPU 运行特征流诊断
+4. @6000 硬判断: car_R 仍为 0 且 bg_FA 未增长 → STOP
+
 ### 里程碑
 
 | 里程碑 | 预计时间 | 行动 |
 |--------|---------|------|
 | ✅ iter_2000 | 05:10 03/14 | Eval 完成，分类器冷启动慢，继续训练 |
-| **iter_4000** | **~13:00 03/14** | **硬决策点** — 如仍全零 recall 须干预 |
-| iter_8000 | ~21:00 03/14 | 架构决策点 |
+| ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
+| 🔧 **Config 修复** | **ASAP** | **停训→修 BUG-62/63/17→从 iter_4000 resume** |
+| **iter_6000** | **修复后 ~5h** | **硬决策点** — car_R=0 + bg_FA 不增 → STOP |
+| iter_8000 | 修复后 ~10h | 架构决策点 |
 
 ---
 
@@ -112,6 +141,7 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | 🚨 | 03/14 00:30 | **Mode Collapse 根因诊断** | 零增强+teacher forcing→模型记忆先验 | diff/Margin 7.9%→2.3% |
 | ⭐⭐ | 03/14 01:08 | **GiT-Large v1 训练启动** | P0(增强)+P1(ViT-L 1024-dim) | 训练运行中 |
 | ⚠️ | 03/14 05:40 | **GiT-Large v1 @2000 eval** | 9/10类 R=0, off_th=0.078 优于024 | 分类器冷启动慢, 继续到@4000 |
+| 🚨 | 03/14 10:36 | **GiT-Large v1 @4000 eval** | 9/10类 R=0, ped_R=0.025, bg_FA=0.115 | Critic: CONDITIONAL PROCEED, BUG-62 clip_grad 是首因 |
 
 ### GiT-Large v1 @4000 决策树 (硬决策点)
 
@@ -372,8 +402,10 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-17** | **BLOCKER** | per-batch sqrt 类别竞争 — @14000 car_R=0.000, cone_R=0.830 完全接管。@12k bus 922K FP, 总FP 2.06M↑ | **必须修复才能继续训练** — ORCH_037 Weight Cap 代码完成 |
-| **BUG-61** | MEDIUM | reg_loss=0 频率升高: ORCH_035 恢复后 13/173 iter=7.5% (ORCH_024 为 4.1%)。不致命但影响 offset 回归质量 | BUG-17 后调查 |
+| **BUG-17** | **BLOCKER** | per-batch sqrt 类别竞争 — Weight Cap 代码存在 (`max_class_weight` 参数) 但 v1 config 未设置 (默认 0, cap 不生效) | **@8000 前必须在 config 中设 max_class_weight=3.0** |
+| **BUG-62** | **CRITICAL** | clip_grad=10.0 严重节流 — GiT-Large grad_norm 100-1444 被 clip 到 10, 有效梯度仅 0.7%-10%。**分类器未激活的首要原因**。ORCH_024/035 用 30.0 | **@6000 前必须修复: clip_grad→30+, 从 iter_4000 resume** |
+| **BUG-63** | MEDIUM | filter_invisible=True 回退了 ORCH_035 修复，减少训练 GT 多样性 | 与 BUG-62 一起修复 |
+| **BUG-61** | **HIGH** (升级) | reg_loss=0 频率升高 + **ALL-zero 新变体**: iter 3980 cls=0/reg=0/grad=0 (前所未有)。7.1% iter 出现 reg_loss=0 | 与 BUG-17 sqrt balance 相关，需 Admin 验证根因 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
