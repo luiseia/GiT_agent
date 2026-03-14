@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 18:30
+> 最后更新: 2026-03-13 19:00
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -14,6 +14,7 @@
 - 图像 grid 与 2D bbox 无法完美对齐是固有限制。主目标是 **BEV box 属性**
 - 周边 grid 的 FP/FN 通过置信度阈值或 loss 加权处理
 - **不再以 Recall/Precision 为最高目标，不再高度预警红线**
+- **⭐ Offset 指标优先 (CEO 2026-03-13 指示)**: 5 个 offset (cx,cy,w,h,th) 直接影响 occ 图 mIoU，是最重要的评估标准。优先级: offset > car_R > car_P/bg_FA
 
 ---
 
@@ -100,7 +101,7 @@ grid_assign_mode='overlap',
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
 | ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
-| **当前** | 03/13 18:30 | ORCH_035 @13570 | ✅ 训练正常, @14000 ETA ~19:15 | IN_PROGRESS |
+| **当前** | 03/13 19:00 | ORCH_035 @13850 | ✅ 训练正常, @14000 ETA ~19:15 | IN_PROGRESS |
 | ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
 | ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs, 消融待执行 | 代码完成 |
 | 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0, 待 GPU 空闲 | DELIVERED |
@@ -304,14 +305,36 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 - overlap + vis + convex hull 修复 (commits `ec9a035`, `a64a226`)
 - ORCH_029 @2000 验证: bg_FA -27%, off_th -17%
 
-### ORCH_024 baseline 数据 (center-based, 已终止 @12000)
+### ⭐ ORCH_024 baseline 数据 (center-based, 单层 L16, 已终止 @12000)
+> **综合最优: @8000** — 5 个 offset 全面优于 ORCH_035 @12000 (CEO 2026-03-13 确认)
+> 权重: `/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth`
+> 技术规格: DINOv3 ViT-7B frozen, 单层 L16, center-based target, preextracted_proj 2048
 
-| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | @12000 | peak |
-|------|-------|-------|-------|-------|--------|--------|------|
+| 指标 | @2000 | @4000 | @6000 | **@8000** | @10000 | @12000 | peak |
+|------|-------|-------|-------|----------|--------|--------|------|
+| **off_cx** | 0.0558 | **0.0392** | 0.0556 | 0.0446 | 0.0723 | **0.0383** | **0.0383** |
+| **off_cy** | **0.0693** | 0.0971 | 0.0818 | 0.0736 | 0.0916 | 0.0812 | **0.0693** |
+| **off_w** | 0.0201 | **0.0156** | 0.0378 | 0.0251 | 0.0389 | 0.0230 | **0.0156** |
+| **off_h** | **0.0049** | **0.0049** | 0.0107 | 0.0064 | 0.0171 | 0.0142 | **0.0049** |
+| **off_th** | 0.1739 | 0.1499 | 0.1685 | 0.1399 | 0.1597 | **0.1275** | **0.1275** |
+| car_R | 0.627 | 0.419 | 0.455 | **0.718** | **0.726** | 0.526 | **0.726** |
 | car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | 0.081 | **0.090** |
-| car_R | 0.627 | 0.419 | 0.455 | 0.718 | 0.726 | 0.526 | 0.726 |
-| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | 0.407 | 0.278 | — |
-| off_th | 0.174 | 0.150 | 0.169 | **0.140** | 0.160 | **0.128** | **0.128** |
+| bg_FA | **0.222** | **0.199** | 0.331 | 0.311 | 0.407 | 0.278 | — |
+
+### ORCH_024 vs ORCH_035 综合对比 (CEO 确认 offset 为核心)
+
+| 指标 | ORCH_024 @8000 | ORCH_035 @12000 | 差距 |
+|------|---------------|----------------|------|
+| **off_cx** | **0.0446** | 0.082 | 024 优 84% |
+| **off_cy** | **0.0736** | 0.107 | 024 优 45% |
+| **off_w** | **0.0251** | 0.036 | 024 优 43% |
+| **off_h** | **0.0064** | 0.011 | 024 优 72% |
+| **off_th** | **0.1399** | 0.162 | 024 优 16% |
+| car_R | **0.718** | 0.620 | 024 优 |
+| car_P | 0.060 | **0.100** | 035 优 |
+| bg_FA | 0.311 | **0.283** | 035 略优 |
+
+**关键差异**: ORCH_024=center+单层L16, ORCH_035=overlap+多层[L9,L19,L29,L39]
 
 ### 实验评判规则 (永久)
 
@@ -331,12 +354,13 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000 |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
 | ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
-| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **PAUSED** (iter 12160, 等待恢复) |
+| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **IN_PROGRESS** (iter 13850, @14000 ETA ~19:15) |
 | ORCH_036 | score_thr 消融 @12k ckpt | ❌ FAILED — 模型无置信度, eval 无 thr 过滤 |
 | ORCH_037 | BUG-17 Weight Cap (max_w=3.0) | DELIVERED (待 GPU 空闲) |
 | ORCH_038 | 恢复训练 (resume iter_12000) | ✅ DONE (被 ORCH_039 合并) |
 | ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
+| **ORCH_041** | **score_thr 消融 (cls_probs, 4-GPU DDP)** | **DELIVERED** (等 @14000 val 后执行) |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
@@ -351,7 +375,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
 | **BUG-17** | **CRITICAL** | per-batch sqrt 类别竞争: bus 922K FP (@12k), 总FP 2.06M↑ | Phase 2 — ORCH_037 Weight Cap 开发中 |
-| **BUG-61** | LOW | 偶发 reg_loss=0 (2次/8000 iter), 空 batch 或 mask 问题 | 低优先, BUG-17 后调查 |
+| **BUG-61** | MEDIUM | reg_loss=0 频率升高: ORCH_035 恢复后 13/173 iter=7.5% (ORCH_024 为 4.1%)。不致命但影响 offset 回归质量 | BUG-17 后调查 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
