@@ -4139,3 +4139,6 @@ baseline comparison" completed (exit code 0)
 [2026-03-14 01:21:07] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
 [2026-03-14 01:21:38] watchdog: → agent-conductor: 已发送恢复指令
 [2026-03-14 01:21:38] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 01:30:01] watchdog: === 用量检查开始 ===
+[2026-03-14 01:30:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-14 01:30:07] watchdog: ✅ 用量正常，无需休眠
