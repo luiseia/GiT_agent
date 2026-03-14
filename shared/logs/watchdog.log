@@ -3992,3 +3992,12 @@ baseline comparison" completed (exit code 0)
 [2026-03-13 18:50:01] watchdog: === 用量检查开始 ===
 [2026-03-13 18:50:07] watchdog: 用量: 4%  |  Resets 11pm (America/Chicago)
 [2026-03-13 18:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 19:00:01] watchdog: === 用量检查开始 ===
+[2026-03-13 19:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-13 19:00:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 19:10:01] watchdog: === 用量检查开始 ===
+[2026-03-13 19:10:07] watchdog: 用量: 5%  |  Resets 11pm (America/Chicago)
+[2026-03-13 19:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 19:20:01] watchdog: === 用量检查开始 ===
+[2026-03-13 19:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-13 19:20:01] watchdog: ✅ 用量正常，无需休眠
