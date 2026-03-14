@@ -8711,3 +8711,7 @@ nohup: ignoring input
 [2026-03-14 09:42:56] === 快照完成 ===
 [2026-03-14 09:42:57] all_loops: → conductor Phase 1: 指令已发送
 [2026-03-14 09:42:57] all_loops: → conductor Phase 1: 指令已发送
+[2026-03-14 09:43:57] all_loops: → conductor Phase 1: 已完成（等待 1 分钟）
+[2026-03-14 09:43:57] all_loops: → conductor Phase 1: 已完成（等待 1 分钟）
+[2026-03-14 09:43:57] all_loops: → conductor Phase 2: 指令已发送
+[2026-03-14 09:43:57] all_loops: → conductor Phase 2: 指令已发送
