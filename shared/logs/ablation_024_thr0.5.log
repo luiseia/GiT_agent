@@ -1973,3 +1973,26 @@ Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_2026
 Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
 Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
 03/13 21:54:36 - mmengine - INFO - Load checkpoint from /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+03/13 21:55:23 - mmengine - INFO - Iter(test) [ 10/753]    eta: 0:57:01  time: 4.6015  data_time: 0.0396  memory: 21722  
+03/13 21:56:09 - mmengine - INFO - Iter(test) [ 20/753]    eta: 0:56:21  time: 4.6177  data_time: 0.0003  memory: 21722  
+03/13 21:56:55 - mmengine - INFO - Iter(test) [ 30/753]    eta: 0:55:43  time: 4.6681  data_time: 0.0392  memory: 21722  
+03/13 21:57:42 - mmengine - INFO - Iter(test) [ 40/753]    eta: 0:54:58  time: 4.6143  data_time: 0.0004  memory: 21722  
+03/13 21:58:28 - mmengine - INFO - Iter(test) [ 50/753]    eta: 0:54:13  time: 4.6417  data_time: 0.0394  memory: 21722  
+03/13 21:59:14 - mmengine - INFO - Iter(test) [ 60/753]    eta: 0:53:26  time: 4.6038  data_time: 0.0004  memory: 21722  
+03/13 22:00:00 - mmengine - INFO - Iter(test) [ 70/753]    eta: 0:52:39  time: 4.6273  data_time: 0.0383  memory: 21722  
+03/13 22:00:47 - mmengine - INFO - Iter(test) [ 80/753]    eta: 0:51:52  time: 4.6088  data_time: 0.0004  memory: 21722  
+03/13 22:01:33 - mmengine - INFO - Iter(test) [ 90/753]    eta: 0:51:05  time: 4.6445  data_time: 0.0384  memory: 21722  
+03/13 22:02:19 - mmengine - INFO - Iter(test) [100/753]    eta: 0:50:18  time: 4.6017  data_time: 0.0004  memory: 21722  
+03/13 22:03:05 - mmengine - INFO - Iter(test) [110/753]    eta: 0:49:32  time: 4.6294  data_time: 0.0393  memory: 21722  
+03/13 22:03:51 - mmengine - INFO - Iter(test) [120/753]    eta: 0:48:46  time: 4.6201  data_time: 0.0059  memory: 21722  
+03/13 22:04:38 - mmengine - INFO - Iter(test) [130/753]    eta: 0:48:00  time: 4.6432  data_time: 0.0398  memory: 21722  
+03/13 22:05:24 - mmengine - INFO - Iter(test) [140/753]    eta: 0:47:14  time: 4.6124  data_time: 0.0031  memory: 21722  
+03/13 22:06:10 - mmengine - INFO - Iter(test) [150/753]    eta: 0:46:28  time: 4.6557  data_time: 0.0427  memory: 21722  
+03/13 22:06:57 - mmengine - INFO - Iter(test) [160/753]    eta: 0:45:42  time: 4.6193  data_time: 0.0024  memory: 21722  
+03/13 22:07:43 - mmengine - INFO - Iter(test) [170/753]    eta: 0:44:56  time: 4.6327  data_time: 0.0379  memory: 21722  
+03/13 22:08:29 - mmengine - INFO - Iter(test) [180/753]    eta: 0:44:10  time: 4.5953  data_time: 0.0027  memory: 21722  
+03/13 22:09:15 - mmengine - INFO - Iter(test) [190/753]    eta: 0:43:24  time: 4.6499  data_time: 0.0438  memory: 21722  
+03/13 22:10:02 - mmengine - INFO - Iter(test) [200/753]    eta: 0:42:37  time: 4.6128  data_time: 0.0030  memory: 21722  
+03/13 22:10:48 - mmengine - INFO - Iter(test) [210/753]    eta: 0:41:51  time: 4.6335  data_time: 0.0397  memory: 21722  
+03/13 22:11:34 - mmengine - INFO - Iter(test) [220/753]    eta: 0:41:05  time: 4.6282  data_time: 0.0061  memory: 21722  
+03/13 22:12:21 - mmengine - INFO - Iter(test) [230/753]    eta: 0:40:19  time: 4.6647  data_time: 0.0451  memory: 21722  

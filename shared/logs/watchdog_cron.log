@@ -2263,3 +2263,12 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-13 21:50:01] watchdog: === 用量检查开始 ===
 [2026-03-13 21:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-13 21:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 22:00:01] watchdog: === 用量检查开始 ===
+[2026-03-13 22:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-13 22:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 22:10:01] watchdog: === 用量检查开始 ===
+[2026-03-13 22:10:07] watchdog: 用量: 12%  |  Resets 11pm (America/Chicago)
+[2026-03-13 22:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-13 22:20:02] watchdog: === 用量检查开始 ===
+[2026-03-13 22:20:08] watchdog: 用量: 14%  |  Resets 11pm (America/Chicago)
+[2026-03-13 22:20:08] watchdog: ✅ 用量正常，无需休眠
