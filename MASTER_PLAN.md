@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-14 01:35
+> 最后更新: 2026-03-14 05:50
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -41,7 +41,7 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
 | batch | 2/GPU × 4 GPU × accumulative_counts=4 = effective 32 |
 | iters | 40000, val@2000 |
-| 进度 | **iter 100/40000** (0.25%, warmup 中) |
+| 进度 | **iter 2080/40000** (5.2%, warmup 完成, lr=2.5e-6) |
 | 显存 | ~34GB/49GB per GPU |
 | ETA | ~3.3 天 |
 | PID | 1169092 |
@@ -65,13 +65,30 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | **P3** | 每步注入 grid_interpolate_feats | `git_occ_head.py` L1111,1115 | 去掉 `pos_id == 0` 限制 |
 | **P4** | Scheduled Sampling | 较大改动 | 缓解 teacher forcing 暴露偏差 |
 
+### ⚠️ @2000 Eval 结果 (2026-03-14 05:40)
+
+| 指标 | GiT-Large v1 @2000 | ORCH_024 @2000 | 对比 |
+|------|-------------------|----------------|------|
+| car_R | **0.0000** | 0.627 | 🔴 未激活 |
+| bus_R | **0.0017** | — | 唯一非零类 |
+| 其他 8 类 | **全部 0.000** | — | 🔴 |
+| bg_FA | **0.002** | 0.222 | 全预测背景 |
+| off_cx | 0.106 | 0.056 | 🔴 差 89% |
+| **off_cy** | **0.029** | 0.069 | ✅ 优 58% |
+| off_w | 0.070 | 0.020 | 🔴 差 250% |
+| **off_h** | **0.009** | 0.005 | → 接近 |
+| **off_th** | **0.078** | 0.174 | ✅✅ 优 55% |
+
+**诊断**: 分类器冷启动慢（bert_embed 1024-dim 随机 + layers 24-29 随机），非 mode collapse。offset 回归已在学习（off_th 大幅领先），分类器需更多 iter 收敛。
+**决策**: 继续到 @4000。
+
 ### 里程碑
 
 | 里程碑 | 预计时间 | 行动 |
 |--------|---------|------|
-| iter_2000 | ~05:00 03/14 | 第一次 eval + 运行 `diagnose_v3c_single_ckpt.py` 检查 diff/Margin |
-| iter_4000 | ~09:00 03/14 | 第一可信评估点 |
-| iter_8000 | ~17:00 03/14 | 架构决策点 |
+| ✅ iter_2000 | 05:10 03/14 | Eval 完成，分类器冷启动慢，继续训练 |
+| **iter_4000** | **~13:00 03/14** | **硬决策点** — 如仍全零 recall 须干预 |
+| iter_8000 | ~21:00 03/14 | 架构决策点 |
 
 ---
 
@@ -93,23 +110,32 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ✅ | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | thr=0.5: bg_FA -47% 但 truck_R -77% | car_R=0 全阈值=BUG-17/mode collapse |
 | ⭐ | 03/13 22:17 | **CEO 可视化 (ORCH_024@8k)** | 5 样本 BEV pred vs GT | 387-393/400 cell 正样本 |
 | 🚨 | 03/14 00:30 | **Mode Collapse 根因诊断** | 零增强+teacher forcing→模型记忆先验 | diff/Margin 7.9%→2.3% |
-| ⭐⭐ | 03/14 01:08 | **GiT-Large v1 训练启动** | P0(增强)+P1(ViT-L 1024-dim) | iter 100, loss 下降中 |
+| ⭐⭐ | 03/14 01:08 | **GiT-Large v1 训练启动** | P0(增强)+P1(ViT-L 1024-dim) | 训练运行中 |
+| ⚠️ | 03/14 05:40 | **GiT-Large v1 @2000 eval** | 9/10类 R=0, off_th=0.078 优于024 | 分类器冷启动慢, 继续到@4000 |
 
-### GiT-Large v1 @2000 决策树
+### GiT-Large v1 @4000 决策树 (硬决策点)
 
 ```
-GiT-Large v1 @2000 (首次 eval + 诊断):
+GiT-Large v1 @4000:
 │
-├─ diff/Margin > 7.9% (高于 ORCH_024 @4000)
-│   → ✅ 数据增强生效, PROCEED, 继续到 @4000
+├─ car_R > 0.10 (分类器开始激活)
+│   → ✅ PROCEED, 继续到 @8000
+│   → 对比 offset 与 ORCH_024 @4000 趋势
 │
-├─ diff/Margin 3-7.9%
-│   → ⚠️ 部分改善, PROCEED + 准备部署 P2+P3
+├─ car_R 0.001-0.10 (缓慢激活)
+│   → ⚠️ CONDITIONAL PROCEED
+│   → 如 offset 持续改善 → 继续，分类器慢但在学
+│   → 如 offset 也恶化 → STOP + 审计
 │
-├─ diff/Margin < 3% (与旧模型相同)
-│   → 🚨 增强无效, STOP, 立即部署 P2+P3+P4 重训
+├─ car_R = 0 + offset 改善 (仅空间学习, 分类失败)
+│   → 🚨 签发 Critic 审计: 分类路径是否有 bug
+│   → 考虑 P2 (occ position embedding) 是否影响分类
 │
-└─ 参照: ORCH_024 @4000=7.9%, @12000=3.0%, ORCH_035 @14000=2.3%
+├─ car_R = 0 + offset 不变/恶化
+│   → 🚨🚨 STOP, 架构可能有根本问题
+│   → 全面审计 + 考虑回退到 ViT-Base
+│
+└─ 参照: ORCH_024 @4000 car_R=0.419, off_cx=0.039, off_th=0.150
 ```
 
 ### 归档: ORCH_035 BUG-17 分析
