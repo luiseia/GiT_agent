@@ -2637,3 +2637,22 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-14 16:31:01] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
 [2026-03-14 16:31:31] watchdog: → agent-conductor: 已发送恢复指令
 [2026-03-14 16:31:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 16:40:01] watchdog: === 用量检查开始 ===
+[2026-03-14 16:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 16:40:01] watchdog: ⚠️ agent-conductor context 剩余 4%
+[2026-03-14 16:40:01] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-14 16:41:01] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-14 16:41:31] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-14 16:41:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 16:50:02] watchdog: === 用量检查开始 ===
+[2026-03-14 16:50:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 16:50:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 17:00:01] watchdog: === 用量检查开始 ===
+[2026-03-14 17:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 17:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 17:10:01] watchdog: === 用量检查开始 ===
+[2026-03-14 17:10:07] watchdog: 用量: 2%  |  Resets 7pm (America/Chicago)
+[2026-03-14 17:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 17:20:01] watchdog: === 用量检查开始 ===
+[2026-03-14 17:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 17:20:01] watchdog: ✅ 用量正常，无需休眠
