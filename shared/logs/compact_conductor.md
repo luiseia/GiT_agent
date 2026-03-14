@@ -1,26 +1,43 @@
 # Conductor 上下文快照
-> 时间: 2026-03-14 01:12
+> 时间: 2026-03-14 07:50
 > 原因: CEO 请求上下文保存
 
 ## 当前状态
 
-**GiT-Large + DINOv3 ViT-L 训练已启动** — PID 1169092, 4 GPU DDP
+**GiT-Large v1 训练中** — iter 3070/40000 (7.7%), PID 1169092, 4 GPU DDP
 
-### 今日重大事件 (时间线)
-1. **前一轮对话**: 诊断确认 mode collapse 根因 — 零数据增强 + teacher forcing
-2. **本轮 00:30**: 修改 supervisor/critic/all_loops 加入训练质量健康检查
-3. **本轮 00:45**: 创建 `plan_full_nuscenes_large_v1.py` (P0+P1)
-4. **本轮 00:50**: DINOv3 ViT-L 权重下载 (1.2GB)
-5. **本轮 01:05**: 杀掉 ORCH_035 训练 (mode collapse 确认, 无价值)
-6. **本轮 01:08**: GiT-Large 训练启动成功
-7. **01:10**: 首个 iter 输出: loss=144.6, memory=26.9GB/49GB, time=7.1s/iter
+### 时间线 (03/14)
+1. **00:30**: 修改 supervisor/critic/all_loops 加入训练质量健康检查
+2. **00:45**: 创建 `plan_full_nuscenes_large_v1.py` (P0+P1)
+3. **01:05**: 杀掉 ORCH_035 训练 (mode collapse 确认)
+4. **01:08**: GiT-Large v1 训练启动
+5. **01:10-04:50**: Warmup 期，loss 极度波动 (0.0~479.7)，含 grad_norm=0 和 loss=0 异常
+6. **05:10**: **iter 2000 到达**, warmup 完成 (lr=2.5e-6), checkpoint 保存
+7. **05:10-05:40**: @2000 eval 运行
+8. **05:40**: **@2000 eval 结果**: 9/10类 recall=0, bg_FA=0.002 (全预测背景), 但 off_th=0.078 优于 ORCH_024
+9. **05:40-07:50**: 训练继续，loss 持续收敛 (上界从 479→142→86→49, grad_norm 从 5000→1000→700)
 
-## ⭐ CEO 核心指示
+## ⭐ @2000 Eval 结果 (关键数据)
 
-1. **"解决frozen predictions优先级高于一切"** → P0+P1 已实施，训练已启动
+| 指标 | GiT-Large v1 @2000 | ORCH_024 @2000 | 对比 |
+|------|-------------------|----------------|------|
+| car_R | **0.0000** | 0.627 | 🔴 未激活 |
+| bus_R | 0.0017 | — | 唯一非零类 |
+| 其他 8 类 | 全部 0.000 | — | 🔴 |
+| bg_FA | 0.002 | 0.222 | 全预测背景 |
+| **off_cy** | **0.029** | 0.069 | ✅ 优 58% |
+| **off_th** | **0.078** | 0.174 | ✅✅ 优 55% |
+| off_cx | 0.106 | 0.056 | 🔴 |
+| off_w | 0.070 | 0.020 | 🔴 |
+
+**诊断**: 分类器冷启动慢 (bert_embed 1024-dim 随机 + layers 24-29 随机), 非 mode collapse。Offset 回归已在学习。
+
+## CEO 核心指示
+
+1. **"解决frozen predictions优先级高于一切"** → P0+P1 已实施
 2. **"在 ViT-L 上改 P0-P4"** → P0+P1 done, P2-P4 待实施
 3. **"修改 critic/all_loops 更早发现问题"** → 已完成
-4. **offset 指标优先** — 5个offset直接影响mIoU
+4. **offset 指标优先** — 5 个 offset 直接影响 mIoU
 
 ## 训练详情
 
@@ -33,12 +50,15 @@
 | 数据增强 | PhotoMetricDistortion (P0 fix) |
 | train/test 分离 | ✅ (P0 fix) |
 | batch | 2/GPU × 4 GPU × accumulative_counts=4 = effective 32 |
-| iters | 40000 (≈11.4 epochs), val@2000 |
-| 预计耗时 | ~3.3 天 |
+| iters | 40000, val@2000 |
+| 当前进度 | **iter 3070/40000** (7.7%) |
+| 当前 loss | 22~84 (收敛中), grad_norm 367~1321 |
+| lr | 2.5e-6 (warmup 完成, 稳定) |
 | 显存 | 26.9GB/49GB per GPU |
+| ETA | ~3 天 2 小时 |
 | PID | 1169092 |
 
-### 关键架构变化 (vs ORCH_024)
+### 架构变化 (vs ORCH_024)
 | 参数 | ORCH_024 (旧) | GiT-Large v1 (新) |
 |------|--------------|-------------------|
 | backbone | ViT-Base (768, 12+6层) | **ViT-Large (1024, 24+6层)** |
@@ -48,46 +68,43 @@
 | 数据增强 | 无 | **PhotoMetricDistortion** |
 | train=test | 是 (BUG) | **否 (修复)** |
 
+## ⭐ 下一个关键里程碑: @4000 (硬决策点)
+
+预计 ~11:00 03/14 (约 3h 后)
+
+### @4000 决策树
+```
+├─ car_R > 0.10 → ✅ PROCEED to @8000
+├─ car_R 0.001-0.10 + offset 改善 → ⚠️ CONDITIONAL PROCEED
+├─ car_R = 0 + offset 改善 → 🚨 签发审计, 检查分类路径
+├─ car_R = 0 + offset 不变/恶化 → 🚨🚨 STOP, 全面审计
+└─ 参照: ORCH_024 @4000 car_R=0.419, off_cx=0.039, off_th=0.150
+```
+
 ## 待办
 
-### 训练期间 (可并行)
-- **P2**: 给 occ 任务加 position embedding
-  - 位置: `git.py:334` — `if self.mode != 'occupancy_prediction': grid_pos_embed`
-  - 改动: 去掉 occ 的排除条件
-- **P3**: 每步注入 grid_interpolate_feats
-  - 位置: `git_occ_head.py` decoder_inference 中 `if pos_id == 0` 限制
-  - 改动: 去掉 pos_id==0 条件
+### 训练期间 (可并行准备代码)
+- **P2**: 给 occ 任务加 position embedding — `git.py:334`
+- **P3**: 每步注入 grid_interpolate_feats — `git_occ_head.py` L1111,1115 去掉 `pos_id==0`
 - **P4**: Scheduled Sampling (较大改动)
 
-### 训练到 iter_2000 时 (第一个 checkpoint)
-- 运行 `diagnose_v3c_single_ckpt.py` 检查 diff/Margin 趋势
-- 如果 diff/Margin > 之前的 7.9% → 数据增强生效
-- 如果仍在下降 → 需要 P2+P3 代码改动
-
-## Mode Collapse 诊断数据 (参考)
-| Model | Checkpoint | diff/Margin | 预测相同率 |
-|-------|-----------|------------|-----------|
-| ORCH_024 | iter_4000 | 7.9% | 97.25% |
-| ORCH_024 | iter_8000 | 8.7% | 98.00% |
-| ORCH_024 | iter_12000 | 3.0% | 99.75% |
-| ORCH_035 | iter_14000 | 2.3% | 99.75% |
-
-## 监控系统升级 (已完成)
-- `supervisor_cmd.md`: 预测多样性/loss-指标背离/config审查
-- `all_loops.sh`: 自动健康检查 + RED告警自动签发紧急审计
-- `critic CLAUDE.md`: 全链路特征流诊断清单
-- `critic_cmd.md 模板`: 嵌入特征流诊断步骤 + 判定标准
+### 已知问题
+- **BUG-61**: reg_loss=0 在新训练中也出现（iter 620,630,1130,1600,1710-1740 连续 4 次）
+- **Supervisor 报告过时**: 仍报告 ORCH_035@9450 (03-13 05:26)，未切换到新训练
+- **Warmup 异常**: iter 1750 grad_norm=0, iter 1760 loss=0 (已过去, 训练恢复正常)
 
 ## 关键文件索引
 - Config: `GiT/configs/GiT/plan_full_nuscenes_large_v1.py`
 - 训练日志: `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out`
+- Checkpoint: `/mnt/SSD/GiT_Yihao/Train/Train_20260314/full_nuscenes_large_v1/iter_2000.pth`
 - DINOv3 ViT-L: `/mnt/SSD/yz0370/dinov3_weights/dinov3_vitl16_pretrain_lvd1689m.pth`
 - 诊断脚本: `GiT/scripts/diagnose_v3_precise.py`, `diagnose_v3c_single_ckpt.py`
-- 诊断报告: `GiT_agent/shared/logs/diagnosis_frozen_predictions.md`
+- MASTER_PLAN: 已更新到 @2000 eval 结果 + @4000 决策树
 - Memory: `diagnosis_mode_collapse.md`
 
 ## 恢复指令
 1. 读取本文件恢复上下文
 2. 检查训练进度: `tail -20 /mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out`
 3. 检查 CEO_CMD.md
-4. iter_2000 时运行特征流诊断验证数据增强效果
+4. 如 iter ≥ 4000: 读取 eval 结果，按 @4000 决策树执行
+5. 如 iter < 4000: 继续 Phase 1/2 巡航循环
