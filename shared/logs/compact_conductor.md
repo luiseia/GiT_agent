@@ -1,10 +1,10 @@
 # Conductor 上下文快照
-> 时间: 2026-03-14 16:30
-> 原因: 上下文保存 (compact 前)
+> 时间: 2026-03-14 16:40
+> 原因: compact 前上下文保存
 
 ## 当前状态
 
-**GiT-Large v1 @6000 eval 运行中** — 1090/1505 (72%), 预计 ~17:00 完成
+**GiT-Large v1 @6000 eval 运行中** — 1230/1505 (82%), 预计 **~17:00** 完成
 - 从 iter_4000 resume，BUG-62/63/17 已修复 (commit `4ad3b0f`)
 - 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用
 - 日志: `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1_resume4k.out`
@@ -25,7 +25,7 @@
 13. **11:10**: **修复后 resume 启动** — 2 GPU (0,2), iter 4010 确认, grad_norm 3x 提升
 14. **11:10-15:10**: 巡航监控，BUG-61 波动 (3.3%→13.3%→7%→15%→0%→7%)
 15. **15:10**: **@6000 到达**, checkpoint 保存, eval 开始
-16. **~16:30**: eval 运行中 1090/1505 (72%)
+16. **~16:40**: eval 运行中 1230/1505 (82%), ~20min 剩余
 
 ## ⭐ @4000 Eval 结果
 
@@ -87,7 +87,7 @@ Resume 后 BUG-61 (reg_loss=0 + grad_norm 崩溃) 持续出现，频率波动:
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 当前进度 | **@6000 eval 运行中** (72%, ~17:00 完成) |
+| 当前进度 | **@6000 eval 运行中** (82%, ~17:00 完成) |
 | lr | 2.5e-6 (稳定) |
 | 显存 | ~27GB/49GB per GPU |
 | PID | 1312401 |
