@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 19:00
+> 最后更新: 2026-03-13 20:35
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -101,12 +101,11 @@ grid_assign_mode='overlap',
 | ⭐⭐ | 03/13 02:52 | ORCH_035 @8000 | car_R 0.60, 4类激活 | Critic: PROCEED |
 | ⚠️ | 03/13 07:22 | ORCH_035 @10000 | car_R 0.42 🔴, car_P 0.053 🔴, cone 新激活 | Critic: CONDITIONAL PROCEED |
 | ⭐⭐⭐ | 03/13 11:47 | ORCH_035 @12000 | **car_R 0.62 car_P 0.100 历史最佳!** off_th 0.162 | Critic: PROCEED |
-| **当前** | 03/13 19:00 | ORCH_035 @13850 | ✅ 训练正常, @14000 ETA ~19:15 | IN_PROGRESS |
+| 🔴🔴 | 03/13 20:09 | ORCH_035 @14000 | **car_R=0.000! cone_R=0.830** BUG-17 灾难性崩溃 | 训练已终止 |
 | ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
-| ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs, 消融待执行 | 代码完成 |
-| 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0, 待 GPU 空闲 | DELIVERED |
-| 里程碑 | ~03/13 ~19:16 | ORCH_035 @14000 | 快速检查 (非决策级) + val 窗口执行消融/BUG-17 |
-| **里程碑** | ~03/13 ~22:50 | ORCH_035 @16000 | **@16000 决策级 eval** |
+| ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs | 代码完成 |
+| **进行中** | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | ORCH_024@8k + ORCH_035@12k × thr={0.1,0.2,0.3,0.5} | ~16h, ETA 03/14 ~12:30 |
+| 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0 | BLOCKER — @14000 证明必须修复 |
 
 ### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
 - car_R=0.620 ≥ 0.55 ✅, car_P=0.100 ≥ 0.06 ✅, bg_FA=0.283 < 0.40 ✅
@@ -354,7 +353,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_024 | Full nuScenes center-based baseline | TERMINATED @12000 |
 | ORCH_029 | Full nuScenes overlap + vis + convex hull | STOPPED @2000 |
 | ORCH_034 | 多层 + BUG-52 IoF/IoB + BUG-57/58/59/60 修复 | STOPPED @4000, ckpt 保留 |
-| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **IN_PROGRESS** (iter 13850, @14000 ETA ~19:15) |
+| **ORCH_035** | **Label pipeline 大修 + resume 034@4000** | **TERMINATED** @14000 — car_R=0 BUG-17 崩溃 |
 | ORCH_036 | score_thr 消融 @12k ckpt | ❌ FAILED — 模型无置信度, eval 无 thr 过滤 |
 | ORCH_037 | BUG-17 Weight Cap (max_w=3.0) | DELIVERED (待 GPU 空闲) |
 | ORCH_038 | 恢复训练 (resume iter_12000) | ✅ DONE (被 ORCH_039 合并) |
@@ -374,7 +373,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-17** | **CRITICAL** | per-batch sqrt 类别竞争: bus 922K FP (@12k), 总FP 2.06M↑ | Phase 2 — ORCH_037 Weight Cap 开发中 |
+| **BUG-17** | **BLOCKER** | per-batch sqrt 类别竞争 — @14000 car_R=0.000, cone_R=0.830 完全接管。@12k bus 922K FP, 总FP 2.06M↑ | **必须修复才能继续训练** — ORCH_037 Weight Cap 代码完成 |
 | **BUG-61** | MEDIUM | reg_loss=0 频率升高: ORCH_035 恢复后 13/173 iter=7.5% (ORCH_024 为 4.1%)。不致命但影响 offset 回归质量 | BUG-17 后调查 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
