@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-13 20:35
+> 最后更新: 2026-03-13 21:00
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -104,7 +104,7 @@ grid_assign_mode='overlap',
 | 🔴🔴 | 03/13 20:09 | ORCH_035 @14000 | **car_R=0.000! cone_R=0.830** BUG-17 灾难性崩溃 | 训练已终止 |
 | ❌ | 03/13 12:05-15:36 | score_thr 消融 (ORCH_036) | **失败**: 模型无置信度, evaluator 未实现过滤 | 无效 |
 | ✅ | 03/13 18:15 | score_thr 代码修复 (CEO 修正) | commit `9974e3a`: cls_probs 替代 marker_probs | 代码完成 |
-| **进行中** | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | ORCH_024@8k + ORCH_035@12k × thr={0.1,0.2,0.3,0.5} | ~16h, ETA 03/14 ~12:30 |
+| **进行中** | 03/13 20:27 | **score_thr 消融 (ORCH_041)** | ORCH_024@8k + ORCH_035@12k × thr={0.1,0.2,0.3,0.5} | ❌ thr=0.1/0.2 OOM 崩溃(僵尸进程), thr=0.3 正常运行中 ~56min/次, 需补跑 0.1/0.2。ETA 03/14 ~04:20 |
 | 待执行 | — | BUG-17 weight cap (ORCH_037) | mini 数据验证 max_w=3.0 | BLOCKER — @14000 证明必须修复 |
 
 ### ✅ @12000 决策树 — 已完成: ★ 最优分支命中
@@ -359,7 +359,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_038 | 恢复训练 (resume iter_12000) | ✅ DONE (被 ORCH_039 合并) |
 | ORCH_039 | 紧急恢复训练 | ✅ DONE (15:41 恢复) |
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
-| **ORCH_041** | **score_thr 消融 (cls_probs, 4-GPU DDP)** | **DELIVERED** (等 @14000 val 后执行) |
+| **ORCH_041** | **score_thr 消融 (cls_probs, 4-GPU DDP)** | **执行中** — thr=0.1/0.2 ❌ OOM崩溃, thr=0.3 🔄 运行中, 完成后需补跑 0.1/0.2 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 

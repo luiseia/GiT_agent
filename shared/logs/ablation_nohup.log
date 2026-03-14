@@ -3986,3 +3986,5 @@ Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_2026
 Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
 03/13 20:54:32 - mmengine - INFO - Load checkpoint from /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
 03/13 20:55:18 - mmengine - INFO - Iter(test) [ 10/753]    eta: 0:57:05  time: 4.5871  data_time: 0.0029  memory: 21722  
+03/13 20:56:05 - mmengine - INFO - Iter(test) [ 20/753]    eta: 0:56:32  time: 4.6461  data_time: 0.0189  memory: 21722  
+03/13 20:56:51 - mmengine - INFO - Iter(test) [ 30/753]    eta: 0:55:50  time: 4.6221  data_time: 0.0003  memory: 21722  
