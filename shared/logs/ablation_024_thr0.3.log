@@ -1,0 +1,1976 @@
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/mmengine/utils/dl_utils/setup_env.py:56: UserWarning: Setting MKL_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+  warnings.warn(
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/mmengine/utils/dl_utils/setup_env.py:56: UserWarning: Setting MKL_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+  warnings.warn(
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/mmengine/utils/dl_utils/setup_env.py:56: UserWarning: Setting MKL_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+  warnings.warn(
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/mmengine/utils/dl_utils/setup_env.py:56: UserWarning: Setting MKL_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+  warnings.warn(
+03/13 20:53:21 - mmengine - INFO - 
+------------------------------------------------------------
+System environment:
+    sys.platform: linux
+    Python: 3.8.20 (default, Oct  3 2024, 15:24:27) [GCC 11.2.0]
+    CUDA available: True
+    numpy_random_seed: 833381026
+    GPU 0,1,2,3: NVIDIA RTX A6000
+    CUDA_HOME: /usr/local/cuda
+    NVCC: Cuda compilation tools, release 12.1, V12.1.66
+    GCC: gcc (Ubuntu 9.5.0-1ubuntu1~22.04.1) 9.5.0
+    PyTorch: 1.10.0+cu111
+    PyTorch compiling details: PyTorch built with:
+  - GCC 7.3
+  - C++ Version: 201402
+  - Intel(R) Math Kernel Library Version 2020.0.0 Product Build 20191122 for Intel(R) 64 architecture applications
+  - Intel(R) MKL-DNN v2.2.3 (Git Hash 7336ca9f055cf1bfa13efb658fe15dc9b41f0740)
+  - OpenMP 201511 (a.k.a. OpenMP 4.5)
+  - LAPACK is enabled (usually provided by MKL)
+  - NNPACK is enabled
+  - CPU capability usage: AVX512
+  - CUDA Runtime 11.1
+  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86
+  - CuDNN 8.0.5
+  - Magma 2.5.2
+  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CUDA_VERSION=11.1, CUDNN_VERSION=8.0.5, CXX_COMPILER=/opt/rh/devtoolset-7/root/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -fopenmp -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO -O2 -fPIC -Wno-narrowing -Wall -Wextra -Werror=return-type -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-unused-result -Wno-unused-local-typedefs -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-stringop-overflow -Wno-psabi -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -fdiagnostics-color=always -faligned-new -Wno-unused-but-set-variable -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_VERSION=1.10.0, USE_CUDA=ON, USE_CUDNN=ON, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=ON, USE_NNPACK=ON, USE_OPENMP=ON, 
+
+    TorchVision: 0.11.0+cu111
+    OpenCV: 4.10.0
+    MMEngine: 0.8.3
+
+Runtime environment:
+    cudnn_benchmark: True
+    mp_cfg: {'mp_start_method': 'fork', 'opencv_num_threads': 0}
+    dist_cfg: {'backend': 'nccl'}
+    seed: 833381026
+    Distributed launcher: pytorch
+    Distributed training: True
+    GPU number: 4
+------------------------------------------------------------
+
+03/13 20:53:23 - mmengine - INFO - Config:
+Debug = False
+Visualization = False
+ann_file_train = 'data/infos/nuscenes_infos_temporal_train.pkl'
+ann_file_val = 'data/infos/nuscenes_infos_temporal_val.pkl'
+around_weight = 0.5
+backend_args = None
+balance_mode = 'sqrt'
+bev_grid_bin = 20
+bev_grid_nums = (
+    10,
+    10,
+)
+bev_size = (
+    200,
+    200,
+)
+bev_wh_size = 200
+bev_x_range_m = 100.0
+bev_y_range_m = 100.0
+bg_balance_weight = 2.5
+center_weight = 2.0
+classes = [
+    'car',
+    'truck',
+    'bus',
+    'trailer',
+    'construction_vehicle',
+    'pedestrian',
+    'motorcycle',
+    'bicycle',
+    'traffic_cone',
+    'barrier',
+]
+cls_bg_punish = 1.0
+cls_loss_weight = 1.0
+cls_start = 168
+custom_imports = dict(
+    allow_failed_imports=False,
+    imports=[
+        'mmdet.datasets.nuscenes_occ',
+        'mmdet.datasets.pipelines.load_annotations_3d_e2e',
+        'mmdet.datasets.pipelines.generate_occ_flow_labels',
+        'mmdet.models.dense_heads.git_occ_head',
+        'mmdet.models.data_preprocessors.custom_occ_data_preprocessor',
+        'mmdet.datasets.pipelines.load_front_camera_image',
+        'mmdet.datasets.pipelines.resize_for_occ_input',
+        'mmdet.evaluation.metrics.occ_2d_box_eval',
+    ])
+data_root = 'data/nuscenes/'
+dec_length = 30
+default_hooks = dict(
+    checkpoint=dict(
+        by_epoch=False,
+        interval=2000,
+        max_keep_ckpts=-1,
+        type='CheckpointHook'),
+    logger=dict(interval=10, log_metric_by_epoch=False, type='LoggerHook'),
+    param_scheduler=dict(type='ParamSchedulerHook'),
+    sampler_seed=dict(type='DistSamplerSeedHook'),
+    timer=dict(type='IterTimerHook'),
+    visualization=dict(type='DetVisualizationHook'))
+default_scope = 'mmdet'
+diff_bin = 20
+diff_bin_count = 21
+diff_range = (
+    20,
+    40,
+)
+env_cfg = dict(
+    cudnn_benchmark=True,
+    dist_cfg=dict(backend='nccl'),
+    mp_cfg=dict(mp_start_method='fork', opencv_num_threads=0))
+feature_map_cfg = dict(
+    grid_res_per_win=(
+        4,
+        4,
+    ),
+    num_cells=400,
+    number_pixels_in_patch=70,
+    number_win=5,
+    patches_per_grid=3.5,
+    resized_img_size=1120,
+    total_grid_res=(
+        20,
+        20,
+    ),
+    vit_patch_size=16,
+    vit_window_patches=14)
+focal_alpha_cls = 0.75
+focal_alpha_marker = 0.75
+focal_gamma = 2.0
+grid_bin_count = 20
+grid_conf = dict(
+    xbound=[
+        -50.0,
+        50.0,
+        0.5,
+    ],
+    ybound=[
+        -50.0,
+        50.0,
+        0.5,
+    ],
+    zbound=[
+        -5.0,
+        3.0,
+        8.0,
+    ])
+grid_range = (
+    0,
+    19,
+)
+grid_resolution_perwin = (
+    4,
+    4,
+)
+ignore_id = 229
+launcher = 'pytorch'
+load_from = '/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth'
+log_level = 'INFO'
+log_processor = dict(by_epoch=False, type='LogProcessor', window_size=1)
+marker_bg_punish = 1.0
+marker_end_id = 182
+marker_pos_punish = 3.0
+max_iters = 40000
+model = dict(
+    backbone=dict(
+        arch='base',
+        dinov3_embed_dim=4096,
+        dinov3_weight_path=None,
+        drop_path_rate=0.4,
+        img_size=1120,
+        init_cfg=dict(
+            checkpoint=
+            'https://download.openmmlab.com/mmclassification/v1/vit_sam/vit-base-p16_sam-pre_3rdparty_sa1b-1024px_20230411-2320f9cc.pth',
+            prefix='backbone.',
+            type='Pretrained'),
+        new_more_layers=[
+            'win',
+            'win',
+            'win',
+            'win',
+            'win',
+            'win',
+        ],
+        online_dinov3_dtype='fp16',
+        online_dinov3_layer_idx=16,
+        online_dinov3_unfreeze_last_n=0,
+        online_dinov3_weight_path=
+        '/mnt/SSD/yz0370/dinov3_weights/dinov3_vit7b16_pretrain_lvd1689m.pth',
+        out_channels=0,
+        out_type='featmap',
+        patch_size=16,
+        preextracted_proj_hidden_dim=2048,
+        preextracted_proj_use_activation=True,
+        type='ViTGiT',
+        use_abs_pos=True,
+        use_dinov3_patch_embed=False,
+        use_online_dinov3=True,
+        use_preextracted_features=False,
+        use_rel_pos=True,
+        window_size=14),
+    bert_embed=dict(
+        hidden_size=768, pretrain_path='./bert_embed.pt', type='bert-base'),
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    bev_wh_size=200,
+    data_preprocessor=dict(
+        mean=[
+            123.675,
+            116.28,
+            103.53,
+        ],
+        meta_keys=(
+            'occ_future_ann_infos',
+            'task_name',
+            'head_cfg',
+            'git_cfg',
+        ),
+        std=[
+            58.395,
+            57.12,
+            57.375,
+        ],
+        type='CustomOccDataPreprocessor'),
+    head_list=dict(
+        occupancy_prediction_head=dict(
+            Debug=False,
+            Visualization=False,
+            around_weight=0.5,
+            balance_mode='sqrt',
+            bev_grid_nums=(
+                10,
+                10,
+            ),
+            bev_size=(
+                200,
+                200,
+            ),
+            bg_balance_weight=2.5,
+            center_weight=2.0,
+            cls_bg_punish=1.0,
+            cls_loss_weight=1.0,
+            dec_length=30,
+            feature_map_cfg=dict(
+                grid_res_per_win=(
+                    4,
+                    4,
+                ),
+                num_cells=400,
+                number_pixels_in_patch=70,
+                number_win=5,
+                patches_per_grid=3.5,
+                resized_img_size=1120,
+                total_grid_res=(
+                    20,
+                    20,
+                ),
+                vit_patch_size=16,
+                vit_window_patches=14),
+            focal_alpha_cls=0.75,
+            focal_alpha_marker=0.75,
+            focal_gamma=2.0,
+            grid_resolution_perwin=(
+                4,
+                4,
+            ),
+            marker_bg_punish=1.0,
+            marker_pos_punish=3.0,
+            neg_cls_w=0.3,
+            num_bins=167,
+            num_classes=10,
+            num_vocal=230,
+            number_win=5,
+            pos_cls_w_multiplier=5.0,
+            reg_loss_weight=1.5,
+            resized_img_size=1120,
+            rotation_angle=360,
+            theta_fines=10,
+            theta_groups=36,
+            type='OccHead',
+            use_focal_loss=False,
+            use_per_class_balance=True,
+            value_bin_cfg=dict(
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_wh_size=200,
+                bev_x_range_m=100.0,
+                bev_y_range_m=100.0,
+                diff_bin=20,
+                diff_bin_count=21,
+                diff_range=(
+                    20,
+                    40,
+                ),
+                grid_range=(
+                    0,
+                    19,
+                ),
+                theta_fines=10,
+                theta_groups=36,
+                wh_h_bin_count=26,
+                wh_h_max_m=5.0,
+                wh_h_range=(
+                    142,
+                    167,
+                ),
+                wh_res_m=0.2,
+                wh_w_bin_count=101,
+                wh_w_max_m=20.0,
+                wh_w_range=(
+                    41,
+                    141,
+                )))),
+    support_tasks=[
+        'occupancy_prediction',
+    ],
+    tokenizer=dict(name_or_path='bert-base-uncased', type='BlipTokenizer'),
+    type='GiT',
+    use_checkpoints=True)
+neg_cls_w = 0.3
+num_bins = 167
+num_classes = 10
+num_vocal = 230
+number_pixels_in_patch = 70
+number_win = 5
+occ_cfgs = dict(
+    global_only_image=True,
+    grid_conf=dict(
+        xbound=[
+            -50.0,
+            50.0,
+            0.5,
+        ],
+        ybound=[
+            -50.0,
+            50.0,
+            0.5,
+        ],
+        zbound=[
+            -5.0,
+            3.0,
+            8.0,
+        ]),
+    grid_interpolate=True,
+    grid_resolution_perwin=(
+        4,
+        4,
+    ),
+    ignore_index=255,
+    mode='occupancy_prediction',
+    num_vocal=230,
+    occ_n_future=4,
+    samples_grids_eachwin=-1,
+    use_vocab_list=False)
+occ_head_cfg = dict(
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    bev_size=(
+        200,
+        200,
+    ),
+    classes=[
+        'car',
+        'truck',
+        'bus',
+        'trailer',
+        'construction_vehicle',
+        'pedestrian',
+        'motorcycle',
+        'bicycle',
+        'traffic_cone',
+        'barrier',
+    ],
+    grid_interpolate=True,
+    num_bins=167,
+    num_classes=10,
+    rotation_angle=360,
+    theta_fines=10,
+    theta_groups=36,
+    value_bin_cfg=dict(
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_wh_size=200,
+        bev_x_range_m=100.0,
+        bev_y_range_m=100.0,
+        diff_bin=20,
+        diff_bin_count=21,
+        diff_range=(
+            20,
+            40,
+        ),
+        grid_range=(
+            0,
+            19,
+        ),
+        theta_fines=10,
+        theta_groups=36,
+        wh_h_bin_count=26,
+        wh_h_max_m=5.0,
+        wh_h_range=(
+            142,
+            167,
+        ),
+        wh_res_m=0.2,
+        wh_w_bin_count=101,
+        wh_w_max_m=20.0,
+        wh_w_range=(
+            41,
+            141,
+        )))
+optim_wrapper = dict(
+    accumulative_counts=4,
+    clip_grad=dict(max_norm=10.0, norm_type=2),
+    optimizer=dict(lr=5e-05, type='AdamW', weight_decay=0.01),
+    paramwise_cfg=dict(
+        custom_keys=dict({
+            'backbone': dict(lr_mult=0.05),
+            'backbone.layers.10': dict(lr_mult=0.65),
+            'backbone.layers.11': dict(lr_mult=0.8),
+            'backbone.layers.12': dict(lr_mult=1.0),
+            'backbone.layers.13': dict(lr_mult=1.0),
+            'backbone.layers.14': dict(lr_mult=1.0),
+            'backbone.layers.15': dict(lr_mult=1.0),
+            'backbone.layers.16': dict(lr_mult=1.0),
+            'backbone.layers.17': dict(lr_mult=1.0),
+            'backbone.layers.6': dict(lr_mult=0.15),
+            'backbone.layers.7': dict(lr_mult=0.25),
+            'backbone.layers.8': dict(lr_mult=0.35),
+            'backbone.layers.9': dict(lr_mult=0.5),
+            'backbone.patch_embed.proj': dict(lr_mult=2.0),
+            'reference_points': dict(lr_mult=2.0),
+            'sampling_offsets': dict(lr_mult=2.0)
+        })),
+    type='OptimWrapper')
+param_scheduler = [
+    dict(
+        begin=0, by_epoch=False, end=2000, start_factor=0.001,
+        type='LinearLR'),
+    dict(
+        begin=2000,
+        by_epoch=False,
+        end=40000,
+        gamma=0.1,
+        milestones=[
+            15000,
+            25000,
+        ],
+        type='MultiStepLR'),
+]
+pipeline_common = dict(
+    Visualization=False,
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    bev_size=(
+        200,
+        200,
+    ),
+    classes=[
+        'car',
+        'truck',
+        'bus',
+        'trailer',
+        'construction_vehicle',
+        'pedestrian',
+        'motorcycle',
+        'bicycle',
+        'traffic_cone',
+        'barrier',
+    ],
+    grid_conf=dict(
+        xbound=[
+            -50.0,
+            50.0,
+            0.5,
+        ],
+        ybound=[
+            -50.0,
+            50.0,
+            0.5,
+        ],
+        zbound=[
+            -5.0,
+            3.0,
+            8.0,
+        ]),
+    grid_resolution_perwin=(
+        4,
+        4,
+    ),
+    ignore_index=255,
+    neg_cls_w=0.3,
+    num_bins=167,
+    num_classes=10,
+    num_vocal=230,
+    number_win=5,
+    proj_z0=-0.5,
+    resized_img_size=1120,
+    rotation_angle=360,
+    theta_fines=10,
+    theta_groups=36,
+    type='GenerateOccFlowLabels',
+    use_rotated_polygon=True,
+    value_bin_cfg=dict(
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_wh_size=200,
+        bev_x_range_m=100.0,
+        bev_y_range_m=100.0,
+        diff_bin=20,
+        diff_bin_count=21,
+        diff_range=(
+            20,
+            40,
+        ),
+        grid_range=(
+            0,
+            19,
+        ),
+        theta_fines=10,
+        theta_groups=36,
+        wh_h_bin_count=26,
+        wh_h_max_m=5.0,
+        wh_h_range=(
+            142,
+            167,
+        ),
+        wh_res_m=0.2,
+        wh_w_bin_count=101,
+        wh_w_max_m=20.0,
+        wh_w_range=(
+            41,
+            141,
+        )))
+pos_cls_w_multiplier = 5.0
+pretrained = 'https://download.openmmlab.com/mmclassification/v1/vit_sam/vit-base-p16_sam-pre_3rdparty_sa1b-1024px_20230411-2320f9cc.pth'
+proj_z0 = -0.5
+reg_loss_weight = 1.5
+resized_img_size = 1120
+resume = False
+rotation_angle = 360
+test_cfg = dict(type='TestLoop')
+test_dataloader = dict(
+    batch_size=2,
+    dataset=dict(
+        ann_file='data/infos/nuscenes_infos_temporal_val.pkl',
+        classes=[
+            'car',
+            'truck',
+            'bus',
+            'trailer',
+            'construction_vehicle',
+            'pedestrian',
+            'motorcycle',
+            'bicycle',
+            'traffic_cone',
+            'barrier',
+        ],
+        data_root='data/nuscenes/',
+        occ_n_future=4,
+        pipeline=[
+            dict(
+                ins_inds_add_1=False,
+                type='LoadAnnotations3D_E2E',
+                with_future_anns=True,
+                with_ins_inds_3d=True),
+            dict(
+                color_type='color',
+                to_float32=False,
+                type='LoadFrontCameraImageFromFile'),
+            dict(target_size=(
+                1120,
+                1120,
+            ), type='ResizeForOccInput'),
+            dict(
+                Visualization=False,
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_size=(
+                    200,
+                    200,
+                ),
+                classes=[
+                    'car',
+                    'truck',
+                    'bus',
+                    'trailer',
+                    'construction_vehicle',
+                    'pedestrian',
+                    'motorcycle',
+                    'bicycle',
+                    'traffic_cone',
+                    'barrier',
+                ],
+                filter_invisible=True,
+                grid_conf=dict(
+                    xbound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    ybound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    zbound=[
+                        -5.0,
+                        3.0,
+                        8.0,
+                    ]),
+                grid_resolution_perwin=(
+                    4,
+                    4,
+                ),
+                ignore_index=255,
+                neg_cls_w=0.3,
+                num_bins=167,
+                num_classes=10,
+                num_vocal=230,
+                number_win=5,
+                proj_z0=-0.5,
+                resized_img_size=1120,
+                rotation_angle=360,
+                theta_fines=10,
+                theta_groups=36,
+                type='GenerateOccFlowLabels',
+                use_rotated_polygon=True,
+                value_bin_cfg=dict(
+                    bev_grid_nums=(
+                        10,
+                        10,
+                    ),
+                    bev_wh_size=200,
+                    bev_x_range_m=100.0,
+                    bev_y_range_m=100.0,
+                    diff_bin=20,
+                    diff_bin_count=21,
+                    diff_range=(
+                        20,
+                        40,
+                    ),
+                    grid_range=(
+                        0,
+                        19,
+                    ),
+                    theta_fines=10,
+                    theta_groups=36,
+                    wh_h_bin_count=26,
+                    wh_h_max_m=5.0,
+                    wh_h_range=(
+                        142,
+                        167,
+                    ),
+                    wh_res_m=0.2,
+                    wh_w_bin_count=101,
+                    wh_w_max_m=20.0,
+                    wh_w_range=(
+                        41,
+                        141,
+                    ))),
+            dict(
+                meta_dict=dict(
+                    git_cfg=dict(
+                        global_only_image=True,
+                        grid_conf=dict(
+                            xbound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            ybound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            zbound=[
+                                -5.0,
+                                3.0,
+                                8.0,
+                            ]),
+                        grid_interpolate=True,
+                        grid_resolution_perwin=(
+                            4,
+                            4,
+                        ),
+                        ignore_index=255,
+                        mode='occupancy_prediction',
+                        num_vocal=230,
+                        occ_n_future=4,
+                        samples_grids_eachwin=-1,
+                        use_vocab_list=False),
+                    head_cfg=dict(
+                        bev_grid_nums=(
+                            10,
+                            10,
+                        ),
+                        bev_size=(
+                            200,
+                            200,
+                        ),
+                        classes=[
+                            'car',
+                            'truck',
+                            'bus',
+                            'trailer',
+                            'construction_vehicle',
+                            'pedestrian',
+                            'motorcycle',
+                            'bicycle',
+                            'traffic_cone',
+                            'barrier',
+                        ],
+                        grid_interpolate=True,
+                        num_bins=167,
+                        num_classes=10,
+                        rotation_angle=360,
+                        theta_fines=10,
+                        theta_groups=36,
+                        value_bin_cfg=dict(
+                            bev_grid_nums=(
+                                10,
+                                10,
+                            ),
+                            bev_wh_size=200,
+                            bev_x_range_m=100.0,
+                            bev_y_range_m=100.0,
+                            diff_bin=20,
+                            diff_bin_count=21,
+                            diff_range=(
+                                20,
+                                40,
+                            ),
+                            grid_range=(
+                                0,
+                                19,
+                            ),
+                            theta_fines=10,
+                            theta_groups=36,
+                            wh_h_bin_count=26,
+                            wh_h_max_m=5.0,
+                            wh_h_range=(
+                                142,
+                                167,
+                            ),
+                            wh_res_m=0.2,
+                            wh_w_bin_count=101,
+                            wh_w_max_m=20.0,
+                            wh_w_range=(
+                                41,
+                                141,
+                            ))),
+                    task_name='occupancy_prediction'),
+                type='AddMetaInfo'),
+            dict(
+                meta_keys=(
+                    'occ_future_ann_infos',
+                    'task_name',
+                    'head_cfg',
+                    'git_cfg',
+                ),
+                type='PackOccInputs'),
+        ],
+        test_mode=True,
+        type='NuScenesOccDataset'),
+    num_workers=4,
+    sampler=dict(shuffle=False, type='DefaultSampler'))
+test_evaluator = dict(
+    Debug=False,
+    Visualization=False,
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    classes=[
+        'car',
+        'truck',
+        'bus',
+        'trailer',
+        'construction_vehicle',
+        'pedestrian',
+        'motorcycle',
+        'bicycle',
+        'traffic_cone',
+        'barrier',
+    ],
+    cls_start=168,
+    ignore_id=229,
+    iou_mode='rbox',
+    iou_thresh=0.0,
+    marker_end_id=182,
+    score_thr=0.0,
+    type='Occ2DBoxMetric',
+    value_bin_cfg=dict(
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_wh_size=200,
+        bev_x_range_m=100.0,
+        bev_y_range_m=100.0,
+        diff_bin=20,
+        diff_bin_count=21,
+        diff_range=(
+            20,
+            40,
+        ),
+        grid_range=(
+            0,
+            19,
+        ),
+        theta_fines=10,
+        theta_groups=36,
+        wh_h_bin_count=26,
+        wh_h_max_m=5.0,
+        wh_h_range=(
+            142,
+            167,
+        ),
+        wh_res_m=0.2,
+        wh_w_bin_count=101,
+        wh_w_max_m=20.0,
+        wh_w_range=(
+            41,
+            141,
+        )))
+test_pipeline = [
+    dict(
+        ins_inds_add_1=False,
+        type='LoadAnnotations3D_E2E',
+        with_future_anns=True,
+        with_ins_inds_3d=True),
+    dict(
+        color_type='color',
+        to_float32=False,
+        type='LoadFrontCameraImageFromFile'),
+    dict(target_size=(
+        1120,
+        1120,
+    ), type='ResizeForOccInput'),
+    dict(
+        Visualization=False,
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_size=(
+            200,
+            200,
+        ),
+        classes=[
+            'car',
+            'truck',
+            'bus',
+            'trailer',
+            'construction_vehicle',
+            'pedestrian',
+            'motorcycle',
+            'bicycle',
+            'traffic_cone',
+            'barrier',
+        ],
+        filter_invisible=True,
+        grid_conf=dict(
+            xbound=[
+                -50.0,
+                50.0,
+                0.5,
+            ],
+            ybound=[
+                -50.0,
+                50.0,
+                0.5,
+            ],
+            zbound=[
+                -5.0,
+                3.0,
+                8.0,
+            ]),
+        grid_resolution_perwin=(
+            4,
+            4,
+        ),
+        ignore_index=255,
+        neg_cls_w=0.3,
+        num_bins=167,
+        num_classes=10,
+        num_vocal=230,
+        number_win=5,
+        proj_z0=-0.5,
+        resized_img_size=1120,
+        rotation_angle=360,
+        theta_fines=10,
+        theta_groups=36,
+        type='GenerateOccFlowLabels',
+        use_rotated_polygon=True,
+        value_bin_cfg=dict(
+            bev_grid_nums=(
+                10,
+                10,
+            ),
+            bev_wh_size=200,
+            bev_x_range_m=100.0,
+            bev_y_range_m=100.0,
+            diff_bin=20,
+            diff_bin_count=21,
+            diff_range=(
+                20,
+                40,
+            ),
+            grid_range=(
+                0,
+                19,
+            ),
+            theta_fines=10,
+            theta_groups=36,
+            wh_h_bin_count=26,
+            wh_h_max_m=5.0,
+            wh_h_range=(
+                142,
+                167,
+            ),
+            wh_res_m=0.2,
+            wh_w_bin_count=101,
+            wh_w_max_m=20.0,
+            wh_w_range=(
+                41,
+                141,
+            ))),
+    dict(
+        meta_dict=dict(
+            git_cfg=dict(
+                global_only_image=True,
+                grid_conf=dict(
+                    xbound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    ybound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    zbound=[
+                        -5.0,
+                        3.0,
+                        8.0,
+                    ]),
+                grid_interpolate=True,
+                grid_resolution_perwin=(
+                    4,
+                    4,
+                ),
+                ignore_index=255,
+                mode='occupancy_prediction',
+                num_vocal=230,
+                occ_n_future=4,
+                samples_grids_eachwin=-1,
+                use_vocab_list=False),
+            head_cfg=dict(
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_size=(
+                    200,
+                    200,
+                ),
+                classes=[
+                    'car',
+                    'truck',
+                    'bus',
+                    'trailer',
+                    'construction_vehicle',
+                    'pedestrian',
+                    'motorcycle',
+                    'bicycle',
+                    'traffic_cone',
+                    'barrier',
+                ],
+                grid_interpolate=True,
+                num_bins=167,
+                num_classes=10,
+                rotation_angle=360,
+                theta_fines=10,
+                theta_groups=36,
+                value_bin_cfg=dict(
+                    bev_grid_nums=(
+                        10,
+                        10,
+                    ),
+                    bev_wh_size=200,
+                    bev_x_range_m=100.0,
+                    bev_y_range_m=100.0,
+                    diff_bin=20,
+                    diff_bin_count=21,
+                    diff_range=(
+                        20,
+                        40,
+                    ),
+                    grid_range=(
+                        0,
+                        19,
+                    ),
+                    theta_fines=10,
+                    theta_groups=36,
+                    wh_h_bin_count=26,
+                    wh_h_max_m=5.0,
+                    wh_h_range=(
+                        142,
+                        167,
+                    ),
+                    wh_res_m=0.2,
+                    wh_w_bin_count=101,
+                    wh_w_max_m=20.0,
+                    wh_w_range=(
+                        41,
+                        141,
+                    ))),
+            task_name='occupancy_prediction'),
+        type='AddMetaInfo'),
+    dict(
+        meta_keys=(
+            'occ_future_ann_infos',
+            'task_name',
+            'head_cfg',
+            'git_cfg',
+        ),
+        type='PackOccInputs'),
+]
+theta_fines = 10
+theta_groups = 36
+total_grid_res = (
+    20,
+    20,
+)
+train_cfg = dict(max_iters=40000, type='IterBasedTrainLoop', val_interval=2000)
+train_dataloader = dict(
+    batch_size=2,
+    dataset=dict(
+        ann_file='data/infos/nuscenes_infos_temporal_train.pkl',
+        classes=[
+            'car',
+            'truck',
+            'bus',
+            'trailer',
+            'construction_vehicle',
+            'pedestrian',
+            'motorcycle',
+            'bicycle',
+            'traffic_cone',
+            'barrier',
+        ],
+        data_root='data/nuscenes/',
+        occ_n_future=4,
+        pipeline=[
+            dict(
+                ins_inds_add_1=False,
+                type='LoadAnnotations3D_E2E',
+                with_future_anns=True,
+                with_ins_inds_3d=True),
+            dict(
+                color_type='color',
+                to_float32=False,
+                type='LoadFrontCameraImageFromFile'),
+            dict(target_size=(
+                1120,
+                1120,
+            ), type='ResizeForOccInput'),
+            dict(
+                Visualization=False,
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_size=(
+                    200,
+                    200,
+                ),
+                classes=[
+                    'car',
+                    'truck',
+                    'bus',
+                    'trailer',
+                    'construction_vehicle',
+                    'pedestrian',
+                    'motorcycle',
+                    'bicycle',
+                    'traffic_cone',
+                    'barrier',
+                ],
+                filter_invisible=True,
+                grid_conf=dict(
+                    xbound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    ybound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    zbound=[
+                        -5.0,
+                        3.0,
+                        8.0,
+                    ]),
+                grid_resolution_perwin=(
+                    4,
+                    4,
+                ),
+                ignore_index=255,
+                neg_cls_w=0.3,
+                num_bins=167,
+                num_classes=10,
+                num_vocal=230,
+                number_win=5,
+                proj_z0=-0.5,
+                resized_img_size=1120,
+                rotation_angle=360,
+                theta_fines=10,
+                theta_groups=36,
+                type='GenerateOccFlowLabels',
+                use_rotated_polygon=True,
+                value_bin_cfg=dict(
+                    bev_grid_nums=(
+                        10,
+                        10,
+                    ),
+                    bev_wh_size=200,
+                    bev_x_range_m=100.0,
+                    bev_y_range_m=100.0,
+                    diff_bin=20,
+                    diff_bin_count=21,
+                    diff_range=(
+                        20,
+                        40,
+                    ),
+                    grid_range=(
+                        0,
+                        19,
+                    ),
+                    theta_fines=10,
+                    theta_groups=36,
+                    wh_h_bin_count=26,
+                    wh_h_max_m=5.0,
+                    wh_h_range=(
+                        142,
+                        167,
+                    ),
+                    wh_res_m=0.2,
+                    wh_w_bin_count=101,
+                    wh_w_max_m=20.0,
+                    wh_w_range=(
+                        41,
+                        141,
+                    ))),
+            dict(
+                meta_dict=dict(
+                    git_cfg=dict(
+                        global_only_image=True,
+                        grid_conf=dict(
+                            xbound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            ybound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            zbound=[
+                                -5.0,
+                                3.0,
+                                8.0,
+                            ]),
+                        grid_interpolate=True,
+                        grid_resolution_perwin=(
+                            4,
+                            4,
+                        ),
+                        ignore_index=255,
+                        mode='occupancy_prediction',
+                        num_vocal=230,
+                        occ_n_future=4,
+                        samples_grids_eachwin=-1,
+                        use_vocab_list=False),
+                    head_cfg=dict(
+                        bev_grid_nums=(
+                            10,
+                            10,
+                        ),
+                        bev_size=(
+                            200,
+                            200,
+                        ),
+                        classes=[
+                            'car',
+                            'truck',
+                            'bus',
+                            'trailer',
+                            'construction_vehicle',
+                            'pedestrian',
+                            'motorcycle',
+                            'bicycle',
+                            'traffic_cone',
+                            'barrier',
+                        ],
+                        grid_interpolate=True,
+                        num_bins=167,
+                        num_classes=10,
+                        rotation_angle=360,
+                        theta_fines=10,
+                        theta_groups=36,
+                        value_bin_cfg=dict(
+                            bev_grid_nums=(
+                                10,
+                                10,
+                            ),
+                            bev_wh_size=200,
+                            bev_x_range_m=100.0,
+                            bev_y_range_m=100.0,
+                            diff_bin=20,
+                            diff_bin_count=21,
+                            diff_range=(
+                                20,
+                                40,
+                            ),
+                            grid_range=(
+                                0,
+                                19,
+                            ),
+                            theta_fines=10,
+                            theta_groups=36,
+                            wh_h_bin_count=26,
+                            wh_h_max_m=5.0,
+                            wh_h_range=(
+                                142,
+                                167,
+                            ),
+                            wh_res_m=0.2,
+                            wh_w_bin_count=101,
+                            wh_w_max_m=20.0,
+                            wh_w_range=(
+                                41,
+                                141,
+                            ))),
+                    task_name='occupancy_prediction'),
+                type='AddMetaInfo'),
+            dict(
+                meta_keys=(
+                    'occ_future_ann_infos',
+                    'task_name',
+                    'head_cfg',
+                    'git_cfg',
+                ),
+                type='PackOccInputs'),
+        ],
+        type='NuScenesOccDataset'),
+    num_workers=4)
+train_pipeline = [
+    dict(
+        ins_inds_add_1=False,
+        type='LoadAnnotations3D_E2E',
+        with_future_anns=True,
+        with_ins_inds_3d=True),
+    dict(
+        color_type='color',
+        to_float32=False,
+        type='LoadFrontCameraImageFromFile'),
+    dict(target_size=(
+        1120,
+        1120,
+    ), type='ResizeForOccInput'),
+    dict(
+        Visualization=False,
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_size=(
+            200,
+            200,
+        ),
+        classes=[
+            'car',
+            'truck',
+            'bus',
+            'trailer',
+            'construction_vehicle',
+            'pedestrian',
+            'motorcycle',
+            'bicycle',
+            'traffic_cone',
+            'barrier',
+        ],
+        filter_invisible=True,
+        grid_conf=dict(
+            xbound=[
+                -50.0,
+                50.0,
+                0.5,
+            ],
+            ybound=[
+                -50.0,
+                50.0,
+                0.5,
+            ],
+            zbound=[
+                -5.0,
+                3.0,
+                8.0,
+            ]),
+        grid_resolution_perwin=(
+            4,
+            4,
+        ),
+        ignore_index=255,
+        neg_cls_w=0.3,
+        num_bins=167,
+        num_classes=10,
+        num_vocal=230,
+        number_win=5,
+        proj_z0=-0.5,
+        resized_img_size=1120,
+        rotation_angle=360,
+        theta_fines=10,
+        theta_groups=36,
+        type='GenerateOccFlowLabels',
+        use_rotated_polygon=True,
+        value_bin_cfg=dict(
+            bev_grid_nums=(
+                10,
+                10,
+            ),
+            bev_wh_size=200,
+            bev_x_range_m=100.0,
+            bev_y_range_m=100.0,
+            diff_bin=20,
+            diff_bin_count=21,
+            diff_range=(
+                20,
+                40,
+            ),
+            grid_range=(
+                0,
+                19,
+            ),
+            theta_fines=10,
+            theta_groups=36,
+            wh_h_bin_count=26,
+            wh_h_max_m=5.0,
+            wh_h_range=(
+                142,
+                167,
+            ),
+            wh_res_m=0.2,
+            wh_w_bin_count=101,
+            wh_w_max_m=20.0,
+            wh_w_range=(
+                41,
+                141,
+            ))),
+    dict(
+        meta_dict=dict(
+            git_cfg=dict(
+                global_only_image=True,
+                grid_conf=dict(
+                    xbound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    ybound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    zbound=[
+                        -5.0,
+                        3.0,
+                        8.0,
+                    ]),
+                grid_interpolate=True,
+                grid_resolution_perwin=(
+                    4,
+                    4,
+                ),
+                ignore_index=255,
+                mode='occupancy_prediction',
+                num_vocal=230,
+                occ_n_future=4,
+                samples_grids_eachwin=-1,
+                use_vocab_list=False),
+            head_cfg=dict(
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_size=(
+                    200,
+                    200,
+                ),
+                classes=[
+                    'car',
+                    'truck',
+                    'bus',
+                    'trailer',
+                    'construction_vehicle',
+                    'pedestrian',
+                    'motorcycle',
+                    'bicycle',
+                    'traffic_cone',
+                    'barrier',
+                ],
+                grid_interpolate=True,
+                num_bins=167,
+                num_classes=10,
+                rotation_angle=360,
+                theta_fines=10,
+                theta_groups=36,
+                value_bin_cfg=dict(
+                    bev_grid_nums=(
+                        10,
+                        10,
+                    ),
+                    bev_wh_size=200,
+                    bev_x_range_m=100.0,
+                    bev_y_range_m=100.0,
+                    diff_bin=20,
+                    diff_bin_count=21,
+                    diff_range=(
+                        20,
+                        40,
+                    ),
+                    grid_range=(
+                        0,
+                        19,
+                    ),
+                    theta_fines=10,
+                    theta_groups=36,
+                    wh_h_bin_count=26,
+                    wh_h_max_m=5.0,
+                    wh_h_range=(
+                        142,
+                        167,
+                    ),
+                    wh_res_m=0.2,
+                    wh_w_bin_count=101,
+                    wh_w_max_m=20.0,
+                    wh_w_range=(
+                        41,
+                        141,
+                    ))),
+            task_name='occupancy_prediction'),
+        type='AddMetaInfo'),
+    dict(
+        meta_keys=(
+            'occ_future_ann_infos',
+            'task_name',
+            'head_cfg',
+            'git_cfg',
+        ),
+        type='PackOccInputs'),
+]
+tta_model = dict(type='SegTTAModel')
+use_focal_loss = False
+use_per_class_balance = True
+val_cfg = dict(type='ValLoop')
+val_dataloader = dict(
+    batch_size=2,
+    dataset=dict(
+        ann_file='data/infos/nuscenes_infos_temporal_val.pkl',
+        classes=[
+            'car',
+            'truck',
+            'bus',
+            'trailer',
+            'construction_vehicle',
+            'pedestrian',
+            'motorcycle',
+            'bicycle',
+            'traffic_cone',
+            'barrier',
+        ],
+        data_root='data/nuscenes/',
+        occ_n_future=4,
+        pipeline=[
+            dict(
+                ins_inds_add_1=False,
+                type='LoadAnnotations3D_E2E',
+                with_future_anns=True,
+                with_ins_inds_3d=True),
+            dict(
+                color_type='color',
+                to_float32=False,
+                type='LoadFrontCameraImageFromFile'),
+            dict(target_size=(
+                1120,
+                1120,
+            ), type='ResizeForOccInput'),
+            dict(
+                Visualization=False,
+                bev_grid_nums=(
+                    10,
+                    10,
+                ),
+                bev_size=(
+                    200,
+                    200,
+                ),
+                classes=[
+                    'car',
+                    'truck',
+                    'bus',
+                    'trailer',
+                    'construction_vehicle',
+                    'pedestrian',
+                    'motorcycle',
+                    'bicycle',
+                    'traffic_cone',
+                    'barrier',
+                ],
+                filter_invisible=True,
+                grid_conf=dict(
+                    xbound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    ybound=[
+                        -50.0,
+                        50.0,
+                        0.5,
+                    ],
+                    zbound=[
+                        -5.0,
+                        3.0,
+                        8.0,
+                    ]),
+                grid_resolution_perwin=(
+                    4,
+                    4,
+                ),
+                ignore_index=255,
+                neg_cls_w=0.3,
+                num_bins=167,
+                num_classes=10,
+                num_vocal=230,
+                number_win=5,
+                proj_z0=-0.5,
+                resized_img_size=1120,
+                rotation_angle=360,
+                theta_fines=10,
+                theta_groups=36,
+                type='GenerateOccFlowLabels',
+                use_rotated_polygon=True,
+                value_bin_cfg=dict(
+                    bev_grid_nums=(
+                        10,
+                        10,
+                    ),
+                    bev_wh_size=200,
+                    bev_x_range_m=100.0,
+                    bev_y_range_m=100.0,
+                    diff_bin=20,
+                    diff_bin_count=21,
+                    diff_range=(
+                        20,
+                        40,
+                    ),
+                    grid_range=(
+                        0,
+                        19,
+                    ),
+                    theta_fines=10,
+                    theta_groups=36,
+                    wh_h_bin_count=26,
+                    wh_h_max_m=5.0,
+                    wh_h_range=(
+                        142,
+                        167,
+                    ),
+                    wh_res_m=0.2,
+                    wh_w_bin_count=101,
+                    wh_w_max_m=20.0,
+                    wh_w_range=(
+                        41,
+                        141,
+                    ))),
+            dict(
+                meta_dict=dict(
+                    git_cfg=dict(
+                        global_only_image=True,
+                        grid_conf=dict(
+                            xbound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            ybound=[
+                                -50.0,
+                                50.0,
+                                0.5,
+                            ],
+                            zbound=[
+                                -5.0,
+                                3.0,
+                                8.0,
+                            ]),
+                        grid_interpolate=True,
+                        grid_resolution_perwin=(
+                            4,
+                            4,
+                        ),
+                        ignore_index=255,
+                        mode='occupancy_prediction',
+                        num_vocal=230,
+                        occ_n_future=4,
+                        samples_grids_eachwin=-1,
+                        use_vocab_list=False),
+                    head_cfg=dict(
+                        bev_grid_nums=(
+                            10,
+                            10,
+                        ),
+                        bev_size=(
+                            200,
+                            200,
+                        ),
+                        classes=[
+                            'car',
+                            'truck',
+                            'bus',
+                            'trailer',
+                            'construction_vehicle',
+                            'pedestrian',
+                            'motorcycle',
+                            'bicycle',
+                            'traffic_cone',
+                            'barrier',
+                        ],
+                        grid_interpolate=True,
+                        num_bins=167,
+                        num_classes=10,
+                        rotation_angle=360,
+                        theta_fines=10,
+                        theta_groups=36,
+                        value_bin_cfg=dict(
+                            bev_grid_nums=(
+                                10,
+                                10,
+                            ),
+                            bev_wh_size=200,
+                            bev_x_range_m=100.0,
+                            bev_y_range_m=100.0,
+                            diff_bin=20,
+                            diff_bin_count=21,
+                            diff_range=(
+                                20,
+                                40,
+                            ),
+                            grid_range=(
+                                0,
+                                19,
+                            ),
+                            theta_fines=10,
+                            theta_groups=36,
+                            wh_h_bin_count=26,
+                            wh_h_max_m=5.0,
+                            wh_h_range=(
+                                142,
+                                167,
+                            ),
+                            wh_res_m=0.2,
+                            wh_w_bin_count=101,
+                            wh_w_max_m=20.0,
+                            wh_w_range=(
+                                41,
+                                141,
+                            ))),
+                    task_name='occupancy_prediction'),
+                type='AddMetaInfo'),
+            dict(
+                meta_keys=(
+                    'occ_future_ann_infos',
+                    'task_name',
+                    'head_cfg',
+                    'git_cfg',
+                ),
+                type='PackOccInputs'),
+        ],
+        test_mode=True,
+        type='NuScenesOccDataset'),
+    num_workers=4,
+    sampler=dict(shuffle=False, type='DefaultSampler'))
+val_evaluator = dict(
+    Debug=False,
+    Visualization=False,
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    classes=[
+        'car',
+        'truck',
+        'bus',
+        'trailer',
+        'construction_vehicle',
+        'pedestrian',
+        'motorcycle',
+        'bicycle',
+        'traffic_cone',
+        'barrier',
+    ],
+    cls_start=168,
+    ignore_id=229,
+    iou_mode='rbox',
+    iou_thresh=0.0,
+    marker_end_id=182,
+    score_thr=0.3,
+    type='Occ2DBoxMetric',
+    value_bin_cfg=dict(
+        bev_grid_nums=(
+            10,
+            10,
+        ),
+        bev_wh_size=200,
+        bev_x_range_m=100.0,
+        bev_y_range_m=100.0,
+        diff_bin=20,
+        diff_bin_count=21,
+        diff_range=(
+            20,
+            40,
+        ),
+        grid_range=(
+            0,
+            19,
+        ),
+        theta_fines=10,
+        theta_groups=36,
+        wh_h_bin_count=26,
+        wh_h_max_m=5.0,
+        wh_h_range=(
+            142,
+            167,
+        ),
+        wh_res_m=0.2,
+        wh_w_bin_count=101,
+        wh_w_max_m=20.0,
+        wh_w_range=(
+            41,
+            141,
+        )))
+value_bin_cfg = dict(
+    bev_grid_nums=(
+        10,
+        10,
+    ),
+    bev_wh_size=200,
+    bev_x_range_m=100.0,
+    bev_y_range_m=100.0,
+    diff_bin=20,
+    diff_bin_count=21,
+    diff_range=(
+        20,
+        40,
+    ),
+    grid_range=(
+        0,
+        19,
+    ),
+    theta_fines=10,
+    theta_groups=36,
+    wh_h_bin_count=26,
+    wh_h_max_m=5.0,
+    wh_h_range=(
+        142,
+        167,
+    ),
+    wh_res_m=0.2,
+    wh_w_bin_count=101,
+    wh_w_max_m=20.0,
+    wh_w_range=(
+        41,
+        141,
+    ))
+vis_backends = [
+    dict(type='LocalVisBackend'),
+]
+visualizer = dict(
+    name='visualizer',
+    type='DetLocalVisualizer',
+    vis_backends=[
+        dict(type='LocalVisBackend'),
+    ])
+vit_patch_size = 16
+vit_window_patches = 14
+wh_h_bin = 25
+wh_h_bin_count = 26
+wh_h_max_m = 5.0
+wh_h_range = (
+    142,
+    167,
+)
+wh_res_m = 0.2
+wh_w_bin = 100
+wh_w_bin_count = 101
+wh_w_max_m = 20.0
+wh_w_range = (
+    41,
+    141,
+)
+work_dir = './work_dirs/plan_full_nuscenes_gelu'
+
+[OnlineDINOv3Embed] Loaded weights. Missing: 200, Unexpected: 323
+[OnlineDINOv3Embed] Loaded weights. Missing: 200, Unexpected: 323
+[OnlineDINOv3Embed] Loaded weights. Missing: 200, Unexpected: 323
+[OnlineDINOv3Embed] Loaded weights. Missing: 200, Unexpected: 323
+[OnlineDINOv3Embed] layer=16, proj 4096->2048->GELU->768, unfreeze_last=0, dtype=fp16
+[OnlineDINOv3Embed] layer=16, proj 4096->2048->GELU->768, unfreeze_last=0, dtype=fp16
+[OnlineDINOv3Embed] layer=16, proj 4096->2048->GELU->768, unfreeze_last=0, dtype=fp16
+[ViTGiT] Using OnlineDINOv3Embed (layer 16, unfreeze_last=0)
+[ViTGiT] Using OnlineDINOv3Embed (layer 16, unfreeze_last=0)
+[ViTGiT] Using OnlineDINOv3Embed (layer 16, unfreeze_last=0)
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/huggingface_hub/file_download.py:795: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/huggingface_hub/file_download.py:795: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+The tokenizer class you load from this checkpoint is not the same type as the class this function is called from. It may result in unexpected tokenization. 
+The tokenizer class you load from this checkpoint is 'BertTokenizer'. 
+The class this function is called from is 'BlipTokenizer'.
+The tokenizer class you load from this checkpoint is not the same type as the class this function is called from. It may result in unexpected tokenization. 
+The tokenizer class you load from this checkpoint is 'BertTokenizer'. 
+The class this function is called from is 'BlipTokenizer'.
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/huggingface_hub/file_download.py:795: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+The tokenizer class you load from this checkpoint is not the same type as the class this function is called from. It may result in unexpected tokenization. 
+The tokenizer class you load from this checkpoint is 'BertTokenizer'. 
+The class this function is called from is 'BlipTokenizer'.
+[OnlineDINOv3Embed] layer=16, proj 4096->2048->GELU->768, unfreeze_last=0, dtype=fp16
+[ViTGiT] Using OnlineDINOv3Embed (layer 16, unfreeze_last=0)
+/home/UNT/yz0370/anaconda3/envs/GiT/lib/python3.8/site-packages/huggingface_hub/file_download.py:795: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+The tokenizer class you load from this checkpoint is not the same type as the class this function is called from. It may result in unexpected tokenization. 
+The tokenizer class you load from this checkpoint is 'BertTokenizer'. 
+The class this function is called from is 'BlipTokenizer'.
+03/13 20:54:17 - mmengine - INFO - Hooks will be executed in the following order:
+before_run:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(BELOW_NORMAL) LoggerHook                         
+ -------------------- 
+before_train:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+(VERY_LOW    ) CheckpointHook                     
+ -------------------- 
+before_train_epoch:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+(NORMAL      ) DistSamplerSeedHook                
+ -------------------- 
+before_train_iter:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+ -------------------- 
+after_train_iter:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+(BELOW_NORMAL) LoggerHook                         
+(LOW         ) ParamSchedulerHook                 
+(VERY_LOW    ) CheckpointHook                     
+ -------------------- 
+after_train_epoch:
+(NORMAL      ) IterTimerHook                      
+(LOW         ) ParamSchedulerHook                 
+(VERY_LOW    ) CheckpointHook                     
+ -------------------- 
+before_val:
+(VERY_HIGH   ) RuntimeInfoHook                    
+ -------------------- 
+before_val_epoch:
+(NORMAL      ) IterTimerHook                      
+ -------------------- 
+before_val_iter:
+(NORMAL      ) IterTimerHook                      
+ -------------------- 
+after_val_iter:
+(NORMAL      ) IterTimerHook                      
+(NORMAL      ) DetVisualizationHook               
+(BELOW_NORMAL) LoggerHook                         
+ -------------------- 
+after_val_epoch:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+(BELOW_NORMAL) LoggerHook                         
+(LOW         ) ParamSchedulerHook                 
+(VERY_LOW    ) CheckpointHook                     
+ -------------------- 
+after_val:
+(VERY_HIGH   ) RuntimeInfoHook                    
+ -------------------- 
+after_train:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(VERY_LOW    ) CheckpointHook                     
+ -------------------- 
+before_test:
+(VERY_HIGH   ) RuntimeInfoHook                    
+ -------------------- 
+before_test_epoch:
+(NORMAL      ) IterTimerHook                      
+ -------------------- 
+before_test_iter:
+(NORMAL      ) IterTimerHook                      
+ -------------------- 
+after_test_iter:
+(NORMAL      ) IterTimerHook                      
+(NORMAL      ) DetVisualizationHook               
+(BELOW_NORMAL) LoggerHook                         
+ -------------------- 
+after_test_epoch:
+(VERY_HIGH   ) RuntimeInfoHook                    
+(NORMAL      ) IterTimerHook                      
+(BELOW_NORMAL) LoggerHook                         
+ -------------------- 
+after_test:
+(VERY_HIGH   ) RuntimeInfoHook                    
+ -------------------- 
+after_run:
+(BELOW_NORMAL) LoggerHook                         
+ -------------------- 
+[NuScenesOcc] Loaded 6019 samples (Filtered 0 bad samples).
+[NuScenesOcc] Loaded 6019 samples (Filtered 0 bad samples).
+[NuScenesOcc] Loaded 6019 samples (Filtered 0 bad samples).
+03/13 20:54:19 - mmengine - WARNING - "FileClient" will be deprecated in future. Please use io functions in https://mmengine.readthedocs.io/en/latest/api/fileio.html#file-io
+03/13 20:54:19 - mmengine - WARNING - "HardDiskBackend" is the alias of "LocalBackend" and the former will be deprecated in future.
+[NuScenesOcc] Loaded 6019 samples (Filtered 0 bad samples).
+03/13 20:54:20 - mmengine - WARNING - The prefix is not set in metric class Occ2DBoxMetric.
+Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+Loads checkpoint by local backend from path: /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+03/13 20:54:32 - mmengine - INFO - Load checkpoint from /mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth
+03/13 20:55:18 - mmengine - INFO - Iter(test) [ 10/753]    eta: 0:57:05  time: 4.5871  data_time: 0.0029  memory: 21722  
