@@ -2357,3 +2357,12 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-14 01:50:01] watchdog: === 用量检查开始 ===
 [2026-03-14 01:50:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
 [2026-03-14 01:50:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 02:00:01] watchdog: === 用量检查开始 ===
+[2026-03-14 02:00:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-14 02:00:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 02:10:01] watchdog: === 用量检查开始 ===
+[2026-03-14 02:10:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-14 02:10:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 02:20:01] watchdog: === 用量检查开始 ===
+[2026-03-14 02:20:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-14 02:20:07] watchdog: ✅ 用量正常，无需休眠
