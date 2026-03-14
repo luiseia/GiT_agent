@@ -4227,3 +4227,5 @@ baseline comparison" completed (exit code 0)
 [2026-03-14 06:10:08] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
 [2026-03-14 06:10:08] watchdog: ✅ 用量正常，无需休眠
 [2026-03-14 06:20:01] watchdog: === 用量检查开始 ===
+[2026-03-14 06:20:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-14 06:20:07] watchdog: ✅ 用量正常，无需休眠
