@@ -141,7 +141,35 @@ for f in shared/audit/AUDIT_REQUEST_*.md; do
 done
 ```
 
-## 核心职责 3：深度监控
+## 核心职责 3：训练质量健康监控（CRITICAL）
+
+除了表面的 loss/lr 指标，你必须主动检查训练是否存在**隐性退化**。以下是已知的严重问题模式：
+
+### 模式坍缩检测（Mode Collapse）
+训练 loss 下降，看起来一切正常，但模型实际上在记忆统计先验而非学习图像特征。
+**检查方法**：
+1. 读 eval 输出中各类 count 分布 — 如果 >80% query 预测同一个 marker（如 END 或 NEAR），标记 🚨
+2. 读 eval 输出中不同样本的预测文件 — 如果不同图像的预测几乎完全一样，标记 🚨
+3. 查看训练配置的 `train_pipeline` — 如果没有任何数据增强（无 RandomFlip、PhotoMetricDistortion 等），标记 🚨
+4. 如果 `train_pipeline = test_pipeline`（字面上一样），标记 ⚠️
+
+### Loss-指标背离检测
+如果训练 loss 持续下降但 eval 指标停滞或恶化，说明模型在学习捷径（shortcut learning）。
+**检查方法**：
+1. 对比最近 3 个 checkpoint 的 loss 趋势和 eval 指标趋势
+2. 如果 loss ↓ 但 recall/precision ↓ 或 →，标记 🚨
+
+### 告警写入格式
+在 `supervisor_report_latest.md` 中用 `## 🚨 训练质量告警` 标记：
+```markdown
+## 🚨 训练质量告警
+- [RED] 预测多样性极低：98% query 预测 END marker
+- [RED] 训练 pipeline 无数据增强
+- [YELLOW] loss 下降但 eval 指标停滞
+```
+⚡ 这个 section 会被 all_loops.sh 自动解析，触发紧急审计请求。
+
+## 核心职责 4：深度系统监控
 
 每轮检查：
 - 各 Agent tmux 会话是否存活
@@ -183,6 +211,9 @@ done
 | bg_false_alarm | > 0.25 | Plan C 爆表(0.294) |
 | offset_theta | ≤ 0.20 | 角度精度 |
 | avg_precision | ≥ 0.20 | 持续瓶颈(~0.09) |
+| prediction_diversity | < 20% | 🚨 不同样本预测差异 <20% = mode collapse |
+| dominant_marker_ratio | > 80% | 🚨 单一 marker 占比 >80% = 模型未学习 |
+| no_data_augmentation | TRUE | 🚨 训练 pipeline 无数据增强 = 高风险 |
 
 ### 训练日志位置
 | 内容 | 路径 |

@@ -144,6 +144,64 @@ while true; do
     log "→ ops: 执行 save_tmux.sh"
     bash "${AGENT_DIR}/scripts/save_tmux.sh"
 
+    # ─── 4.5 训练质量健康检查（自动审计触发）─────
+    HEALTH_ALERT=0
+    HEALTH_REPORT="${AGENT_DIR}/shared/logs/supervisor_report_latest.md"
+    if [ -f "$HEALTH_REPORT" ]; then
+        # 检查 supervisor 报告中是否有 🚨 训练质量告警
+        if grep -q "训练质量告警" "$HEALTH_REPORT" 2>/dev/null; then
+            if grep -q "\[RED\]" "$HEALTH_REPORT" 2>/dev/null; then
+                HEALTH_ALERT=2
+                log "🚨🚨 训练质量 RED 告警！自动触发紧急审计"
+            elif grep -q "\[YELLOW\]" "$HEALTH_REPORT" 2>/dev/null; then
+                HEALTH_ALERT=1
+                log "⚠️ 训练质量 YELLOW 告警"
+            fi
+        fi
+    fi
+
+    # 如果发现 RED 告警，自动签发紧急审计请求（无需等 Conductor 决策）
+    if [ "$HEALTH_ALERT" -ge 2 ]; then
+        HEALTH_AUDIT_ID="HEALTH_$(date +%Y%m%d_%H%M)"
+        HEALTH_AUDIT_FILE="${AGENT_DIR}/shared/audit/requests/AUDIT_REQUEST_${HEALTH_AUDIT_ID}.md"
+        if [ ! -f "$HEALTH_AUDIT_FILE" ]; then
+            mkdir -p "${AGENT_DIR}/shared/audit/requests"
+            cat > "$HEALTH_AUDIT_FILE" << HEALTHEOF
+# 紧急审计请求 — ${HEALTH_AUDIT_ID}
+
+## 触发方式: 自动健康检查（all_loops.sh）
+
+## 审计类型: TRAINING_HEALTH
+
+## 背景
+Supervisor 报告中检测到 RED 级训练质量告警。
+请执行以下紧急审计：
+
+## 审计要点
+
+### 1. 预测多样性验证
+- 运行 \`scripts/diagnose_v3c_single_ckpt.py\` 检查最新 checkpoint 的跨样本预测差异
+- 如果 >90% 预测相同 → 确认 mode collapse
+- 如果 diff/Margin < 10% → 确认模型在忽略图像输入
+
+### 2. 训练配置审查
+- 检查当前 config 的 train_pipeline 是否有数据增强
+- 检查 train_pipeline 和 test_pipeline 是否分离
+- 检查是否有已知的 mode collapse 风险因素
+
+### 3. Loss-指标背离分析
+- 对比最近 checkpoints 的 loss 趋势和实际预测质量
+- 确认是否存在 shortcut learning
+
+## 紧急程度: P0 — 训练可能在浪费 GPU 时间
+HEALTHEOF
+            cd "$AGENT_DIR" && git add shared/audit/requests/ && \
+                git commit -m "auto: emergency health audit ${HEALTH_AUDIT_ID}" && \
+                git push 2>/dev/null
+            log "→ 已自动签发紧急审计: ${HEALTH_AUDIT_ID}"
+        fi
+    fi
+
     # ─── 5. Conductor Phase 1 ────────────────────
     CONDUCTOR_P1_SENT=0
     if tmux has-session -t agent-conductor 2>/dev/null; then
@@ -191,7 +249,7 @@ cd /home/UNT/yz0370/projects/GiT_agent && git pull
 cd /home/UNT/yz0370/projects/GiT && git pull
 
 ## 2. 阅读角色定义
-读取 agents/claude_critic/CLAUDE.md，理解你的职责和规则
+读取 agents/claude_critic/CLAUDE.md，理解你的职责和规则（特别注意"训练质量健康检查清单"）
 
 ## 3. 读取审计请求
 读取 shared/audit/requests/AUDIT_REQUEST_${id}.md
@@ -199,18 +257,30 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 ## 4. 读取 MASTER_PLAN
 读取 MASTER_PLAN.md，审视 Conductor 的计划和决策是否合理
 
-## 5. 深度审查代码
+## 5. 训练质量健康检查（必须执行）
+按照 CLAUDE.md 中的"训练质量健康检查清单"，逐项检查：
+- A. Mode Collapse 检测（数据增强、预测多样性、marker 分布、训练趋势）
+- B. Shortcut Learning 检测（loss-指标背离、teacher forcing 风险）
+- C. 架构风险检测（位置编码、特征注入、维度匹配）
+- D. 资源浪费检测（无效训练、checkpoint 价值）
+如果发现任何 CRITICAL 问题，优先于审计请求本身的内容报告。
+
+## 6. 深度审查代码
 按审计请求要求，深度审查 GiT/ 中相关代码，追踪完整调用链
 
-## 6. 调试验证（如需）
-调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_$(date +%Y%m%d)/
+## 7. 调试验证（如需）
+调试脚本写入：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_\$(date +%Y%m%d)/
 文件名必须以 debug_ 前缀
 
-## 7. 写入判决
+## 8. 写入判决
 写入 shared/audit/pending/VERDICT_${id}.md
-判决必须包含：结论(PROCEED/STOP/CONDITIONAL)、发现的问题(附文件路径+行号)、对 Conductor 计划的评价
+判决必须包含：
+- 结论(PROCEED/STOP/CONDITIONAL)
+- 健康检查结果（逐项列出 A/B/C/D 的检查结论）
+- 发现的问题(附文件路径+行号)
+- 对 Conductor 计划的评价
 
-## 8. 提交
+## 9. 提交
 cd /home/UNT/yz0370/projects/GiT_agent
 git add shared/audit/pending/ && git commit -m "critic: verdict ${id}" && git push
 CRITICEOF
