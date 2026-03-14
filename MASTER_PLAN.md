@@ -407,7 +407,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-61** | **HIGH** (升级) | reg_loss=0 频率升高 + **ALL-zero 新变体**: iter 3980 cls=0/reg=0/grad=0 (前所未有)。7.1% iter 出现 reg_loss=0 | 与 BUG-17 sqrt balance 相关，BUG-17 已修复 (max_class_weight=3.0)，需验证 resume 后是否仍复现 |
+| **BUG-61** | **CRITICAL 观察** | reg_loss=0 频率 resume 后持续升高: 3.3%→**13.3%** (iter 4620+4630 首次连续 reg=0)。BUG-17 cap 未根治。模式: cls≈0.7, reg=0.0。@6000 eval 必须评估其对指标的影响 | @6000 eval 后决定是否干预 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
 | **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
 | **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
