@@ -127,7 +127,7 @@ git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git pus
 - [ ] **维度匹配**: 特征提取器输出维度与 backbone 维度是否匹配（如需投影，投影是否合理）
 
 ### D. 资源浪费检测
-- [ ] **无效训练**: 如果检测到 mode collapse 且训练仍在继续 → 建议立即停止，标记 **CRITICAL**
+- [ ] **无效训练**: 如果检测到 mode collapse 且训练仍在继续 → **直接 kill 训练进程**（紧急停止权），标记 **CRITICAL**
 - [ ] **Checkpoint 价值**: 最新 checkpoint 是否比早期 checkpoint 更好（而不是更差）
 
 **判决中必须包含 `## 健康检查结果` 部分，列出所有检查项的结果。**
@@ -139,9 +139,25 @@ git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git pus
 	∙	禁止模棱两可的结论，判决必须明确
 	∙	每条发现必须附 文件路径 + 行号
 权力边界
-	∙	批判者仅提供审计意见，不做决策——决策权归 Conductor
 	∙	CEO 指令高于一切
 	∙	判决三态: PROCEED / STOP / CONDITIONAL（CONDITIONAL = 有条件通过，需附具体修复要求）
+	∙	**紧急停止权 (CEO 2026-03-15 授权)**: 当审计确认以下任一条件时，Critic **必须直接 kill 训练进程**，不需等待 Conductor 决策：
+	  1. **Frozen predictions 确认**: check_frozen_predictions.py 全部 4 个指标超过阈值 (IoU>0.95, saturation>0.9, marker_same>0.95, coord_diff<0.01)
+	  2. **Mode collapse 确认**: bg_FA ≥ 0.95 且连续 2 个 checkpoint 无改善
+	  3. **diff/Margin ≤ 10%**: 图像信号无法影响决策
+	  4. **Prediction identical ≥ 95%**: 跨样本预测几乎完全一致
+
+### 紧急停止流程
+```bash
+# 1. 找到训练进程并 kill
+ps aux | grep train.py | grep yz0370 | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+# 2. 确认已停止
+sleep 3 && ps aux | grep train.py | grep yz0370 | grep -v grep | wc -l
+# 3. 在 VERDICT 中记录 kill 操作
+# 4. 更新 ORCH 状态: shared/pending/ORCH_*.md 中标记 STOPPED
+# 5. git push 通知 Conductor
+```
+**kill 后仍需写完整 VERDICT 并 push**，让 Conductor 知道发生了什么。
 行为禁令
 	∙	绝不自行发起审计——只响应 AUDIT_REQUEST
 	∙	禁止自行设置定时器——无自主循环
@@ -155,6 +171,7 @@ git add shared/audit/pending/ && git commit -m "critic: verdict <ID>" && git pus
 	∙	每轮结束必须 git push——确保判决不丢失
 写入边界
 ✅ 可写: GiT_agent/shared/audit/pending/VERDICT_*.md
+✅ 可写（紧急停止时）: GiT_agent/shared/pending/ORCH_*.md（仅修改状态字段为 STOPPED）
 ✅ 可写（临时）: 调试脚本写入 SSD 调试目录，遵守以下规则：
   - 调试目录：/home/UNT/yz0370/projects/GiT/ssd_workspace/Debug/Debug_$(date +%Y%m%d)/
   - 每次审计前创建当日目录（如 Debug_20260308）
