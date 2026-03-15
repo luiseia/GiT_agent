@@ -1,4 +1,4 @@
-# Critic 审计指令 — LARGE_V1_AT6000
+# Critic 审计指令（通用模板）
 
 严格按以下步骤执行，不可跳过任何步骤：
 
@@ -10,7 +10,7 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 读取 agents/claude_critic/CLAUDE.md，理解你的职责、性格规则和写入边界
 
 ## 3. 读取审计请求
-读取 shared/audit/requests/AUDIT_REQUEST_LARGE_V1_AT6000.md
+读取 shared/audit/requests/ 目录下最新的 AUDIT_REQUEST_*.md（按文件修改时间排序，取最新的）
 
 ## 4. 读取 MASTER_PLAN
 读取 MASTER_PLAN.md，审视 Conductor 的计划和决策是否合理
@@ -132,6 +132,61 @@ cd /home/UNT/yz0370/projects/GiT
 
 **⚠️ 如果判定为 FROZEN PREDICTIONS，verdict 必须为 STOP，无论其他指标如何。**
 
+## 6B. 预测健康度量化检查（CRITICAL — 早期预警）
+
+此检查捕捉模型训练早期的退化信号，即使在 frozen predictions 形成之前也能发现问题。
+
+### 6B.1 运行 TF vs AR 诊断
+```bash
+cd /home/UNT/yz0370/projects/GiT
+/home/UNT/yz0370/anaconda3/envs/GiT/bin/python scripts/test_teacher_forcing_inference.py \
+    <config_path> <最新checkpoint_path> --num-samples 5
+```
+
+### 6B.2 检查 Marker 饱和度
+从上面脚本输出中读取每样本的检测数。
+
+**判定标准**：
+- 检测数 / 总 slot 数 (1200) > 90%: 🔴 **MARKER 饱和** — 模型没有学会预测"空"
+- 检测数 / 总 slot 数 30%-90%: ⚠️ 偏高，关注趋势
+- 检测数 / 总 slot 数 < 30%: ✅ 正常
+
+### 6B.3 检查 检测数 vs GT 比率
+```
+过检比 = mean(检测数) / mean(GT数)
+```
+- 过检比 > 50x: 🔴 **严重过检** — 模型产生大量虚假检测
+- 过检比 10x-50x: ⚠️ 过检偏高
+- 过检比 < 10x: ✅ 正常范围
+
+### 6B.4 检查 类别多样性
+从脚本输出中读取类别分布。
+
+**判定标准**：
+- 只出现 1-2 个类别: 🔴 **类别坍塌** — 模型只学会少数类
+- 出现 3-5 个类别: ⚠️ 多样性不足
+- 出现 6+ 个类别: ✅ 正常
+
+### 6B.5 检查 自回归有效性 (TF vs AR)
+对比 TF 和 AR 的检测数和类别分布。
+
+**判定标准**：
+- TF 与 AR 的检测数差异 < 1% 且类别分布相同: 🔴 **自回归失效** — 模型完全忽略 token 依赖
+- TF 比 AR 有明显变化 (>10% 差异或类别不同): ✅ 模型在利用自回归上下文
+- TF 检测数更接近 GT 且跨样本有变化: ✅✅ 自回归在工作，exposure bias 需处理
+
+### 6B.6 VERDICT 中必须包含
+```markdown
+## 预测健康度量化
+- Marker 饱和度: XX% (1200 中 XX 个正预测) → 判定
+- 过检比: mean_det / mean_gt = XXx → 判定
+- 类别多样性: N/10 类出现 → 判定
+- 自回归有效性: TF vs AR 差异 XX% → 判定
+- 综合: ✅ / ⚠️ / 🔴
+```
+
+**⚠️ 如果 Marker 饱和度 🔴 + 自回归失效 🔴，verdict 应为 STOP 或 CONDITIONAL（要求更多迭代后复检）。**
+
 ## 7. 审计请求专项审查
 按 AUDIT_REQUEST 中的具体要求，深度审查 GiT/ 代码，追踪完整调用链
 
@@ -140,7 +195,7 @@ cd /home/UNT/yz0370/projects/GiT
 文件名必须以 debug_ 前缀
 
 ## 9. 写入判决
-写入 shared/audit/pending/VERDICT_LARGE_V1_AT6000.md
+写入 shared/audit/pending/VERDICT_<与审计请求对应的ID>.md
 判决必须包含以下所有部分：
 
 ```markdown
