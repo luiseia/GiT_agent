@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-14 17:05
+> 最后更新: 2026-03-15 04:10
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,161 +18,103 @@
 
 ---
 
-## 当前阶段: GiT-Large v1 P2+P3 修复后重启训练 — ORCH_043 执行中
+## 当前阶段: ORCH_045 — 多层 DINOv3 + 适应层 + Token Corruption 从零训练
 
-### 🚨 Mode Collapse 根因诊断 (2026-03-14) — 已明确
+### 🚨🚨 Frozen Predictions 根因最终确认 (2026-03-15 03:05)
 
-ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode collapse**:
-- **零数据增强**: train_pipeline = test_pipeline，模型记忆空间先验而非学习图像特征
-- **100% Teacher Forcing**: 自回归解码无 scheduled sampling，推理时暴露偏差
-- **证据**: diff/Margin 从 @4000 的 7.9% 跌至 @14000 的 2.3%，99.75% 预测完全相同
+**P2+P3 @6000 (ORCH_043) 的 car_R=0.582 是假象** — BEV 可视化确认预测完全 frozen:
+- 5 个样本的预测框在相同 BEV 位置，不随场景变化
+- 1200/1200 slots 全正，跨样本 marker 相同率 93~98%，坐标完全一致
+- **喂随机噪声/全零图像 → 输出完全一样** → 模型完全忽略视觉输入
+- DINOv3 特征跨样本确实不同 ✅，但 decoder 输出跨样本完全相同 ❌
 
-### ⭐ TF vs AR 诊断结论 (2026-03-14 19:22)
+### 推理错误纠正 (重要教训)
 
-**Teacher Forcing 推理 vs 正常 Autoregressive 推理对比 (iter_4000)**:
-- AR: 1200/1200 dets, classes={car:~555, barrier:~645}, 跨样本 std=0.0
-- TF: 1200/1200 dets, classes={car:~555, barrier:~645}, 跨样本 std=0.0
-- **TF ≈ AR → 模型完全不使用自回归上下文，exposure bias 不是根因**
-- **根因确认: 位置信息缺失 (P2) + 单步特征注入 (P3) → 所有 cell 等价**
-- P4 (scheduled sampling) 在当前阶段无意义，延后
+| 错误推理 | 正确结论 |
+|---------|---------|
+| "TF≈AR → 位置信息缺失" | TF≈AR → **完全 mode collapse** |
+| "car_R=0.582 → P2+P3 修复成功" | frozen 位置碰巧和 GT 重叠的假象 |
+| "P2+P3 是正确修复方向" | P2+P3 是必要条件但**不充分**，根因是 TF mode collapse |
+| "检测数 765-846 → 预测不 frozen" | 检测数不等于空间分布，BEV 位置才是判断标准 |
 
-详细诊断报告: `shared/logs/diagnosis_frozen_predictions.md`
-
-### GiT-Large v1 训练 (P0+P1 修复)
+### ORCH_045 训练详情 (当前活跃实验)
 
 | 项目 | 值 |
 |------|-----|
-| Config | `configs/GiT/plan_full_nuscenes_large_v1.py` |
-| Work dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/full_nuscenes_large_v1` |
-| 日志 (resume) | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1_resume4k.out` |
-| 日志 (旧) | `/mnt/SSD/GiT_Yihao/Train/Train_20260314/nohup_large_v1.out` |
+| Config | `configs/GiT/plan_full_nuscenes_large_v1.py` (commit `26b6f92`) |
 | 架构 | GiT-Large (1024-dim, 30 layers) + DINOv3 ViT-L frozen |
-| P0 修复 | PhotoMetricDistortion 数据增强 + train/test pipeline 分离 |
-| P1 修复 | ViT-L (1024) → GiT-Large (1024) 无损投影 |
-| BUG 修复 | clip_grad=10 (回退, `c416818`), filter_invisible=False, max_class_weight=3.0 (commit `4ad3b0f`) |
-| GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
-| batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
-| iters | 40000, val@2000 |
-| 进度 | **✅ 多层 ViT-L 训练运行中** — iter_6000 权重加载, 从 iter_0 计数, 当前 ~iter_190 |
-| 特征 | **多层 [5,11,17,23]** 4×1024=4096 → 2048→GELU→1024 投影 |
-| 显存 | ~34GB/49GB per GPU (+7GB vs 单层) |
-| ETA | ~3.4 天 (2-GPU) |
-| PID | 1626949 (master), GPU 0,2 |
-| 日志 | `20260315_015348/*.log` |
-| 初始 loss | 7~19 (比单层初始 24~52 更低，多层特征更丰富) |
+| 特征提取 | **多层 [5,11,17,23]** → 4×1024=4096 → 投影 2048 → GELU → 1024 |
+| 适应层 | **2 层 PreLN TransformerEncoderLayer** (25.2M 参数, trainable, nhead=16) |
+| Anti-collapse | **token_drop_rate=0.3** — 30% GT 输入替换为随机 token |
+| 权重 | 从零训练 (load_from=None, SAM pretrained via init_cfg) |
+| PID | 1686317 (rank0), 1686318 (rank1), GPU 0,2 (2×A6000) |
+| Batch | batch_size=1/GPU × 2 GPU × accumulative_counts=8 = effective 16 |
+| 显存 | ~29 GB/GPU |
+| 速度 | ~3.78 sec/iter |
+| ETA | ~1 天 17 小时 (~03/16 21:30) |
+| 进度 | **iter 710/40000** (1.8%) |
+| Loss | 波动中下降 (293→66→138), reg_loss 2.2~3.4 未归零 — 健康信号 |
+| work_dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260315/full_nuscenes_large_v1_multilayer_adapt` |
+| 日志 | `.../nohup_multilayer_adapt.out` (用 `strings` 过滤) |
 
-### 架构变化 (vs ORCH_024/035)
+### 关键代码修改
 
-| 参数 | ORCH_024/035 (旧) | GiT-Large v1 (新) |
-|------|-------------------|-------------------|
-| backbone | ViT-Base (768, 12+6层) | **ViT-Large (1024, 24+6层)** |
-| DINOv3 | ViT-7B (4096) | **ViT-L (1024)** |
-| 投影 | 4096→2048→GELU→768 | **1024→1024 Linear (无损)** |
-| bert_embed | 768 | **1024** |
-| 数据增强 | 无 ← 根因 | **PhotoMetricDistortion** |
-| train=test | 是 (BUG) | **否 (修复)** |
+| Commit | 文件 | 改动 |
+|--------|------|------|
+| `05d5138` | `mmdet/models/detectors/git.py` | token corruption: forward_transformer 中 input_seq 随机替换 |
+| `a69b64b` | `mmdet/models/backbones/vit_git.py` | 多层 DINOv3 [5,11,17,23] + 2 层 PreLN 适应层 |
+| `a69b64b` | `scripts/check_frozen_predictions.py` | mode collapse 自动诊断脚本 |
+| `26b6f92` | config | batch_size=1, accumulative_counts=8 (OOM fix) |
+| `d9d7f7d` | `git.py` + `git_occ_head.py` | P2 (position embedding) + P3 (每步图像特征注入) |
 
-### 🚨 GPU 特征流诊断结果 (2026-03-14 — 3 个 checkpoint)
+### 检查点计划
 
-| 指标 | @2000 (clip=10) | @4000 (clip=10) | @6000 (clip=30) |
-|------|-----------------|-----------------|-----------------|
-| diff/Margin | — | 7.9% | 0.16 |
-| % identical | — | ~97% | ~99% |
-| detections/sample | — | 120-132 | 21-27 |
-| margin (top1-top2) | — | 19.73 | 0.16 |
+| 检查点 | 预计时间 | 行动 |
+|--------|---------|------|
+| **@2000** | **~03/15 11:00** | 首次 frozen prediction 检查 (关键!) |
+| @4000 | ~03/15 19:00 | 第二次检查 + 指标评估 |
+| @8000 | ~03/16 05:00 | 架构决策级评估 |
 
-**关键发现**:
-- **clip_grad 10→30 (BUG-62 "修复") 实际摧毁了分类器** — margin 从 19.73 暴跌到 0.16
-- **Frozen predictions 在所有 checkpoint 持续存在** — P0 (数据增强) 不足以解决 mode collapse
-- **可视化确认**: iter_4000 和 iter_6000 的 5 个样本预测完全相同，无论 GT 不同
-- **clip_grad 已回退到 10** (commit `c416818`)
-- **P2+P3 是解决 frozen predictions 的必要条件** — 没有位置信息，模型无法区分 BEV grid 位置
+### @2000 决策树
 
-### 待实施改进 (P2-P4) — P2+P3 为重启前提
+```
+├─ FROZEN (IoU>0.95, saturation>0.9) → token_drop_rate 不够, 增大或换策略
+├─ PARTIAL (IoU 0.5~0.95) → 有改善但不够, 考虑增大 drop_rate
+├─ HEALTHY (IoU<0.5, predictions vary) → PROCEED, 等 @4000 看指标
+```
 
-| 优先级 | 改动 | 位置 | 说明 | 状态 |
-|--------|------|------|------|------|
-| **P2** ✅ | occ 任务加 position embedding | `git.py:334` | 去掉 `if self.mode != 'occupancy_prediction'` — 根因: 所有 grid cell 起始 embedding 完全相同 | ✅ commit `d9d7f7d` |
-| **P3** ✅ | 每步注入 grid_interpolate_feats | `git_occ_head.py` L1111,1115 | 去掉 `pos_id == 0` 限制 — 29/30 解码步无图像特征 | ✅ commit `d9d7f7d` |
-| **P4** | Scheduled Sampling | 较大改动 | 缓解 teacher forcing 暴露偏差 | 延后 |
+### 历史 Eval 数据 (GiT-Large v1 单层, 已终止)
 
-### ⚠️ @2000 Eval 结果 (2026-03-14 05:40)
+> 以下数据来自 ORCH_043 之前的单层 ViT-L 训练，该训练已确认为 frozen predictions，数据仅供参考。
 
-| 指标 | GiT-Large v1 @2000 | ORCH_024 @2000 | 对比 |
-|------|-------------------|----------------|------|
-| car_R | **0.0000** | 0.627 | 🔴 未激活 |
-| bus_R | **0.0017** | — | 唯一非零类 |
-| 其他 8 类 | **全部 0.000** | — | 🔴 |
-| bg_FA | **0.002** | 0.222 | 全预测背景 |
-| off_cx | 0.106 | 0.056 | 🔴 差 89% |
-| **off_cy** | **0.029** | 0.069 | ✅ 优 58% |
-| off_w | 0.070 | 0.020 | 🔴 差 250% |
-| **off_h** | **0.009** | 0.005 | → 接近 |
-| **off_th** | **0.078** | 0.174 | ✅✅ 优 55% |
+<details>
+<summary>展开查看历史 eval 数据</summary>
 
-**诊断**: 分类器冷启动慢（bert_embed 1024-dim 随机 + layers 24-29 随机），非 mode collapse。offset 回归已在学习（off_th 大幅领先），分类器需更多 iter 收敛。
-**决策**: 继续到 @4000。
+#### @2000 Eval (2026-03-14 05:40)
+- 9/10类 R=0, off_th=0.078 (优于 024), 分类器冷启动慢
 
-### @4000 Eval + Critic 判决 (2026-03-14 10:36)
+#### @4000 Eval (2026-03-14 10:36)
+- Critic: CONDITIONAL PROCEED, 发现 BUG-62
 
-| 指标 | @2000 | **@4000** | ORCH_024 @4000 |
-|------|-------|-----------|----------------|
-| car_R | 0.000 | **0.000** | 0.419 |
-| ped_R | 0.000 | **0.025** | — |
-| bg_FA | 0.002 | **0.115** | — |
-| off_cx | 0.106 | **0.193** | 0.039 |
-| off_th | 0.078 | **0.212** | 0.150 |
+#### @6000 Eval (2026-03-14 16:59)
+- off_th=0.094 (项目历史最佳), bicycle NEW, car_R=0
+- Critic: CONDITIONAL PROCEED @8000 FINAL
+- 但后续确认为 frozen predictions 假象
 
-**Critic: CONDITIONAL PROCEED** — 发现 BUG-62 (clip_grad=10 严重节流)。→ ORCH_042 修复完成。
-
-### ⭐⭐ @6000 Eval + Critic 判决 (2026-03-14 16:59)
-
-| 指标 | @2000 | @4000 | **@6000** | ORCH_024 @6000 | 趋势 |
-|------|-------|-------|-----------|----------------|------|
-| car_R | 0.000 | 0.000 | **0.000** | 0.455 | 🔴 仍未激活 |
-| ped_R | 0.000 | 0.025 | **0.015** | — | ↓ |
-| bicycle_R | 0 | 0 | **0.010** | — | **↑ NEW** |
-| 其他 7 类 | 全 0 | 全 0 | **全 0** | — | — |
-| bg_FA | 0.002 | 0.115 | **0.025** | 0.331 | ↓↓ |
-| bg_R | — | — | **0.975** | — | — |
-| **off_th** | 0.078 | 0.212 | **0.094** | 0.169 | ✅✅ **项目历史最佳!** 击败 024@12k (0.1275) |
-| off_cy | 0.029 | 0.141 | **0.081** | 0.082 | ✅ 与 024 持平 |
-| off_cx | 0.106 | 0.193 | **0.273** | 0.056 | 🔴🔴 恶化 (BUG-65) |
-| off_w | 0.070 | 0.037 | **0.041** | 0.038 | 稳定 |
-| off_h | — | 0.015 | **0.023** | 0.011 | ↑ 略差 |
-
-**Critic 判决: CONDITIONAL PROCEED to @8000 (ABSOLUTE FINAL)**
-
-**Critic 核心分析:**
-- **不是 mode collapse** — offset 在改善、新类激活，分类与回归严重不对称
-- **off_th=0.094 是项目全历史最佳**，证明模型确实在利用图像特征
-- **分类器冷启动瓶颈**: 1024-dim random bert_embed 是根因 (BUG-64)
-- **off_cx=0.273 异常**: 可能与 P2 position embedding 缺失有关 (BUG-65)
-- **BUG-61 不是 car_R=0 的原因**: 7.4% reg=0 仅影响回归，分类器仍在学习
-- **GPU 诊断缺失**: 连续两次审计无法运行 diagnose，@8000 MANDATORY
-
-**BUG-64 (NEW HIGH)**: `bert_embed=dict(type='bert-base', hidden_size=1024, pretrain_path=None)` — BERT-large hidden_size=1024 完美匹配! 应改用 BERT-large 预训练权重，可能大幅加速分类器收敛
-**BUG-65 (NEW HIGH)**: off_cx 持续恶化 (0.106→0.193→0.273)，模型横向定位缺失
-
-**@8000 必须满足的条件 (ABSOLUTE FINAL):**
-1. **car_R > 0 或 offset 继续改善** — 否则 STOP
-2. **MUST 运行 GPU 特征流诊断** — 暂停训练释放 GPU，运行 diagnose_v3c_single_ckpt.py
-3. **调查 bert_embed 初始化** (BUG-64) — 确认可否用 BERT-large 预训练
-4. **off_cx 全维度对比** — off_cx 继续恶化 → 架构方向性盲点
+#### P2+P3 @6000 (ORCH_043, 2026-03-15 01:26)
+- car_R=0.582 — 但 BEV 可视化确认仍为 frozen predictions
+</details>
 
 ### 里程碑
 
-| 里程碑 | 预计时间 | 行动 |
-|--------|---------|------|
-| ✅ iter_2000 | 05:10 03/14 | Eval 完成，分类器冷启动慢，继续训练 |
-| ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
-| ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, resume (commit `4ad3b0f`) |
-| ✅ iter_6000 | 16:59 03/14 | Eval 完成: off_th=0.094 历史最佳, bicycle NEW, car_R=0. Critic: CONDITIONAL PROCEED |
-| ✅ ORCH_043 | 19:35 03/14 | P2+P3 修复后从 iter_4000 resume |
-| ⭐⭐⭐ @6000 eval | 01:26 03/15 | **car_R=0.582! P2+P3 确认有效** |
-| ✅ ORCH_044 | 01:53 03/15 | 多层 ViT-L 训练启动，从 iter_6000 权重加载 |
-| **@2000 (多层)** | **~5:00 03/15** | 多层 ViT-L 首个 eval |
-| **@4000 (多层)** | **~9:00 03/15** | 关键验证点 — 多层 vs 单层对比 |
+| 里程碑 | 时间 | 行动 |
+|--------|------|------|
+| ✅ Frozen 根因确认 | 03/15 03:05 | P2+P3 不充分, TF mode collapse 是根因 |
+| ✅ ORCH_044 停止 | 03/15 03:00 | 前提错误 (无 anti-collapse), iter_440 reg_loss=0 |
+| ✅ ORCH_045 启动 | 03/15 03:20 | 多层+适应层+token corruption 从零训练 |
+| **@2000 eval** | **~03/15 11:00** | **frozen prediction 检查 — 关键节点** |
+| @4000 eval | ~03/15 19:00 | 第二次检查 + 指标评估 |
+| @8000 eval | ~03/16 05:00 | 架构决策级评估 |
 
 ---
 
@@ -204,32 +146,9 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | 🔄 | 03/14 19:35 | **ORCH_043 签发** | P2+P3 修复后从 iter_4000 重启 | Admin 执行中 |
 | ⭐⭐⭐ | 03/15 01:26 | **@6000 eval (P2+P3)** | **car_R=0.582!** bg_FA=0.680, off_th=0.254 | **P2+P3 确认有效! frozen predictions 消除** |
 | 🔄 | 03/15 01:30 | **ORCH_044 签发** | 多层 ViT-L [5,11,17,23] + LN + 投影 4096→2048→1024 | CEO 指令执行 |
-
-### 🚨 @8000 决策树 (P2+P3 修复后 — 更新版)
-
-```
-GiT-Large v1 @8000 (P2+P3 修复后):
-│
-├─ 预测多样化 (跨样本 std>10, 类别>3) + car_R > 0
-│   → ⭐ PROCEED — P2+P3 确认有效
-│
-├─ 预测多样化 + car_R = 0 + offset 改善
-│   → CONDITIONAL: 分类器慢但位置学对了, 继续到 @12000
-│
-├─ 预测仍冻结 (跨样本 std<5, 类别≤2)
-│   → STOP: P2+P3 不够, 需从头训练或架构变更
-│
-├─ Marker 饱和度仍 >90% (1200/1200 全正)
-│   → STOP: 模型没学会预测"空", 根本性问题
-│
-└─ 前提: Critic 审计 (含新增 6B 健康检查: 饱和度/过检比/类别/AR有效性)
-```
-
-### 归档: ORCH_035 BUG-17 分析
-- @14000 car_R=0 的根因已重新定性为 **mode collapse** 而非 BUG-17 类别竞争
-- 零增强 + teacher forcing 导致模型逐步坍缩为统计先验输出
-- BUG-17 (per-batch sqrt weight) 仍可能是加速因素，但非根本原因
-- GiT-Large v1 通过 P0 (数据增强) 直接解决根因
+| 🚨 | 03/15 02:37 | **BEV 可视化 → frozen 确认** | P2+P3 @6000 预测仍 frozen, car_R=0.582 是假象 | smoking gun: 噪声/全零→输出一样 |
+| ❌ | 03/15 03:00 | **ORCH_044 停止** | reg_loss=0 @iter_440, 无 anti-collapse 前提错误 | PID 1626949 已 kill |
+| 🔄 | 03/15 03:20 | **ORCH_045 启动** | 多层+适应层+token corruption 从零训练 | **当前活跃实验** |
 
 ---
 
@@ -443,7 +362,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
 | **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — @6000 car_R=0.582, P2+P3 确认有效 |
-| **ORCH_044** | **多层 ViT-L + LN + 投影** | ✅ **COMPLETED** — commit `14ff4a0`, PID 1626949, iter_0 from 6000 weights |
+| **ORCH_044** | **多层 ViT-L + LN + 投影 (无 anti-collapse)** | **STOPPED** @iter_440 — reg_loss=0 mode collapse, 前提错误, PID 1626949 已 kill |
+| **ORCH_045** | **多层+适应层+token corruption 从零训练** | 🔄 **RUNNING** — PID 1686317, GPU 0,2, iter 710/40000 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
