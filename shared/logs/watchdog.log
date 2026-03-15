@@ -4631,3 +4631,33 @@ baseline comparison" completed (exit code 0)
 [2026-03-15 02:40:01] watchdog: === 用量检查开始 ===
 [2026-03-15 02:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-15 02:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 02:50:01] watchdog: === 用量检查开始 ===
+[2026-03-15 02:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 02:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:00:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:10:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:10:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:20:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:20:01] watchdog: ⚠️ agent-conductor context 剩余 9%
+[2026-03-15 03:20:01] watchdog: → agent-conductor: 需要 compact 但正在忙碌，下轮再试
+[2026-03-15 03:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:30:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:30:01] watchdog: ⚠️ agent-conductor context 剩余 2%
+[2026-03-15 03:30:01] watchdog: → agent-conductor: 已发送保存指令，等待 60 秒
+[2026-03-15 03:31:01] watchdog: → agent-conductor: 已发送 /compact，等待 30 秒
+[2026-03-15 03:31:31] watchdog: → agent-conductor: 已发送恢复指令
+[2026-03-15 03:31:31] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:40:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:40:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 03:50:01] watchdog: === 用量检查开始 ===
+[2026-03-15 03:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 03:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 04:00:01] watchdog: === 用量检查开始 ===
+[2026-03-15 04:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 04:00:01] watchdog: ✅ 用量正常，无需休眠
