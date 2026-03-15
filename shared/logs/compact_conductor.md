@@ -1,69 +1,60 @@
 # Conductor 上下文快照
-> 时间: 2026-03-15 11:30
-> 原因: @4000 eval 完成，context 消耗大
+> 时间: 2026-03-15 15:30
+> 原因: ORCH_045 已终止，等待 CEO 指令
 
 ---
 
-## 当前状态: ORCH_045 训练中，@6000 为 ABSOLUTE FINAL
+## 当前状态: 无活跃训练，GPU 0,2 空闲，等待 CEO 决策
 
-### 训练信息
-- **架构**: GiT-Large + DINOv3 ViT-L frozen 多层 [5,11,17,23] + 2 层适应层 + token_drop_rate=0.3
-- **从零训练**, PID 1686317/1686318, GPU 0,2 (2×A6000), ~29GB/GPU
-- **进度**: ~iter 4130/40000, LR=2.5e-6 稳态
-- **work_dir**: `/mnt/SSD/GiT_Yihao/Train/Train_20260315/full_nuscenes_large_v1_multilayer_adapt`
-- **ETA @40000**: ~03/16 21:30
+### ORCH_045 结果: STOPPED @6000 — Marker Saturation Collapse
 
----
+| 指标 | @2000 | @4000 | @6000 |
+|------|-------|-------|-------|
+| ped_R | 0.7646 | 1.0000 | 1.0000 |
+| car_R | 0.000 | 0.000 | 0.000 |
+| bg_FA | 0.921 | **1.000** | **1.000** |
+| off_cx | 0.309 | 0.279 | 0.300 |
+| off_cy | 0.146 | 0.193 | 0.198 |
+| off_w | 0.087 | 0.084 | 0.087 |
+| off_h | 0.038 | 0.038 | 0.038 |
+| off_th | 0.192 | 0.280 | 0.252 |
 
-## Eval 结果
+**失败根因**: token_drop_rate=0.3 未能阻止 marker saturation。模型学会了将所有 cell 预测为正样本 (bg_FA=1.0)，9/10 类 R=0，offset 全面恶化。
 
-| 指标 | @2000 (07:19) | @4000 (11:17) | 趋势 | ORCH_024 @4000 |
-|------|--------------|--------------|------|----------------|
-| ped_R | 0.7646 | **1.0000** | ⬆️ | — |
-| car_R | 0.000 | 0.000 | — | 0.419 |
-| 其他 8 类 | 全 0 | 全 0 | — | — |
-| bg_FA | 0.921 | **1.000** | 🔴🔴 | 0.199 |
-| off_cx | 0.309 | **0.279** | ✅ | 0.039 |
-| off_cy | 0.146 | **0.193** | 🔴 | 0.097 |
-| off_w | 0.087 | **0.084** | ✅ | 0.016 |
-| off_h | 0.038 | 0.038 | — | 0.005 |
-| off_th | 0.192 | **0.280** | 🔴🔴 | 0.150 |
+### 下一步可选方向（需 CEO 决策）
 
-### ⚠️ Marker Saturation Collapse
-- bg_FA=1.0: 模型将所有 cell 预测为正样本
-- ped_R=1.0 + ped_P=0.0043: 全正导致碰巧覆盖所有 GT ped
-- off_th 0.19→0.28, off_cy 0.15→0.19 恶化
-- off_cx 0.31→0.28, off_w 0.09→0.08 有微弱改善
+1. **增大 token_drop_rate** (0.3→0.5+)
+2. **Scheduled Sampling (P4)** — 渐进降低 teacher forcing
+3. **数据增强** — RandomFlip for BEV
+4. **Loss function** — focal loss / 正负样本平衡 / marker saturation 惩罚
+5. **回退 ORCH_024 @8000 baseline** — 从已知好的权重出发
 
-### 决策: CONDITIONAL PROCEED to @6000 (ABSOLUTE FINAL)
-- @6000 条件: bg_FA<0.95 且 offset 至少 2/5 改善 → 否则 STOP
+### 资源状态
+- GPU 0: 空闲 (15MB), GPU 2: 空闲 (217MB)
+- GPU 1,3: yl0826 PETR 占用 (~31GB)
+- /mnt/SSD: checkpoints iter_2000/4000/6000.pth 已保存 (~18GB 总计)
 
----
+### 关键 Checkpoints 保留
+- ORCH_045: `/mnt/SSD/GiT_Yihao/Train/Train_20260315/full_nuscenes_large_v1_multilayer_adapt/iter_{2000,4000,6000}.pth`
+- ORCH_024 @8000 (baseline): `/mnt/SSD/GiT_Yihao/Train/Train_20260308/full_nuscenes_gelu/iter_8000.pth`
 
-## @6000 ABSOLUTE FINAL (~03/15 17:00)
+### ORCH 状态
+| ID | 状态 |
+|----|------|
+| ORCH_045 | 🔴 STOPPED @6000 — marker saturation |
+| ORCH_044 | STOPPED @440 — mode collapse |
+| ORCH_043 | COMPLETED — frozen predictions 假象 |
+| ORCH_024 | TERMINATED @12000 — baseline @8000 最优 |
 
-### 停止条件 (任一满足即 STOP):
-1. bg_FA ≥ 0.95
-2. offset 全面恶化 (5/5 都比 @4000 差)
-3. car_R 仍为 0 且 offset 无改善
-
-### 继续条件 (需全部满足):
-1. bg_FA < 0.95 (模型开始区分正/负)
-2. offset 至少 2/5 改善
-3. 或 car_R > 0
-
----
-
-## Agent 状态
-- conductor: 活跃
+### Agent 状态
+- conductor: 活跃，等待 CEO
 - supervisor: 过期 (03/13)
-- critic: ⚠️ 无响应 (03/09), AUDIT_REQUEST 未取走
+- critic: 无响应 (03/09)
 - admin: 过期 (03/15 02:00)
 - ops: 正常
 
 ## 恢复指令
-1. 读本文件 + `conductor_state_archive_20260315.md`
-2. `ps aux | grep train.py | grep yz0370` 确认训练存活
-3. `strings .../nohup_multilayer_adapt.out | grep "Iter(train)" | tail -5`
-4. 检查 `CEO_CMD.md`
-5. @6000 后: 读 eval → 判定 STOP 或 PROCEED
+1. 读本文件
+2. 检查 `CEO_CMD.md`
+3. GPU 0,2 空闲可用
+4. 如需新实验: 签发 ORCH → Admin 执行
