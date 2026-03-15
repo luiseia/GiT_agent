@@ -4688,3 +4688,12 @@ baseline comparison" completed (exit code 0)
 [2026-03-15 05:30:01] watchdog: === 用量检查开始 ===
 [2026-03-15 05:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-15 05:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 05:40:01] watchdog: === 用量检查开始 ===
+[2026-03-15 05:40:07] watchdog: ⚠️ 无法解析 /usage 输出（target: agent-critic）
+[2026-03-15 05:40:07] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 05:50:01] watchdog: === 用量检查开始 ===
+[2026-03-15 05:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 05:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-15 06:00:01] watchdog: === 用量检查开始 ===
+[2026-03-15 06:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-15 06:00:01] watchdog: ✅ 用量正常，无需休眠
