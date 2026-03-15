@@ -18,17 +18,28 @@
 
 ---
 
-## 当前阶段: ORCH_045 已终止 — 等待 CEO 决策下一步
+## 当前阶段: 准备签发 ORCH_046 — 修复 BUG-69 + BUG-62
 
-### ⭐ Critic VERDICT (2026-03-15 16:55) — 下次训练必须修复的问题
+### ⭐⭐ Critic VERDICT_ORCH046_PLAN (2026-03-15 17:15) — 根因修正
+
+**重大发现**: ORCH_045 崩塌首因不是"零数据增强"（PhotoMetricDistortion 一直在 config 中），而是：
+1. **BUG-69 (NEW CRITICAL)**: adaptation layers 被 paramwise_cfg substring match 意外设为 lr_mult=0.05，25.2M 参数实际冻结
+2. **BUG-62**: clip_grad=10 导致有效梯度 0.33%
+
+### 修正后的优先级 (Critic 审计通过)
 
 | 优先级 | 修复项 | 说明 |
 |--------|--------|------|
-| **P0** | clip_grad → 35.0+ | BUG-62 回归, 有效梯度仅 0.33% |
-| **P0** | 添加数据增强 (RandomFlip + PhotoMetricDistortion) | mode collapse 根因, 4 次实验全部因此失败 |
-| P1 | Scheduled Sampling | 替代或补充已证伪的 token_drop_rate |
-| P2 | bert_embed 用 BERT-large 预训练 (BUG-64) | 分类器收敛加速 |
-| P3 | token_drop_rate 保留但降级为辅助 | BUG-66 |
+| **P0** | **BUG-69**: adapt_layers/adapt_norm lr_mult → 1.0 | 让 25.2M 适应层真正参与训练 |
+| **P0** | **BUG-62**: clip_grad → 50.0 | 释放梯度信号 |
+| P1 | RandomFlip3D (BEV 水平翻转) | 空间增强, 打破 BEV 空间先验 |
+| P1 | Scheduled Sampling | 防止 exposure bias |
+| P2 | BUG-64: bert_embed → bert-large + pretrain | 分类器收敛加速 |
+| 保留 | token_drop_rate=0.3 | 辅助 |
+
+### 执行策略: 分步验证
+1. **ORCH_046**: 只修 BUG-69 + BUG-62 (config 改动), 跑 2000 iter 验证
+2. **ORCH_047**: 如不崩塌, 再加 RandomFlip3D + Scheduled Sampling
 
 ### 🚨🚨 Frozen Predictions 根因最终确认 (2026-03-15 03:05)
 
@@ -438,10 +449,12 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-62** | **CRITICAL** | clip_grad=10.0 在 ORCH_045 config 中**未修复**! grad_norm mean=3007, 有效梯度仅 0.33%。adaptation layers 随机初始化使梯度比之前大 4.6x | **下次训练前必须修复 → 35.0+** |
-| **BUG-66** | **HIGH** | token_drop_rate=0.3 被 Critic 证伪 — 输入端加噪不改变训练信号本质，不能替代数据增强 | 降级为辅助措施 |
-| **BUG-67** | **HIGH** | adaptation layers 随机初始化 + clip_grad=10 交互效应，grad_norm 4.6x 增加导致有效梯度仅 0.33% | 考虑 Xavier 初始化 + clip_grad 35+ |
-| **BUG-68** | **CRITICAL (流程)** | Conductor 签发 ORCH_045 前未修复已知 CRITICAL BUG-62，导致 ~12 GPU·hours 浪费 | 签发新 ORCH 前必须检查所有 CRITICAL bugs |
+| **BUG-69** | **CRITICAL** | adaptation layers lr_mult=0.05 — paramwise_cfg substring match 导致 25.2M 适应层参数实际冻结 (lr=2.5e-6) | **ORCH_046 修复: adapt_layers lr_mult → 1.0** |
+| **BUG-62** | **CRITICAL** | clip_grad=10.0, 有效梯度仅 0.33% | **ORCH_046 修复: → 50.0** |
+| **BUG-70** | HIGH (纠正) | Critic VERDICT_ORCH045_AT2000 错误声明"零数据增强" — PhotoMetricDistortion 一直在 config 中 | 根因分析已修正 |
+| **BUG-66** | HIGH | token_drop_rate=0.3 效果有限 | 降级为辅助措施 |
+| **BUG-67** | HIGH | adaptation layers 初始化 + clip_grad 交互 | clip_grad → 50 后缓解 |
+| **BUG-68** | CRITICAL (流程) | Conductor 签发前未检查 CRITICAL bugs | 流程改进 |
 | **BUG-64** | **HIGH** | `bert_embed` 应用 BERT-large 预训练权重加速分类器收敛 | v2 训练必要改动 |
 | **BUG-65** | **HIGH** | off_cx 持续恶化 | 需数据增强后重新评估 |
 | **BUG-61** | **HIGH** | reg_loss=0 频率 9.5% (ORCH_045), ALL-zero 3 次 | 与单类崩塌一致 |
