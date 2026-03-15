@@ -2674,3 +2674,31 @@ To https://github.com/luiseia/GiT_agent.git
 [2026-03-14 18:20:01] watchdog: === 用量检查开始 ===
 [2026-03-14 18:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
 [2026-03-14 18:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 18:30:01] watchdog: === 用量检查开始 ===
+[2026-03-14 18:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 18:30:01] watchdog: ⚠️ agent-conductor context 剩余 0%
+[2026-03-14 18:30:01] watchdog: → agent-conductor: 需要 compact 但正在忙碌，下轮再试
+[2026-03-14 18:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 18:40:02] watchdog: === 用量检查开始 ===
+[2026-03-14 18:40:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 18:40:02] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 18:50:01] watchdog: === 用量检查开始 ===
+[2026-03-14 18:50:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 18:50:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 19:00:01] watchdog: === 用量检查开始 ===
+[2026-03-14 19:00:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 19:00:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 19:10:01] watchdog: === 用量检查开始 ===
+[2026-03-14 19:10:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 19:10:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 19:20:01] watchdog: === 用量检查开始 ===
+[2026-03-14 19:20:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 19:20:01] watchdog: ⚠️ agent-conductor context 剩余 0%
+[2026-03-14 19:20:01] watchdog: → agent-conductor: 需要 compact 但正在忙碌，下轮再试
+[2026-03-14 19:20:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 19:30:01] watchdog: === 用量检查开始 ===
+[2026-03-14 19:30:01] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 19:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-14 19:40:02] watchdog: === 用量检查开始 ===
+[2026-03-14 19:40:02] watchdog: → agent-critic 正在忙碌，跳过用量检查
+[2026-03-14 19:40:02] watchdog: ✅ 用量正常，无需休眠
