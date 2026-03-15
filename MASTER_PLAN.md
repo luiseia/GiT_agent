@@ -18,14 +18,23 @@
 
 ---
 
-## 当前阶段: GiT-Large v1 训练已停止 — 等待 P2+P3 修复后重启
+## 当前阶段: GiT-Large v1 P2+P3 修复后重启训练 — ORCH_043 执行中
 
-### 🚨 Mode Collapse 根因诊断 (2026-03-14)
+### 🚨 Mode Collapse 根因诊断 (2026-03-14) — 已明确
 
 ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode collapse**:
 - **零数据增强**: train_pipeline = test_pipeline，模型记忆空间先验而非学习图像特征
 - **100% Teacher Forcing**: 自回归解码无 scheduled sampling，推理时暴露偏差
 - **证据**: diff/Margin 从 @4000 的 7.9% 跌至 @14000 的 2.3%，99.75% 预测完全相同
+
+### ⭐ TF vs AR 诊断结论 (2026-03-14 19:22)
+
+**Teacher Forcing 推理 vs 正常 Autoregressive 推理对比 (iter_4000)**:
+- AR: 1200/1200 dets, classes={car:~555, barrier:~645}, 跨样本 std=0.0
+- TF: 1200/1200 dets, classes={car:~555, barrier:~645}, 跨样本 std=0.0
+- **TF ≈ AR → 模型完全不使用自回归上下文，exposure bias 不是根因**
+- **根因确认: 位置信息缺失 (P2) + 单步特征注入 (P3) → 所有 cell 等价**
+- P4 (scheduled sampling) 在当前阶段无意义，延后
 
 详细诊断报告: `shared/logs/diagnosis_frozen_predictions.md`
 
@@ -44,10 +53,12 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **🚨 训练已停止 @iter ~6590** — P2+P3 已修复 (`d9d7f7d`), 等待从 iter_4000 重启 |
+| 进度 | **✅ 训练运行中** — P2+P3 修复后从 iter_4000 resume, 当前 ~iter_4110 |
 | 显存 | ~27GB/49GB per GPU |
-| ETA | — |
-| PID | — (已停止) |
+| ETA | ~3 天 (2-GPU) |
+| PID | 1444318 (master), GPU 0,2 |
+| 日志 | `20260314_193422/*.log` |
+| 初始 loss | 24→80→34 (波动大，cls_loss 主导，预期行为) |
 
 ### 架构变化 (vs ORCH_024/035)
 
@@ -156,7 +167,9 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
 | ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, resume (commit `4ad3b0f`) |
 | ✅ iter_6000 | 16:59 03/14 | Eval 完成: off_th=0.094 历史最佳, bicycle NEW, car_R=0. Critic: CONDITIONAL PROCEED |
-| **🚨 iter_8000** | **~22:00 03/14** | **ABSOLUTE FINAL 决策点 + MANDATORY GPU 诊断** |
+| 🔄 ORCH_043 重启 | ~19:35 03/14 | P2+P3 修复后从 iter_4000 resume |
+| **iter_6000** | **待定** | P2+P3 修复后首个 eval — 关键验证点 |
+| **🚨 iter_8000** | **待定** | **P2+P3 效果决策点 + Critic 审计 (含新增健康检查)** |
 
 ---
 
@@ -184,24 +197,27 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ✅ | 03/14 11:10 | **ORCH_042 修复 + resume** | BUG-62/63/17 修复, 2-GPU resume from iter_4000 | grad_norm 3x 提升验证, batch 32→16 |
 | ⭐⭐ | 03/14 16:59 | **GiT-Large v1 @6000 eval** | off_th=0.094 (历史最佳!), bicycle_R=0.010 NEW, car_R=0, bg_FA=0.025 | Critic: CONDITIONAL PROCEED, @8000 ABSOLUTE FINAL |
 
-### 🚨 @8000 决策树 (ABSOLUTE FINAL — Critic 更新版)
+| ⭐ | 03/14 19:22 | **TF vs AR 诊断** | TF≈AR (差异<1%), 1200/1200 slots 全正, 2/10类 | **不是 exposure bias，是位置信息缺失** |
+| 🔄 | 03/14 19:35 | **ORCH_043 签发** | P2+P3 修复后从 iter_4000 重启 | Admin 执行中 |
+
+### 🚨 @8000 决策树 (P2+P3 修复后 — 更新版)
 
 ```
-GiT-Large v1 @8000:
+GiT-Large v1 @8000 (P2+P3 修复后):
 │
-├─ car_R > 0 → PROCEED (分类器终于激活)
+├─ 预测多样化 (跨样本 std>10, 类别>3) + car_R > 0
+│   → ⭐ PROCEED — P2+P3 确认有效
 │
-├─ car_R = 0 + offset 改善 + diff/Margin > 10%
-│   → CONDITIONAL: 调查分类器瓶颈 (bert_embed BUG-64?)
-│   → 考虑 v2 训练 (BERT-large 预训练)
+├─ 预测多样化 + car_R = 0 + offset 改善
+│   → CONDITIONAL: 分类器慢但位置学对了, 继续到 @12000
 │
-├─ car_R = 0 + offset 停滞/恶化
-│   → STOP: 架构根本不工作
+├─ 预测仍冻结 (跨样本 std<5, 类别≤2)
+│   → STOP: P2+P3 不够, 需从头训练或架构变更
 │
-├─ car_R = 0 + diff/Margin < 10%
-│   → STOP: mode collapse
+├─ Marker 饱和度仍 >90% (1200/1200 全正)
+│   → STOP: 模型没学会预测"空", 根本性问题
 │
-└─ 前提: MUST 运行 GPU 特征流诊断 (暂停训练释放 GPU)
+└─ 前提: Critic 审计 (含新增 6B 健康检查: 饱和度/过检比/类别/AR有效性)
 ```
 
 ### 归档: ORCH_035 BUG-17 分析
@@ -421,6 +437,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
+| **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | 🔄 **DELIVERED** — Admin 执行中 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
