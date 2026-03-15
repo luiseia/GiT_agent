@@ -52,9 +52,9 @@
 | 显存 | ~29 GB/GPU |
 | 速度 | ~3.78 sec/iter |
 | ETA | ~1 天 17 小时 (~03/16 21:30) |
-| 进度 | **iter ~1680/40000** (4.2%) — 03/15 05:07 |
-| Loss | 极大波动 (0→984→447→193), 从零训练早期预期 |
-| ⚠️ reg_loss=0 | 16/168 报告 = 9.7%, iter 1200 后加速至 23.9%, 含 3 次 total loss=0 — **均反弹, 暂非 collapse, @2000 必查** |
+| 进度 | **iter 2000+/40000** — @2000 eval 完成, 训练继续 |
+| Loss | 极大波动 (0→984→447→113), 从零训练早期预期 |
+| ⚠️ reg_loss=0 | 19/200 报告 = 9.5%, 均反弹, 非永久 collapse |
 | work_dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260315/full_nuscenes_large_v1_multilayer_adapt` |
 | 日志 | `.../nohup_multilayer_adapt.out` (用 `strings` 过滤) |
 
@@ -68,21 +68,33 @@
 | `26b6f92` | config | batch_size=1, accumulative_counts=8 (OOM fix) |
 | `d9d7f7d` | `git.py` + `git_occ_head.py` | P2 (position embedding) + P3 (每步图像特征注入) |
 
+### ⭐ @2000 Eval 结果 (2026-03-15 07:19)
+
+| 指标 | ORCH_045 @2000 | GiT-Large v1 @2000 (单层) | ORCH_024 @2000 |
+|------|---------------|--------------------------|----------------|
+| **ped_R** | **0.7646** | 0.0000 | ~0 |
+| car_R | 0.0000 | 0.0000 | 0.627 |
+| 其他 8 类 R | 全 0 | 全 0 | — |
+| bg_FA | **0.9208** | 0.002 | 0.222 |
+| off_cx | 0.309 | 0.106 | 0.056 |
+| off_cy | 0.146 | 0.029 | 0.069 |
+| off_w | 0.087 | 0.070 | 0.020 |
+| off_h | 0.038 | 0.009 | 0.005 |
+| off_th | 0.192 | 0.078 | 0.174 |
+
+**初步判断: 不是 frozen predictions, CONDITIONAL PROCEED to @4000**
+- **ped_R=0.7646**: 从零训练 @2000 即激活 1 类，旧单层 @2000 全 0 — 积极信号
+- **bg_FA=0.9208**: 模型大量预测正样本，行为与 frozen 完全不同（frozen=100% 正但位置一致）
+- **offset 全面较差**: 从零训练 @2000 预期内
+- **待 Critic 运行 check_frozen_predictions.py 确认预测多样性**
+
 ### 检查点计划
 
 | 检查点 | 预计时间 | 行动 |
 |--------|---------|------|
-| **@2000** | **~03/15 11:00** | 首次 frozen prediction 检查 (关键!) |
-| @4000 | ~03/15 19:00 | 第二次检查 + 指标评估 |
-| @8000 | ~03/16 05:00 | 架构决策级评估 |
-
-### @2000 决策树
-
-```
-├─ FROZEN (IoU>0.95, saturation>0.9) → token_drop_rate 不够, 增大或换策略
-├─ PARTIAL (IoU 0.5~0.95) → 有改善但不够, 考虑增大 drop_rate
-├─ HEALTHY (IoU<0.5, predictions vary) → PROCEED, 等 @4000 看指标
-```
+| ✅ @2000 | 03/15 07:19 | Eval 完成, ped_R=0.76, 初步非 frozen |
+| **@4000** | **~03/15 15:00** | 第二次检查 + car_R 是否激活 + offset 改善 |
+| @8000 | ~03/16 01:00 | 架构决策级评估 |
 
 ### 历史 Eval 数据 (GiT-Large v1 单层, 已终止)
 
@@ -113,9 +125,9 @@
 | ✅ Frozen 根因确认 | 03/15 03:05 | P2+P3 不充分, TF mode collapse 是根因 |
 | ✅ ORCH_044 停止 | 03/15 03:00 | 前提错误 (无 anti-collapse), iter_440 reg_loss=0 |
 | ✅ ORCH_045 启动 | 03/15 03:20 | 多层+适应层+token corruption 从零训练 |
-| **@2000 eval** | **~03/15 11:00** | **frozen prediction 检查 — 关键节点** |
-| @4000 eval | ~03/15 19:00 | 第二次检查 + 指标评估 |
-| @8000 eval | ~03/16 05:00 | 架构决策级评估 |
+| ⭐ @2000 eval | 03/15 07:19 | **ped_R=0.7646, bg_FA=0.92, car_R=0** — 非 frozen, CONDITIONAL PROCEED |
+| **@4000 eval** | **~03/15 15:00** | **car_R 是否激活? offset 改善? bg_FA 下降?** |
+| @8000 eval | ~03/16 01:00 | 架构决策级评估 |
 
 ---
 
