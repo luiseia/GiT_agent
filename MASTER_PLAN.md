@@ -199,6 +199,8 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 
 | ⭐ | 03/14 19:22 | **TF vs AR 诊断** | TF≈AR (差异<1%), 1200/1200 slots 全正, 2/10类 | **不是 exposure bias，是位置信息缺失** |
 | 🔄 | 03/14 19:35 | **ORCH_043 签发** | P2+P3 修复后从 iter_4000 重启 | Admin 执行中 |
+| ⭐⭐⭐ | 03/15 01:26 | **@6000 eval (P2+P3)** | **car_R=0.582!** bg_FA=0.680, off_th=0.254 | **P2+P3 确认有效! frozen predictions 消除** |
+| 🔄 | 03/15 01:30 | **ORCH_044 签发** | 多层 ViT-L [5,11,17,23] + LN + 投影 4096→2048→1024 | CEO 指令执行 |
 
 ### 🚨 @8000 决策树 (P2+P3 修复后 — 更新版)
 
@@ -437,7 +439,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
-| **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — 2-GPU, PID 1444306, iter_4000 resume 成功 |
+| **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — @6000 car_R=0.582, P2+P3 确认有效 |
+| **ORCH_044** | **多层 ViT-L + LN + 投影** | 🔄 **PENDING** — 停训练→改 config→从 iter_6000 加载 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
