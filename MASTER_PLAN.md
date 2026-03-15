@@ -52,8 +52,9 @@
 | 显存 | ~29 GB/GPU |
 | 速度 | ~3.78 sec/iter |
 | ETA | ~1 天 17 小时 (~03/16 21:30) |
-| 进度 | **iter 710/40000** (1.8%) |
-| Loss | 波动中下降 (293→66→138), reg_loss 2.2~3.4 未归零 — 健康信号 |
+| 进度 | **iter ~1680/40000** (4.2%) — 03/15 05:07 |
+| Loss | 极大波动 (0→984→447→193), 从零训练早期预期 |
+| ⚠️ reg_loss=0 | 16/168 报告 = 9.7%, iter 1200 后加速至 23.9%, 含 3 次 total loss=0 — **均反弹, 暂非 collapse, @2000 必查** |
 | work_dir | `/mnt/SSD/GiT_Yihao/Train/Train_20260315/full_nuscenes_large_v1_multilayer_adapt` |
 | 日志 | `.../nohup_multilayer_adapt.out` (用 `strings` 过滤) |
 
