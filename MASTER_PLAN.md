@@ -107,13 +107,32 @@
 - 但 bg_FA 0.92→1.00 + off_th 0.19→0.28 恶化明确
 - **@6000: bg_FA ≥0.95 且 offset 不改善 → STOP**
 
-### 检查点计划
+### 🔴 @6000 ABSOLUTE FINAL Eval (2026-03-15 15:16) — STOP
 
-| 检查点 | 预计时间 | 行动 |
-|--------|---------|------|
-| ✅ @2000 | 03/15 07:19 | ped_R=0.76, bg_FA=0.92, 非 frozen |
+| 指标 | @2000 | @4000 | **@6000** | @4000→@6000 |
+|------|-------|-------|-----------|-------------|
+| ped_R | 0.7646 | 1.0000 | **1.0000** | — |
+| car_R | 0.000 | 0.000 | **0.000** | — |
+| bg_FA | 0.921 | 1.000 | **1.000** | 🔴 仍 1.0 |
+| off_cx | 0.309 | 0.279 | **0.300** | 🔴 恶化 |
+| off_cy | 0.146 | 0.193 | **0.198** | 🔴 恶化 |
+| off_w | 0.087 | 0.084 | **0.087** | 🔴 恶化 |
+| off_h | 0.038 | 0.038 | **0.038** | — |
+| off_th | 0.192 | 0.280 | **0.252** | ✅ 唯一改善 |
+
+**决策: STOP — 训练已终止 (03/15 15:25)**
+- bg_FA=1.0 连续两个 checkpoint — marker saturation 确认
+- offset 仅 1/5 改善 (off_th), 4/5 恶化或持平
+- car_R=0 连续三个 checkpoint
+- token_drop_rate=0.3 未能阻止 marker saturation collapse
+
+### 检查点历史
+
+| 检查点 | 时间 | 结果 |
+|--------|------|------|
+| ✅ @2000 | 03/15 07:19 | ped_R=0.76, bg_FA=0.92, 初步非 frozen |
 | ⚠️ @4000 | 03/15 11:17 | bg_FA=1.0 marker saturation, CONDITIONAL PROCEED |
-| **@6000 FINAL** | **~03/15 17:00** | **ABSOLUTE FINAL — bg_FA≥0.95 + offset 不改善 → STOP** |
+| 🔴 @6000 | 03/15 15:16 | bg_FA=1.0 持续, offset 恶化, **STOP** |
 
 ### 历史 Eval 数据 (GiT-Large v1 单层, 已终止)
 
@@ -395,7 +414,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
 | **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — @6000 car_R=0.582, P2+P3 确认有效 |
 | **ORCH_044** | **多层 ViT-L + LN + 投影 (无 anti-collapse)** | **STOPPED** @iter_440 — reg_loss=0 mode collapse, 前提错误, PID 1626949 已 kill |
-| **ORCH_045** | **多层+适应层+token corruption 从零训练** | 🔄 **RUNNING** — PID 1686317, GPU 0,2, iter 710/40000 |
+| **ORCH_045** | **多层+适应层+token corruption 从零训练** | 🔴 **STOPPED** @6000 — bg_FA=1.0 marker saturation, 训练已终止 03/15 15:25 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
