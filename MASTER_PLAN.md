@@ -53,12 +53,13 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **✅ 训练运行中** — P2+P3 修复后从 iter_4000 resume, 当前 ~iter_4210 |
-| 显存 | ~27GB/49GB per GPU |
-| ETA | ~3 天 (2-GPU) |
-| PID | 1444318 (master), GPU 0,2 |
-| 日志 | `20260314_193422/*.log` |
-| 初始 loss | 6~116 (波动极大，cls_loss 主导 95%+，reg_loss 稳定 2.5~2.9，架构适应期) |
+| 进度 | **✅ 多层 ViT-L 训练运行中** — iter_6000 权重加载, 从 iter_0 计数, 当前 ~iter_190 |
+| 特征 | **多层 [5,11,17,23]** 4×1024=4096 → 2048→GELU→1024 投影 |
+| 显存 | ~34GB/49GB per GPU (+7GB vs 单层) |
+| ETA | ~3.4 天 (2-GPU) |
+| PID | 1626949 (master), GPU 0,2 |
+| 日志 | `20260315_015348/*.log` |
+| 初始 loss | 7~19 (比单层初始 24~52 更低，多层特征更丰富) |
 
 ### 架构变化 (vs ORCH_024/035)
 
@@ -167,9 +168,11 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | ✅ iter_4000 | 10:36 03/14 | Eval 完成，Critic: CONDITIONAL PROCEED |
 | ✅ Config 修复 | 11:10 03/14 | ORCH_042 完成: BUG-62/63/17 修复, resume (commit `4ad3b0f`) |
 | ✅ iter_6000 | 16:59 03/14 | Eval 完成: off_th=0.094 历史最佳, bicycle NEW, car_R=0. Critic: CONDITIONAL PROCEED |
-| 🔄 ORCH_043 重启 | ~19:35 03/14 | P2+P3 修复后从 iter_4000 resume |
-| **iter_6000** | **待定** | P2+P3 修复后首个 eval — 关键验证点 |
-| **🚨 iter_8000** | **待定** | **P2+P3 效果决策点 + Critic 审计 (含新增健康检查)** |
+| ✅ ORCH_043 | 19:35 03/14 | P2+P3 修复后从 iter_4000 resume |
+| ⭐⭐⭐ @6000 eval | 01:26 03/15 | **car_R=0.582! P2+P3 确认有效** |
+| ✅ ORCH_044 | 01:53 03/15 | 多层 ViT-L 训练启动，从 iter_6000 权重加载 |
+| **@2000 (多层)** | **~5:00 03/15** | 多层 ViT-L 首个 eval |
+| **@4000 (多层)** | **~9:00 03/15** | 关键验证点 — 多层 vs 单层对比 |
 
 ---
 
@@ -440,7 +443,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
 | **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — @6000 car_R=0.582, P2+P3 确认有效 |
-| **ORCH_044** | **多层 ViT-L + LN + 投影** | 🔄 **PENDING** — 停训练→改 config→从 iter_6000 加载 |
+| **ORCH_044** | **多层 ViT-L + LN + 投影** | ✅ **COMPLETED** — commit `14ff4a0`, PID 1626949, iter_0 from 6000 weights |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
