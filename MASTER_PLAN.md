@@ -18,7 +18,17 @@
 
 ---
 
-## 当前阶段: ORCH_045 — 多层 DINOv3 + 适应层 + Token Corruption 从零训练
+## 当前阶段: ORCH_045 已终止 — 等待 CEO 决策下一步
+
+### ⭐ Critic VERDICT (2026-03-15 16:55) — 下次训练必须修复的问题
+
+| 优先级 | 修复项 | 说明 |
+|--------|--------|------|
+| **P0** | clip_grad → 35.0+ | BUG-62 回归, 有效梯度仅 0.33% |
+| **P0** | 添加数据增强 (RandomFlip + PhotoMetricDistortion) | mode collapse 根因, 4 次实验全部因此失败 |
+| P1 | Scheduled Sampling | 替代或补充已证伪的 token_drop_rate |
+| P2 | bert_embed 用 BERT-large 预训练 (BUG-64) | 分类器收敛加速 |
+| P3 | token_drop_rate 保留但降级为辅助 | BUG-66 |
 
 ### 🚨🚨 Frozen Predictions 根因最终确认 (2026-03-15 03:05)
 
@@ -428,13 +438,14 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 
 | BUG | 严重性 | 摘要 | 计划修复阶段 |
 |-----|--------|------|------------|
-| **BUG-64** | **HIGH** | `bert_embed=dict(type='bert-base', hidden_size=1024, pretrain_path=None)` — BERT-large hidden_size=1024 完美匹配! 应用 BERT-large 预训练权重加速分类器收敛。cls_loss 0-343 (>500x 波动) 的根因 | v2 训练必要改动 |
-| **BUG-65** | **HIGH** | off_cx 持续恶化 (0.106→0.193→0.273)，是 ORCH_024@6k 的 4.9x。可能与 P2 position embedding 缺失有关 | @8000 分析空间分布 |
-| **BUG-61** | **HIGH** | reg_loss=0 频率 7.4% (15/204), ALL-zero iter 5760。Critic: 非 car_R=0 根因，但聚集模式需关注 | 监控 |
+| **BUG-62** | **CRITICAL** | clip_grad=10.0 在 ORCH_045 config 中**未修复**! grad_norm mean=3007, 有效梯度仅 0.33%。adaptation layers 随机初始化使梯度比之前大 4.6x | **下次训练前必须修复 → 35.0+** |
+| **BUG-66** | **HIGH** | token_drop_rate=0.3 被 Critic 证伪 — 输入端加噪不改变训练信号本质，不能替代数据增强 | 降级为辅助措施 |
+| **BUG-67** | **HIGH** | adaptation layers 随机初始化 + clip_grad=10 交互效应，grad_norm 4.6x 增加导致有效梯度仅 0.33% | 考虑 Xavier 初始化 + clip_grad 35+ |
+| **BUG-68** | **CRITICAL (流程)** | Conductor 签发 ORCH_045 前未修复已知 CRITICAL BUG-62，导致 ~12 GPU·hours 浪费 | 签发新 ORCH 前必须检查所有 CRITICAL bugs |
+| **BUG-64** | **HIGH** | `bert_embed` 应用 BERT-large 预训练权重加速分类器收敛 | v2 训练必要改动 |
+| **BUG-65** | **HIGH** | off_cx 持续恶化 | 需数据增强后重新评估 |
+| **BUG-61** | **HIGH** | reg_loss=0 频率 9.5% (ORCH_045), ALL-zero 3 次 | 与单类崩塌一致 |
 | **BUG-45** | MEDIUM | OCC head 推理 attn_mask=None, 训练/推理不一致 | Phase 2 |
-| **BUG-48** | HIGH | unfreeze_last_n 目标与 extraction point 不匹配 | 仅 7B frozen 适用, ViT-L finetune 后关闭 |
-| **BUG-49** | MEDIUM | DINOv3 遍历全 40 blocks, 只需部分, 浪费 58% | 仅 7B frozen 适用, ViT-L 仅 24 层 |
-| **BUG-50** | MEDIUM | unfreeze 时全部 blocks 构建计算图, +10-15GB | 仅 7B frozen 适用, ViT-L finetune 无此问题 |
 
 ### 已修复 BUG (本轮)
 
