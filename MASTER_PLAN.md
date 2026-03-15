@@ -53,12 +53,12 @@ ORCH_035 @14000 car_R=0.000 的根因不是 BUG-17，而是**系统性 mode coll
 | GPU | ⚠️ 2 GPU (0,2) — GPU 1,3 被 yl0826 PETR 训练占用 |
 | batch | 2/GPU × 2 GPU × accumulative_counts=4 = **effective 16** (原 32) |
 | iters | 40000, val@2000 |
-| 进度 | **✅ 训练运行中** — P2+P3 修复后从 iter_4000 resume, 当前 ~iter_4110 |
+| 进度 | **✅ 训练运行中** — P2+P3 修复后从 iter_4000 resume, 当前 ~iter_4210 |
 | 显存 | ~27GB/49GB per GPU |
 | ETA | ~3 天 (2-GPU) |
 | PID | 1444318 (master), GPU 0,2 |
 | 日志 | `20260314_193422/*.log` |
-| 初始 loss | 24→80→34 (波动大，cls_loss 主导，预期行为) |
+| 初始 loss | 6~116 (波动极大，cls_loss 主导 95%+，reg_loss 稳定 2.5~2.9，架构适应期) |
 
 ### 架构变化 (vs ORCH_024/035)
 
@@ -437,7 +437,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | ORCH_040 | score_thr 代码修复 | ✅ DONE (代码), 消融待执行 |
 | ORCH_041 | score_thr 消融 (cls_probs, 4-GPU DDP) | ✅ DONE — thr=0.5 bg_FA-47%, 确认 car_R=0 全阈值 |
 | **ORCH_042** | **BUG-62/63/17 修复 + iter_4000 resume** | ✅ **COMPLETED** — commit `4ad3b0f`, 2-GPU resume 11:10, PID 1312401 |
-| **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | 🔄 **DELIVERED** — Admin 执行中 |
+| **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — 2-GPU, PID 1444306, iter_4000 resume 成功 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
