@@ -4,7 +4,7 @@
 # 由 crontab 运行: 0,10,20,30,40,50 * * * * (flock 防重入)
 #
 # 功能:
-# 1. /usage 发给 critic（最空闲），不打断 conductor
+# 1. /usage 发给 ops，不打断 conductor/critic
 # 2. 发 /usage 前检测 agent 是否空闲
 # 3. 限流关键词收紧为完整短语
 # 4. 跳过 agent-ops 的限流扫描
@@ -70,9 +70,9 @@ RESET_INFO=""
 
 # =============================================================
 # 检测方式 1: /usage 命令
-# 发给 critic（最空闲的 Agent），避免打断 conductor
+# 发给 ops，避免打断 conductor/critic
 # =============================================================
-USAGE_TARGET="agent-critic"
+USAGE_TARGET="agent-ops"
 if tmux has-session -t "$USAGE_TARGET" 2>/dev/null && is_idle "$USAGE_TARGET"; then
     tmux send-keys -t "$USAGE_TARGET" "/usage" Enter
     sleep 5
@@ -82,7 +82,7 @@ if tmux has-session -t "$USAGE_TARGET" 2>/dev/null && is_idle "$USAGE_TARGET"; t
 
     # 解析用量百分比
     USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%\s+used' | head -1 | grep -oP '\d+\.?\d*')
-    # 解析刷新信息
+    # 解析刷新
     RESET_INFO=$(echo "$USAGE_OUTPUT" | grep -oiP 'Resets\s+.*' | head -1)
 
     if [ -n "$USAGE_PCT" ]; then
