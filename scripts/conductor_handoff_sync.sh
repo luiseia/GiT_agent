@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================
 # conductor_handoff_sync.sh — 人工 Conductor -> auto Conductor 状态同步
-# 每 60 秒检查 compact_conductor.md 是否更新；如更新则投递给 agent-conductor-auto
+# 每 60 秒检查 compact_conductor.md 是否更新；如更新则投递同步指令给 agent-conductor-auto
 # =============================================================
 
 set -u
@@ -10,7 +10,6 @@ AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 SESSION="agent-conductor-auto"
 LOG="${AGENT_DIR}/shared/logs/conductor_handoff_sync.log"
 HANDOFF_FILE="${AGENT_DIR}/shared/logs/compact_conductor.md"
-DRAFT_FILE="${AGENT_DIR}/shared/logs/DRAFT_ORCH_050.md"
 STATE_FILE="/tmp/conductor_handoff_sync.state"
 LOCKFILE="/tmp/conductor_handoff_sync.lock"
 
@@ -111,7 +110,7 @@ while true; do
         if [ "$current_mtime" -gt "$last_mtime" ]; then
             ensure_session
             if is_idle "$SESSION"; then
-                send_agent_message "$SESSION" "cat shared/commands/conductor_auto_shadow.md"
+                send_agent_message "$SESSION" "cat shared/commands/conductor_auto_sync.md"
                 log "delivered updated handoff (mtime=${current_mtime})"
                 last_mtime="$current_mtime"
                 echo "$last_mtime" > "$STATE_FILE"

@@ -17,7 +17,7 @@ LOG="${AGENT_DIR}/shared/logs/watchdog.log"
 LOCKFILE="/tmp/usage_watchdog.lock"
 HIBERNATE_FLAG="/tmp/usage_watchdog_hibernating"
 NO_USAGE_FLAG="/tmp/usage_watchdog_no_usage_cmd"
-SESSIONS=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin")
+SESSIONS=("agent-conductor-auto" "agent-critic" "agent-supervisor" "agent-admin")
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] watchdog: $1" | tee -a "$LOG"
@@ -238,10 +238,10 @@ RESUME_TIME=$(date -d "+${SLEEP_SECONDS} seconds" '+%Y-%m-%d %H:%M:%S')
 log "预计恢复时间: ${RESUME_TIME} (休眠 ${SLEEP_SECONDS} 秒)"
 
 # ─── 给每个 Agent 发送保存指令 ────────────────────────────
-if tmux has-session -t agent-conductor 2>/dev/null; then
-    tmux send-keys -t agent-conductor \
+if tmux has-session -t agent-conductor-auto 2>/dev/null; then
+    tmux send-keys -t agent-conductor-auto \
         "紧急休眠：请将当前所有任务状态、MASTER_PLAN 进度、待处理决策保存到 shared/logs/hibernate_conductor.md，然后 git push" Enter
-    log "→ conductor: 休眠保存指令已发送"
+    log "→ conductor(auto): 休眠保存指令已发送"
 fi
 
 if tmux has-session -t agent-admin 2>/dev/null; then
