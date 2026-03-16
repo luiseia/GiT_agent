@@ -1,0 +1,13 @@
+config=configs/GiT/plan_full_nuscenes_large_v1.py
+checkpoint=/mnt/SSD/GiT_Yihao/Train/Train_20260316/full_nuscenes_large_v1_orch059/iter_500.pth
+sample_idx=1
+use_abs_pos=True
+use_rel_pos=N/A
+
+dinov3_raw: shape=(1, 4900, 4096), pca_var=[0.539, 0.1788, 0.0553]
+dinov3_proj: shape=(1, 4900, 1024), pca_var=[0.5327, 0.1901, 0.0544]
+dinov3_adapt: shape=(1, 4900, 1024), pca_var=[0.5268, 0.1906, 0.056]
+git_abs_pos: shape=(1, 70, 70, 1024), pca_var=[0.8374, 0.0716, 0.0422]
+git_layer_23: shape=(1, 70, 70, 1024), pca_var=[0.9665, 0.0115, 0.0066]
+git_layer_27: shape=(1, 70, 70, 1024), pca_var=[0.967, 0.0114, 0.0065]
+git_layer_29: shape=(1, 70, 70, 1024), pca_var=[0.9673, 0.0113, 0.0064]

@@ -6,3 +6,4 @@
 [10:08:09] ORCH_034 @2000 val: car_R=0.8124 car_P=0.0571 bg_FA=0.2073 (大幅改善vs ORCH_029)
 [14:38:24] ORCH_034 @4000 val: car_R=0.8195 car_P=0.0451 bg_FA=0.3240 bus_R=0.070 constr_R=0.110 ped_R=0.024 cone_R=0.130
 [17:57:22] DONE: ORCH_035 - label pipeline overhaul deployed, resumed from ORCH_034@4000 (loss@4010=5.55)
+[18:37:42] DONE: ORCH_060 - pred-target alignment viz, hook real targets, 3 samples, 0% match (total frozen)
