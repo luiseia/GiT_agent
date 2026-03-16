@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================
-# all_loops.sh — 所有 Agent 的 30 分钟闹钟
+# all_loops.sh — 所有 Agent 的 10 分钟闹钟
 # 用法: nohup bash scripts/all_loops.sh &
 #
 # 执行顺序:
@@ -13,12 +13,18 @@
 # 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）→ 等待完成
 # 8. Admin
 # 9. Ops (save_tmux) — 循环最后执行
-# 10. 动态等待补够 30 分钟
+# 10. 动态等待补够 10 分钟
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 LOG="${AGENT_DIR}/shared/logs/all_loops.log"
 LOCKFILE="/tmp/all_loops.lock"
+LOOP_INTERVAL=600
+SUPERVISOR_WAIT_MIN=3
+CONDUCTOR_P1_WAIT_MIN=3
+CONDUCTOR_IDLE_WAIT_MIN=2
+CONDUCTOR_P2_WAIT_MIN=3
+CRITIC_WAIT_MIN=5
 
 # ─── flock 防多实例 ──────────────────────────────────────
 exec 200>"$LOCKFILE"
@@ -28,7 +34,7 @@ if ! flock -n 200; then
 fi
 
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] all_loops: $1" | tee -a "$LOG"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] all_loops: $1" >> "$LOG"
 }
 
 send_agent_message() {
@@ -152,9 +158,9 @@ while true; do
         log "⚠️ supervisor: 会话不存在"
     fi
 
-    # 等待 Supervisor 完成（最多 10 分钟）
+    # 等待 Supervisor 完成（最多 3 分钟）
     if [ "$SUPERVISOR_SENT" = "1" ]; then
-        wait_for_idle agent-supervisor 10 "supervisor"
+        wait_for_idle agent-supervisor "$SUPERVISOR_WAIT_MIN" "supervisor"
     fi
 
     # ─── 4. 训练质量健康检查（自动审计触发）─────
@@ -237,9 +243,9 @@ HEALTHEOF
         log "⚠️ conductor: 会话不存在"
     fi
 
-    # 等待 Conductor Phase 1 完成（最多 10 分钟）
+    # 等待 Conductor Phase 1 完成（最多 3 分钟）
     if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
-        wait_for_idle agent-conductor 10 "conductor Phase 1"
+        wait_for_idle agent-conductor "$CONDUCTOR_P1_WAIT_MIN" "conductor Phase 1"
     fi
 
     # ─── 6. 检查是否有 pending audit → 启动 Critic ─
@@ -409,11 +415,11 @@ CRITICEOF
         fi
     done
 
-    # 等待 Critic 完成审计（最多 15 分钟）
+    # 等待 Critic 完成审计（最多 5 分钟）
     if [ "$AUDIT_NEEDED" = "1" ]; then
         log "→ critic: 等待审计完成..."
         VERDICT_FOUND=0
-        for wait in $(seq 1 15); do
+        for wait in $(seq 1 "$CRITIC_WAIT_MIN"); do
             sleep 60
             # 检查 pending/ 里是否出现了 VERDICT
             cd "$AGENT_DIR" && git pull --quiet 2>/dev/null
@@ -426,10 +432,10 @@ CRITICEOF
                     break 2
                 fi
             done
-            if [ "$wait" = "15" ]; then
-                log "⚠️ critic: 审计超时（15 分钟），继续执行"
+            if [ "$wait" = "$CRITIC_WAIT_MIN" ]; then
+                log "⚠️ critic: 审计超时（${CRITIC_WAIT_MIN} 分钟），继续执行"
             else
-                log "→ critic: 仍在审计... ${wait}/15 分钟"
+                log "→ critic: 仍在审计... ${wait}/${CRITIC_WAIT_MIN} 分钟"
             fi
         done
     fi
@@ -438,11 +444,11 @@ CRITICEOF
     if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
         if tmux has-session -t agent-conductor 2>/dev/null; then
             if ! is_idle agent-conductor; then
-                wait_for_idle agent-conductor 5 "conductor 等待空闲"
+                wait_for_idle agent-conductor "$CONDUCTOR_IDLE_WAIT_MIN" "conductor 等待空闲"
             fi
             send_agent_message agent-conductor "cat shared/commands/phase2_cmd.md"
             log "→ conductor Phase 2: 指令已发送"
-            wait_for_idle agent-conductor 10 "conductor Phase 2"
+            wait_for_idle agent-conductor "$CONDUCTOR_P2_WAIT_MIN" "conductor Phase 2"
         fi
     fi
 
@@ -468,18 +474,18 @@ CRITICEOF
     log "→ ops: 执行 save_tmux.sh"
     bash "${AGENT_DIR}/scripts/save_tmux.sh"
 
-    # ─── 10. 动态等待补够 30 分钟 ─────────────────
+    # ─── 10. 动态等待补够 10 分钟 ─────────────────
     LOOP_END=$(date +%s)
     ELAPSED=$(( LOOP_END - LOOP_START ))
-    REMAINING=$(( 1800 - ELAPSED ))
+    REMAINING=$(( LOOP_INTERVAL - ELAPSED ))
     if [ "$REMAINING" -gt 60 ]; then
         REMAINING_MIN=$(( REMAINING / 60 ))
-        log "=== 循环耗时 $((ELAPSED/60)) 分钟，等待 ${REMAINING_MIN} 分钟补够 30 分钟 ==="
+        log "=== 循环耗时 $((ELAPSED/60)) 分钟，等待 ${REMAINING_MIN} 分钟补够 10 分钟 ==="
         for i in $(seq 1 "$REMAINING_MIN"); do
             sleep 60
             log "⏳ 等待中... ${i}/${REMAINING_MIN} 分钟"
         done
     else
-        log "=== 循环耗时 $((ELAPSED/60)) 分钟，已超过 30 分钟，立即开始下一轮 ==="
+        log "=== 循环耗时 $((ELAPSED/60)) 分钟，已超过 10 分钟，立即开始下一轮 ==="
     fi
 done
