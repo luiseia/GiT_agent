@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 13:31
+> 最后更新: 2026-03-16 14:00
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -88,18 +88,35 @@
 - **实现位置**: `git.py` 的 `forward_transformer` 或 `git_occ_head.py` 的 decoder 中，grid_pos_embed 被添加到 grid_start_embed 的地方
 - **需要 Critic 审计**: 这是架构变更，需要确认不会破坏 box 回归的位置信息传递
 
-### 🟡 已吸收 Critic 判决: VERDICT_ORCH057_MARKER_NO_POS = CONDITIONAL
+### 🔴 ORCH_057 (marker_no_grid_pos) FAILED @100 — 全正饱和 (2026-03-16 14:00)
 
-- 审计结论不是阻断，而是**带条件放行**: 可以执行 marker_step_no_pos，但必须同时修正训练/推理路径不对称问题（BUG-79）
-- **必须满足的实现约束**:
-  1. marker step (`pos_id=0`) 在训练和推理都移除 `grid_pos_embed`
-  2. class/box steps 保留 `grid_pos_embed`，不能被一并拿掉
-  3. 需要显式保留并传递 `grid_pos_embed_raw`，避免只在推理侧做减法
-- **执行决策**: 不直接启动原始 `ORCH_057`；改签发带条件的执行单，由 Admin 按 Critic 指定方案实现后立刻启动 2-GPU DDP 训练
-- **验证门槛**:
-  - @100 `marker_same < 0.887`（优于 ORCH_055 @100）
-  - @200 若 `marker_same < 0.95` 且未出现高饱和，则判定首次健康通过
-  - @100/@200/@300/@400/@500 全部执行 frozen-check，任一点若重新进入 frozen 区间则立即停训并回报
+- @100: marker_same=0.992, saturation=1.000, EARLY STOP
+- **比 ORCH_055 @100 更差**（ORCH_055 marker_same=0.887, HEALTHY）
+- **原因**: 移除 grid_pos_embed 后 marker 失去空间差异 → 所有 cell 输入相同(task_embed) → 立即收敛到全正
+
+### ⭐⭐ 问题重新定义
+
+| 实验 | grid_pos_embed 状态 | @100 marker_same | 结论 |
+|------|---------------------|-----------------|------|
+| ORCH_055 | 正常 | 0.887 🟢 | grid_pos_embed 提供多样性 |
+| ORCH_050 | cell-level dropout | @200 全阴性 | dropout 破坏定位 |
+| ORCH_057 | marker 移除 | 0.992 🔴 | 移除导致多样性消失 |
+
+**grid_pos_embed 在早期帮助维持预测多样性**。问题不是它的存在，而是训练过程中它逐渐取代图像特征成为主导。
+
+### 待定方向（需 CEO 指导）
+
+当前所有路线都已证伪:
+1. ❌ FG/BG 比调整 (ORCH_049-052): 可行窗口极窄，@500 必崩
+2. ❌ cell-level dropout (ORCH_050): 破坏定位
+3. ❌ 降 LR (ORCH_056): 加速模板化
+4. ❌ 移除 marker 的 grid_pos_embed (ORCH_057): 破坏多样性
+
+可能的新方向（未验证）:
+- **A. grid_pos_embed 噪声注入**: 不移除也不 dropout，而是加高斯噪声 — 保留空间多样性但防止记忆固定模式
+- **B. marker entropy 正则化**: loss 中加入 marker 预测分布的熵惩罚 — 直接惩罚全正/全负
+- **C. 渐进式 grid_pos_embed 衰减**: 训练初期正常使用，随 iter 逐渐降低 grid_pos_embed 的权重
+- **D. 根本性重新思考**: 当前 marker 预测机制是否适合 occupancy 任务？
 
 ### 活跃 BUG 跟踪
 
@@ -637,7 +654,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | ⚠️ **INVALID** — 单 GPU 执行，与 ORCH_049 的 DDP 不可比(BUG-78) |
 | **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | ✅ **DONE** — 完整崩塌轨迹: @100 HEALTHY, @300→@400 相变 |
 | **ORCH_056** | **低 LR resume 实验** | 🔴 **FAILED** @200 — saturation=0.998, 低 LR 加速模板化 |
-| **ORCH_057** | **架构变更: marker_step_no_pos (marker 不加 grid_pos_embed)** | 📋 **PENDING** — 需 Critic 审计 |
+| **ORCH_057** | **架构变更: marker_no_grid_pos** | 🔴 **FAILED** @100 — saturation=1.0, 移除位置编码反而加速全正崩塌 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
