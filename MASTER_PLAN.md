@@ -44,7 +44,7 @@
 
 | iter | Pos slots | Saturation | marker_same | TP | 模式 |
 |------|-----------|-----------|-------------|-----|------|
-| **100** | **750 (62.5%)** | **0.703** | **0.887** | **109** | **🟢 HEALTHY** |
+| **100** | **750 (62.5%)** | **0.703** | **0.887** | **109** | **🟡 BORDERLINE** (pred_token 91% 相同) |
 | 200 | 954 (79.5%) | 0.820 | 0.962 | 147 | 向 all-positive |
 | 300 | 1010 (84.1%) | 0.873 | 0.973 | 150 | all-positive 峰值 |
 | **400** | **71 (5.9%)** | **0.080** | **0.984** | **0** | **相变→near-all-negative** |
@@ -131,6 +131,19 @@
 1. grid_pos_embed 与 marker 决策之间的因果路径太短/太强
 2. 或者 marker 的 4-class 设计（3 FG + 1 BG）本身创造了不对称的梯度动态
 
+### ⭐⭐⭐ Critic 特征流诊断 — VERDICT_HEALTH_20260316_1836
+
+| 检查点 | ORCH_055 @100 跨样本差异 | ORCH_059 @500 跨样本差异 |
+|--------|------------------------|------------------------|
+| DINOv3 特征 | 10.60% ✅ | 6.23% ✅ |
+| backbone 输出 | 5.61% ✅ | 2.43% ✅ |
+| logits | 2.20% ✅ | 0.88% ⚠️ |
+| pred_token (argmax) | **91% 相同 🔴** | **100% 相同 🔴** |
+
+**结论**: 图像信号在通过 backbone→decoder→logits 传播中被系统性压缩。即使 "BORDERLINE" @100 的 pred_token 已 91% 相同 — **marker 决策从未真正依赖图像内容**。
+
+**Critic 对 5 个候选方向的评价**: 推荐方向 3 (marker 独立 head) 或方向 2 (二元 marker)。方向 4 (长训练) 明确不可行。
+
 ### ⭐⭐ ORCH_060 诊断可视化结果 (2026-03-16 ~18:40)
 
 **Target 链路无 bug**，但发现两个重要新线索：
@@ -157,7 +170,7 @@
 |-----|------|------|----------|
 | **BUG-73** | **PARTIAL** | **CRITICAL** | FG/BG=1x 方向正确(TP=112)但 @500 崩塌; 需 1.5-2x |
 | **BUG-74** | **FIXED** | HIGH | `GlobalRotScaleTransBEV` 已移除 |
-| **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 空间模板 shortcut — cell-level dropout 不可行(BUG-77)，需 marker-only 方案 |
+| **BUG-75** | **OPEN** | **CRITICAL** | `grid_pos_embed` shortcut — Critic 特征流诊断确认为架构级问题，11 轮实验穷尽超参空间 |
 | **BUG-76** | **CONFIRMED** | HIGH | FG/BG=1x→all-neg @500, 3.3x→all-pos @200; 可行窗口 1-3.3x |
 | **BUG-77** | **CONFIRMED** | **CRITICAL** | cell-level grid_pos_embed dropout 破坏定位; 已关闭 |
 | **BUG-79** | **CONFIRMED** | MEDIUM | marker_no_pos 若只改一侧会放大训练/推理不对称 |
