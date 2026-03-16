@@ -5395,3 +5395,6 @@ baseline comparison" completed (exit code 0)
 [2026-03-16 18:30:01] watchdog: === 用量检查开始 ===
 [2026-03-16 18:30:01] watchdog: → agent-ops 正在忙碌，跳过用量检查
 [2026-03-16 18:30:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-16 18:40:01] watchdog: === 用量检查开始 ===
+[2026-03-16 18:40:01] watchdog: → agent-ops 正在忙碌，跳过用量检查
+[2026-03-16 18:40:01] watchdog: ✅ 用量正常，无需休眠
