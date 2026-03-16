@@ -1,38 +1,42 @@
 # Conductor 上下文快照
-> 时间: 2026-03-16 03:33 CDT
+> 时间: 2026-03-16 05:53 CDT
 
 ---
 
 ## 当前状态
 
-- **ORCH_051 训练中** (GPU 2,3) — 隔离变量实验: FG/BG=3.3x, dropout=0
-- auto_frozen_check_051.sh 等待 iter_200.pth
-- ORCH_050 FAILED @200 (cell-level dropout 破坏定位, BUG-77)
+- **ORCH_055 训练中** (2-GPU DDP, GPU 2,3) — 精确复现 ORCH_049 + 多点 frozen-check
+- auto_frozen_check_055.sh 等待 iter_100.pth
+- ORCH_053/054 因单 GPU 执行而无效 (BUG-78)
 
-## ORCH_051 配置
+## ORCH_055 配置 (= ORCH_049 精确复现)
 
-- `marker_pos_punish=2.0`, `bg_balance_weight=3.0` (FG/BG=3.3x)
-- `marker_grid_pos_dropout=0.0` (**关闭**)
-- `around_weight=0.0`, `grid_assign_mode='center'`, `RandomFlipBEV only`, `prefix_drop_rate=0.5`
-- PID: 2377630 (rank0)
-- GiT Commit: ORCH_051 config change on top of cc749d9
-- work_dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260316/full_nuscenes_large_v1_orch051`
+- `marker_pos_punish=1.0`, `bg_balance_weight=5.0` (FG/BG=1x)
+- `marker_grid_pos_dropout=0.0`, `around_weight=0.0`
+- `grid_assign_mode='center'`, `RandomFlipBEV only`, `prefix_drop_rate=0.5`
+- **2-GPU DDP**: memory=28878, accumulative_counts=8, effective batch=16 ✅
+- work_dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260316/full_nuscenes_large_v1_orch055`
 
-## 全系列 @200 frozen-check 对比
+## 多点 frozen-check 计划
 
-| ORCH | FG/BG | dropout | Pos slots | marker_same | TP |
-|------|-------|---------|-----------|-------------|-----|
-| 048 | 6x | 0 | 482 (40%) | 0.977 | 27 |
-| **049** | **1x** | **0** | **565 (47%)** | **0.976** | **112** |
-| 050 | 3.3x | 0.5 cell | 0 (0%) | 1.000 | 0 |
-| **051** | **3.3x** | **0** | **?** | **?** | **?** |
+@100, @200, @300, @400, @500 — 仅 saturation>0.95 早停，全阴性允许继续
+- 目标: 确认 @200 可复现 ORCH_049 的 TP=112，定位 @200→@500 崩塌轨迹
 
-## 判断线索
+## FG/BG 扫描全表 (只看 2-GPU DDP 结果)
 
-- 若 051 @200 ≈ 049 @200 → dropout 确是主因，继续到 @500
-- 若 051 @200 全阴性 → FG/BG=3.3x 也有问题，需降到 ~2x
-- iter_200 预计 ~03:58 CDT
+| ORCH | bg_balance_weight | FG/BG | @200 | 备注 |
+|------|-------------------|-------|------|------|
+| 048 | 2.5 | 6x | — | @500 all-positive |
+| **049** | **5.0** | **1x** | **TP=112** | **唯一存活** → @500 all-neg |
+| 050 | 3.0 + dropout | 3.3x | 0/1200 | dropout 致死 |
+| 051 | 3.0 | 3.3x | 1200/1200 | all-positive |
+| 052 | 3.0 | 1.67x | 0/1200 | all-negative |
+| 053* | 4.0 | 1.25x | 0/1200 | *单GPU无效 |
+| 054* | 5.0 | 1x | 0/1200 | *单GPU无效 |
+| **055** | **5.0** | **1x** | **?** | 2-GPU DDP |
 
-## CEO 指令已处理
+## BUG-78: 单 GPU vs DDP 训练差异
 
-- Instance consistency loss 建议 — Conductor 回复: 方向正确但等 mode collapse 解决后再做
+- ORCH_049 (DDP): effective batch=16 → TP=112
+- ORCH_053/054 (单GPU): effective batch=1 → 全阴性
+- 结论: batch size 对 mode collapse 有关键影响
