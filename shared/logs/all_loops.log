@@ -5984,3 +5984,8 @@ nohup: ignoring input
 [2026-03-16 18:46:08] all_loops: 🚨🚨 训练质量 RED 告警！自动触发紧急审计
 [2026-03-16 18:46:09] all_loops: → 已自动签发紧急审计: HEALTH_20260316_1846
 [2026-03-16 18:46:11] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-16 18:47:11] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-16 18:47:13] all_loops: → conductor(auto) Phase 2: 指令已发送
+[2026-03-16 18:48:13] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
+[2026-03-16 18:48:15] all_loops: → admin: 指令已发送
+[2026-03-16 18:48:15] all_loops: → ops: 执行 save_tmux.sh
