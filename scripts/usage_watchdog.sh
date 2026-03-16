@@ -286,11 +286,11 @@ git diff --cached --quiet || {
 }
 log "休眠数据已 push"
 
-# ─── 杀掉 all_loops.sh ──────────────────────────────────
-ALL_LOOPS_PID=$(pgrep -f "all_loops.sh" | head -1)
-if [ -n "$ALL_LOOPS_PID" ]; then
-    kill "$ALL_LOOPS_PID" 2>/dev/null
-    log "已停止 all_loops.sh (PID ${ALL_LOOPS_PID})"
+# ─── 停止 all_loops tmux 托管 ───────────────────────────
+if bash "${AGENT_DIR}/scripts/all_loops_tmux.sh" stop >> "$LOG" 2>&1; then
+    log "已停止 all_loops tmux 托管"
+else
+    log "⚠️ 停止 all_loops tmux 托管失败"
 fi
 
 # ─── 休眠等待 ────────────────────────────────────────────
@@ -303,10 +303,12 @@ sleep "$SLEEP_SECONDS"
 log "⏰ 休眠结束，开始恢复"
 rm -f "$HIBERNATE_FLAG"
 
-# ─── 重启 all_loops.sh（flock 会防重复）─────────────────
-nohup bash "${AGENT_DIR}/scripts/all_loops.sh" >> "${AGENT_DIR}/shared/logs/all_loops.log" 2>&1 &
-NEW_PID=$!
-log "✅ all_loops.sh 已重启 (PID ${NEW_PID})"
+# ─── 重启 all_loops tmux 托管 ───────────────────────────
+if bash "${AGENT_DIR}/scripts/all_loops_tmux.sh" start >> "$LOG" 2>&1; then
+    log "✅ all_loops tmux 托管已重启"
+else
+    log "⚠️ all_loops tmux 托管重启失败"
+fi
 
 # ─── 检查每个 Agent 是否存活，死了就重启 ──────────────────
 for session in "${SESSIONS[@]}"; do

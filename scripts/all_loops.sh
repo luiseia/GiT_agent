@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================
 # all_loops.sh — 所有 Agent 的 10 分钟闹钟
-# 用法: nohup bash scripts/all_loops.sh &
+# 用法: 由 scripts/all_loops_tmux.sh 托管启动
 #
 # 执行顺序:
 # 1. rate limit 弹窗检查
