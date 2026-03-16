@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 05:17
+> 最后更新: 2026-03-16 05:42
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -34,12 +34,19 @@
 - FG/BG 比调参空间几乎用尽
 - **策略转换**: 不再调 FG/BG 比，回到 ORCH_049 精确配置，用多点 frozen-check 定位 @200→@500 之间的崩塌时间点
 
-### ORCH_054: 复现 ORCH_049 + 多点 frozen-check (@100/@200/@300/@400/@500)
+### 🚨 BUG-78 (流程): ORCH_053/054 被以单 GPU 执行，与 ORCH_049 的 2-GPU DDP 不同
 
-- 精确复现 ORCH_049 配置: `marker_pos_punish=1.0`, `bg_balance_weight=5.0`, `around_weight=0.0`
-- 新增 @100, @300, @400 frozen-check 点（ORCH_049 只查了 @200 和 @500）
-- 目标: 确认 @200 可复现(TP>0)，并定位崩塌发生在 @300, @400 还是 @500
-- 崩塌轨迹信息将指导下一步干预（LR 调整、梯度裁剪、正则化等）
+- **ORCH_049**: `torch.distributed.launch --nproc_per_node=2`, memory 28878, accumulative_counts=8, effective batch=16
+- **ORCH_053/054**: `python tools/train.py`（单 GPU）, memory 27140, 无梯度累积, effective batch=1
+- **16x batch size 差异** → 训练动态完全不同 → 结果不可比
+- **ORCH_053 (bg=4.0) 的"失败"可能是 batch size 造成的，非 bg 本身的问题**
+- **ORCH_054 (bg=5.0) 未能复现 ORCH_049 的 TP=112 也是因为训练设置不同**
+
+### ORCH_055: 用 2-GPU DDP 重新执行多点 frozen-check
+
+- **必须用 2-GPU DDP** (`torch.distributed.launch --nproc_per_node=2`)
+- 精确复现 ORCH_049 的训练环境 + config
+- 多点 frozen-check @100/@200/@300/@400/@500
 
 ### 活跃 BUG 跟踪
 
@@ -573,7 +580,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_051** | **纯 FG/BG=3.3x，无 dropout（隔离变量）** | 🔴 **FAILED** @200 — EARLY STOP, 1200/1200 all-positive |
 | **ORCH_052** | **FG/BG=1.67x (marker_pos_punish=1.0, bg_balance_weight=3.0)** | 🔴 **FAILED** @200 — EARLY STOP, 0/1200 all-negative |
 | **ORCH_053** | **bg_balance_weight=4.0 二分搜索** | 🔴 **FAILED** @200 — all-negative |
-| **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | 📋 **PENDING** |
+| **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | ⚠️ **INVALID** — 单 GPU 执行，与 ORCH_049 的 DDP 不可比(BUG-78) |
+| **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | 📋 **PENDING** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
