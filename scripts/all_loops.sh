@@ -18,6 +18,7 @@
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 LOG="${AGENT_DIR}/shared/logs/all_loops.log"
+HEARTBEAT="${AGENT_DIR}/shared/logs/all_loops.heartbeat"
 LOCKFILE="/tmp/all_loops.lock"
 LOOP_INTERVAL=600
 SUPERVISOR_WAIT_MIN=3
@@ -35,6 +36,17 @@ fi
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] all_loops: $1" >> "$LOG"
+}
+
+heartbeat() {
+    local phase="$1"
+    local state="$2"
+    cat > "$HEARTBEAT" << EOF
+timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+pid=$$
+phase=${phase}
+state=${state}
+EOF
 }
 
 send_agent_message() {
@@ -101,26 +113,32 @@ wait_for_idle() {
     local session="$1"
     local max_minutes="$2"
     local label="$3"
+    heartbeat "$label" "waiting"
     for wait in $(seq 1 "$max_minutes"); do
         sleep 60
         if is_idle "$session"; then
+            heartbeat "$label" "completed"
             log "→ ${label}: 已完成（等待 ${wait} 分钟）"
             return 0
         fi
         if [ "$wait" = "$max_minutes" ]; then
+            heartbeat "$label" "timeout"
             log "⚠️ ${label}: 等待超时（${max_minutes} 分钟），继续执行"
             return 1
         else
+            heartbeat "$label" "waiting ${wait}/${max_minutes}"
             log "→ ${label}: 仍在工作... ${wait}/${max_minutes} 分钟"
         fi
     done
 }
 
 log "all_loops.sh 启动 (PID $$)"
+heartbeat "startup" "alive"
 
 while true; do
     LOOP_START=$(date +%s)
     log "=== 新一轮循环开始 ==="
+    heartbeat "loop" "started"
 
     # ─── 1. 检查并关闭所有 rate limit 弹窗 ───────
     for s in agent-conductor agent-supervisor agent-admin agent-critic agent-ops; do
@@ -472,7 +490,13 @@ CRITICEOF
 
     # ─── 9. Ops: 执行快照（循环最后）────────────
     log "→ ops: 执行 save_tmux.sh"
-    bash "${AGENT_DIR}/scripts/save_tmux.sh"
+    heartbeat "ops" "save_tmux"
+    if timeout 180 bash "${AGENT_DIR}/scripts/save_tmux.sh"; then
+        heartbeat "ops" "save_tmux_done"
+    else
+        heartbeat "ops" "save_tmux_timeout"
+        log "⚠️ ops: save_tmux.sh 超时或失败，继续下一轮"
+    fi
 
     # ─── 10. 动态等待补够 10 分钟 ─────────────────
     LOOP_END=$(date +%s)
@@ -481,11 +505,14 @@ CRITICEOF
     if [ "$REMAINING" -gt 60 ]; then
         REMAINING_MIN=$(( REMAINING / 60 ))
         log "=== 循环耗时 $((ELAPSED/60)) 分钟，等待 ${REMAINING_MIN} 分钟补够 10 分钟 ==="
+        heartbeat "sleep" "waiting ${REMAINING_MIN} min"
         for i in $(seq 1 "$REMAINING_MIN"); do
             sleep 60
+            heartbeat "sleep" "waiting ${i}/${REMAINING_MIN}"
             log "⏳ 等待中... ${i}/${REMAINING_MIN} 分钟"
         done
     else
+        heartbeat "loop" "overrun"
         log "=== 循环耗时 $((ELAPSED/60)) 分钟，已超过 10 分钟，立即开始下一轮 ==="
     fi
 done
