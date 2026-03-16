@@ -16,6 +16,7 @@ AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
 LOG="${AGENT_DIR}/shared/logs/watchdog.log"
 LOCKFILE="/tmp/usage_watchdog.lock"
 HIBERNATE_FLAG="/tmp/usage_watchdog_hibernating"
+NO_USAGE_FLAG="/tmp/usage_watchdog_no_usage_cmd"
 SESSIONS=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin")
 
 log() {
@@ -71,14 +72,23 @@ RESET_INFO=""
 # =============================================================
 # 检测方式 1: /usage 命令
 # 发给 ops，避免打断 conductor/critic
+# 若当前客户端不支持 /usage，则自动停用该检测方式
 # =============================================================
 USAGE_TARGET="agent-ops"
-if tmux has-session -t "$USAGE_TARGET" 2>/dev/null && is_idle "$USAGE_TARGET"; then
+if [ -f "$NO_USAGE_FLAG" ]; then
+    log "→ 已检测到当前客户端不支持 /usage，跳过用量检查"
+elif tmux has-session -t "$USAGE_TARGET" 2>/dev/null && is_idle "$USAGE_TARGET"; then
     tmux send-keys -t "$USAGE_TARGET" "/usage" Enter
     sleep 5
     USAGE_OUTPUT=$(tmux capture-pane -t "$USAGE_TARGET" -p -S -30)
     tmux send-keys -t "$USAGE_TARGET" Escape
     sleep 1
+
+    if echo "$USAGE_OUTPUT" | grep -qi 'Status dialog dismissed'; then
+        log "⚠️ /usage 在当前客户端不可用（Status dialog dismissed），后续跳过该检测"
+        touch "$NO_USAGE_FLAG"
+        USAGE_OUTPUT=""
+    fi
 
     # 解析用量百分比
     USAGE_PCT=$(echo "$USAGE_OUTPUT" | grep -oP '\d+\.?\d*%\s+used' | head -1 | grep -oP '\d+\.?\d*')
