@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-15 22:35
+> 最后更新: 2026-03-15 23:15
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,7 +18,29 @@
 
 ---
 
-## 当前阶段: ORCH_046_v2 已 STOP，等待 ORCH_047 @500 结论 (2026-03-15 22:35 CDT)
+## 当前阶段: ORCH_047 @500 仍 Frozen，后续改用 frozen-check 代替 full val 作为首道闸门 (2026-03-15 23:15 CDT)
+
+### 🔴 ORCH_047 @500 结论
+
+- 已手动停止 `ORCH_047` 的 `@500 full val`，不再等待 `1505` 个 val iter 全跑完
+- 已直接对 `iter_500.pth` 运行 `scripts/check_frozen_predictions.py`
+- **Frozen 指标**:
+  - Avg positive slots: **1200/1200 (100.0%)**
+  - Positive IoU (cross-sample): **1.0000**
+  - Marker same rate: **1.0000**
+  - Coord diff (shared pos): **0.008062**
+  - Saturation: **1.000**
+- **结论**: 即使加入 `RandomFlipBEV + GlobalRotScaleTransBEV`，`ORCH_047 @500` 仍然与 `ORCH_046_v2` 一样完全 frozen
+- 可视化已生成: `shared/logs/VIS/047_iter500_frozen_check/`
+
+### 新流程决定
+
+- **@500 不再先跑 full val**
+- 今后所有新实验统一采用：
+  1. `iter_500.pth` 一生成，立即运行 `scripts/check_frozen_predictions.py`
+  2. 若 `Positive IoU > 0.95` 或 `Marker same rate > 0.90` 或 `Saturation > 0.90` → **立即停训**
+  3. 只有 frozen-check 通过的实验，才继续 full val / 长训练
+- 这样可以把 “1 小时以上的无效 val” 缩短为 “几分钟的 frozen 诊断”
 
 ### 🔴 已吸收 Critic 判决: VERDICT_ORCH046_V2_AT500 = STOP
 
