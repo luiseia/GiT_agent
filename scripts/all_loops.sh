@@ -8,15 +8,16 @@
 # 2. sync_loop 存活检查
 # 3. Supervisor → 等待完成
 # 4. 训练质量健康检查
-# 5. Conductor Phase 1（信息收集 + 审计决策）→ 等待完成
+# 5. Conductor Phase 1（信息收集 + 审计决策）→ 使用独立 auto 会话
 # 6. 检查是否有 pending audit → 启动 Critic → 等待 VERDICT
-# 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）→ 等待完成
+# 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）→ 等待 Critic 后执行
 # 8. Admin
 # 9. Ops (save_tmux) — 循环最后执行
 # 10. 动态等待补够 10 分钟
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
+CONDUCTOR_SESSION="agent-conductor-auto"
 LOG="${AGENT_DIR}/shared/logs/all_loops.log"
 HEARTBEAT="${AGENT_DIR}/shared/logs/all_loops.heartbeat"
 LOCKFILE="/tmp/all_loops.lock"
@@ -63,6 +64,15 @@ send_agent_message() {
     tmux send-keys -l -t "$session" "$message"
     tmux send-keys -t "$session" C-m
     return 0
+}
+
+ensure_conductor_auto_session() {
+    if tmux has-session -t "$CONDUCTOR_SESSION" 2>/dev/null; then
+        return 0
+    fi
+    tmux new-session -d -s "$CONDUCTOR_SESSION" -c "$AGENT_DIR"
+    tmux rename-window -t "$CONDUCTOR_SESSION" "conductor-auto"
+    log "→ conductor(auto): 已创建独立 tmux 会话"
 }
 
 # ─── 检测 Agent 是否空闲 ─────────────────────────────────
@@ -157,7 +167,7 @@ while true; do
     heartbeat "loop" "started"
 
     # ─── 1. 检查并关闭所有 rate limit 弹窗 ───────
-    for s in agent-conductor agent-supervisor agent-admin agent-critic agent-ops; do
+    for s in "$CONDUCTOR_SESSION" agent-conductor agent-supervisor agent-admin agent-critic agent-ops; do
         if tmux has-session -t "$s" 2>/dev/null; then
             dismiss_rate_limit "$s"
         fi
@@ -255,31 +265,31 @@ HEALTHEOF
         fi
     fi
 
-    # ─── 5. Conductor Phase 1 ────────────────────
+    # ─── 5. Conductor Phase 1（独立 auto 会话） ──────────
     CONDUCTOR_P1_SENT=0
-    if tmux has-session -t agent-conductor 2>/dev/null; then
-        if ! is_claude_alive agent-conductor; then
-            log "⚠️ conductor: Claude Code 已退出，正在重启..."
-            send_agent_message agent-conductor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions"
+    ensure_conductor_auto_session
+    if tmux has-session -t "$CONDUCTOR_SESSION" 2>/dev/null; then
+        if ! is_claude_alive "$CONDUCTOR_SESSION"; then
+            log "⚠️ conductor(auto): Claude Code 已退出，正在重启..."
+            send_agent_message "$CONDUCTOR_SESSION" "cd ${AGENT_DIR} && claude --dangerously-skip-permissions"
             sleep 15
-            send_agent_message agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待指令"
-            log "→ conductor: 已重启"
+            send_agent_message "$CONDUCTOR_SESSION" "请阅读 agents/claude_conductor/CLAUDE.md 并等待指令"
+            log "→ conductor(auto): 已重启"
             sleep 10
         fi
-        if is_idle agent-conductor; then
-            send_agent_message agent-conductor "cat shared/commands/phase1_cmd.md"
-            log "→ conductor Phase 1: 指令已发送"
+        if is_idle "$CONDUCTOR_SESSION"; then
+            send_agent_message "$CONDUCTOR_SESSION" "cat shared/commands/phase1_cmd.md"
+            log "→ conductor(auto) Phase 1: 指令已发送"
             CONDUCTOR_P1_SENT=1
         else
-            log "→ conductor: 正在忙碌，跳过本轮"
+            log "→ conductor(auto): 正在忙碌，跳过本轮"
         fi
     else
-        log "⚠️ conductor: 会话不存在"
+        log "⚠️ conductor(auto): 会话不存在"
     fi
 
-    # 等待 Conductor Phase 1 完成（最多 3 分钟）
     if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
-        wait_for_idle agent-conductor "$CONDUCTOR_P1_WAIT_MIN" "conductor Phase 1"
+        wait_for_idle "$CONDUCTOR_SESSION" "$CONDUCTOR_P1_WAIT_MIN" "conductor(auto) Phase 1"
     fi
 
     # ─── 6. 检查是否有 pending audit → 启动 Critic ─
@@ -474,15 +484,15 @@ CRITICEOF
         done
     fi
 
-    # ─── 7. Conductor Phase 2 ────────────────────
+    # ─── 7. Conductor Phase 2（等待 Critic 后执行） ───────
     if [ "$CONDUCTOR_P1_SENT" = "1" ]; then
-        if tmux has-session -t agent-conductor 2>/dev/null; then
-            if ! is_idle agent-conductor; then
-                wait_for_idle agent-conductor "$CONDUCTOR_IDLE_WAIT_MIN" "conductor 等待空闲"
+        if tmux has-session -t "$CONDUCTOR_SESSION" 2>/dev/null; then
+            if ! is_idle "$CONDUCTOR_SESSION"; then
+                wait_for_idle "$CONDUCTOR_SESSION" "$CONDUCTOR_IDLE_WAIT_MIN" "conductor(auto) 等待空闲"
             fi
-            send_agent_message agent-conductor "cat shared/commands/phase2_cmd.md"
-            log "→ conductor Phase 2: 指令已发送"
-            wait_for_idle agent-conductor "$CONDUCTOR_P2_WAIT_MIN" "conductor Phase 2"
+            send_agent_message "$CONDUCTOR_SESSION" "cat shared/commands/phase2_cmd.md"
+            log "→ conductor(auto) Phase 2: 指令已发送"
+            wait_for_idle "$CONDUCTOR_SESSION" "$CONDUCTOR_P2_WAIT_MIN" "conductor(auto) Phase 2"
         fi
     fi
 

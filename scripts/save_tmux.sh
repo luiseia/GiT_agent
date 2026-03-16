@@ -10,7 +10,7 @@ STATUS_FILE="${AGENT_DIR}/STATUS.md"
 OPS_LOG="${AGENT_DIR}/shared/logs/ops.log"
 RETENTION_MIN=1440  # 24 小时
 
-SESSIONS=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin")
+SESSIONS=("agent-conductor" "agent-conductor-auto" "agent-critic" "agent-supervisor" "agent-admin")
 TS=$(date +%Y%m%d_%H%M%S)
 NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -45,7 +45,7 @@ cleaned=$(find "$SNAPSHOT_DIR" -name "agent-*.log" -mmin +${RETENTION_MIN} -dele
     echo "| Agent | tmux | 最后快照 | 备注 |"
     echo "|-------|------|---------|------|"
 
-    ALL=("agent-conductor" "agent-critic" "agent-supervisor" "agent-admin" "agent-ops")
+    ALL=("agent-conductor" "agent-conductor-auto" "agent-critic" "agent-supervisor" "agent-admin" "agent-ops")
     for session in "${ALL[@]}"; do
         name=$(echo "$session" | sed 's/agent-//')
 
