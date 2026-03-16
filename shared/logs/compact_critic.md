@@ -1,63 +1,60 @@
-# Critic 上下文压缩 — 2026-03-09
+# Critic Context Snapshot — 2026-03-15 21:10
 
-## 当前状态: 休眠中，等待下一轮审计请求
+## 当前状态: 休眠中，本轮 3 份 verdict 已完成并 push
 
-## 正在进行
-- ORCH_024: **已判决终止** (VERDICT_12000_TERMINATE: PROCEED)
-- ORCH_028: 待 Conductor 签发, overlap-based grid 标签重训, 从零开始
-- BUG-51 FIXED: grid_assign_mode='overlap' (GiT commit ec9a035)
+## 本轮完成的审计 (2026-03-15)
 
-## 已完成的判决 (全部已 git push)
-| 判决 | 结论 | Commit |
-|------|------|--------|
-| VERDICT_FULL_4000 | CONDITIONAL | 887508d |
-| VERDICT_FULL_6000 | CONDITIONAL | 32fa6ef |
-| VERDICT_ORCH026_PLANQ | **PROCEED** | e086e84 |
-| VERDICT_FULL_8000 | CONDITIONAL | 44a6cf0 |
-| VERDICT_DINOV3_LAYER_AND_UNFREEZE | **CONDITIONAL** | e0f9c8d |
-| VERDICT_FULL_10000 | **CONDITIONAL** | 5fa543e |
-| VERDICT_12000_TERMINATE | **PROCEED** | 22157d9 |
-(更早: P6_3000, P6_VS_P5B, PLAN_P_FAIL_P6_TREND, P2_FINAL_FULL_CONFIG, CEO_STRATEGY_NEXT, CEO_ARCH_QUESTIONS, AR_SEQ_REEXAMINE)
+### 1. VERDICT_ORCH045_AT2000 — STOP
+- 多层 DINOv3 [5,11,17,23] + 2 adaptation layers + token_drop_rate=0.3 从零训练
+- Frozen predictions 确认: IoU=0.990, marker_same=0.991, saturation=0.922
+- 单类崩塌: @2000 ped_R=0.765/bg_FA=0.921 → @4000-6000 ped_R=1.0/bg_FA=1.0
+- BUG-62 回归 (clip_grad=10, 有效梯度 0.33%), BUG-66/67/68
+- ⚠️ 我错误声明 "零数据增强" — 实际 config 已有 PhotoMetricDistortion
+
+### 2. VERDICT_ORCH046_PLAN — CONDITIONAL
+- **BUG-69 (CRITICAL)**: adapt_layers lr_mult=0.05 (mmengine substring match 将 `backbone` 规则覆盖了 `backbone.patch_embed.adapt_layers.*`), 有效 lr=2.5e-6
+- BUG-70: 纠正 "零数据增强" 错误
+- 修正优先级: P0=lr_mult + clip_grad; P1=RandomFlip3D + Scheduled Sampling
+
+### 3. VERDICT_ORCH046_V2_AT500 — STOP
+- BUG-69/62/64 全部修复后从零训练, grad_norm 3007→130 ✅
+- **但 100% frozen** (IoU=1.0, saturation=1.0) — 比 ORCH_045 更极端
+- **Shortcut learning 确认**: 训练 loss 下降 (15→4) 但推理完全 frozen
+- BUG-45 重评: attn_mask=None 不是 bug (KV cache 保证因果性)
+- **BUG-71 (CRITICAL)**: Teacher Forcing + 无空间增强 + 大容量 = 必然 collapse
+- **结论**: 超参数调整已到极限, 必须实现 RandomFlip3D + Scheduled Sampling
 
 ## BUG 状态总表
+
 | BUG | 严重性 | 状态 | 描述 |
 |-----|--------|------|------|
-| BUG-1~3,8~12 | — | FIXED | 早期修复 |
-| BUG-15 | HIGH | OPEN | Precision 瓶颈 (可能部分归因 BUG-51, 待 ORCH_028 验证) |
-| BUG-17 | HIGH | Full确认 | per_class_balance sqrt 振荡, Plan Q证明不影响car_P |
-| BUG-33 | MEDIUM | 可能已修 | DDP val, 待单GPU验证 |
-| BUG-45 | MEDIUM | OPEN | OCC head 推理 attn_mask=None |
-| BUG-46 | LOW | 信息 | accumulative_counts=4 |
-| BUG-47 | MEDIUM | 已修正 | 决策矩阵用3-eval峰值. **旧阈值全部失效, 需在 ORCH_028 @4000 后重建** |
-| BUG-48 | HIGH | CONFIRMED | unfreeze_last_n 解冻末端blocks无效. Plan M结论无效 |
-| BUG-49 | MEDIUM | CONFIRMED | DINOv3前向浪费~58%计算 |
-| BUG-50 | MEDIUM | NEW | unfreeze移除no_grad显存暴增 |
-| BUG-51 | **CRITICAL→FIXED** | **FIXED** | Grid center-based分配: 35.5%物体零cell, 70.1%投影<56px. 修复: overlap模式 |
-下一个 BUG 编号: BUG-52 (BUG-51 由 Conductor 发现并编号)
+| BUG-62 | CRITICAL | ✅ 已修复 | clip_grad 10→50, grad_norm 正常 |
+| BUG-64 | HIGH | ✅ 已修复 | bert-large pretrain |
+| BUG-66 | HIGH | 已知 | token_drop_rate=0.3 无效, 降级辅助 |
+| BUG-67 | HIGH | 已知 | adapt layers + clip_grad 交互 (BUG-69 修复后缓解) |
+| BUG-69 | CRITICAL | ✅ 已修复 | adapt_layers lr_mult 0.05→1.0 |
+| BUG-71 | **CRITICAL** | **OPEN** | Teacher Forcing + 无空间增强 = shortcut learning |
+| BUG-72 | MEDIUM | OPEN | PhotoMetricDistortion 对 frozen DINOv3 有效性存疑 |
+| ~~BUG-45~~ | — | NOT A BUG | KV cache 推理中 attn_mask=None 正确 |
 
-## ORCH_024 最终数据 (center-based 标签, 仅作 baseline 对照)
-| 指标 | @2000 | @4000 | @6000 | @8000 | @10000 | @12000 | peak |
-|------|-------|-------|-------|-------|--------|--------|------|
-| car_P | 0.079 | 0.078 | **0.090** | 0.060 | 0.069 | 0.081 | **0.090** |
-| car_R | 0.627 | 0.419 | 0.455 | 0.718 | 0.726 | 0.526 | — |
-| bg_FA | 0.222 | **0.199** | 0.331 | 0.311 | 0.407 | **0.278** | — |
-| off_th | 0.174 | 0.150 | 0.169 | **0.140** | 0.160 | **0.128** | — |
-⚠️ 所有数据基于 BUG-51 缺陷标签, 不可与 overlap 训练直接对比
+## 关键数据
 
-## ORCH_028 关键原则 (Critic 建议)
-1. **只改标签** (overlap), 其他参数不动 → 单一变量对照
-2. **从零训练**, 不 resume → 旧知识在新标签下有害
-3. **@4000 后重建决策矩阵** → 旧阈值全部失效
-4. offset 基线会变 (overlap 边缘 cell 更大) → 不要与 ORCH_024 offset 直接对比
-5. bg_weight=2.5 先保持, 观察 bg_FA 后再调
+### ORCH_046_v2 @500 (最新)
+- Frozen check: slots=1200/1200, IoU=1.0, marker_same=1.0, saturation=1.0
+- Training: grad_norm mean=130, loss 15→4, reg_loss 从未归零
 
-## 关键结论 (精简)
-- BUG-51 可能是 car_P 天花板 + bg_FA 膨胀 + 类振荡的最底层根因
-- Deep Supervision: 暂缓, 先看 overlap 标签的效果
-- Layer 24 验证: 暂缓, 先看 overlap 标签的效果
-- 优先级: overlap重训(ORCH_028) >> 其他所有优化
+### ORCH_045 @2000
+- Frozen check: slots=1097/1200, IoU=0.990, marker_same=0.991
+- Feature flow: diff/Margin=13.8%, pred identical=99.5%
+- Eval: ped_R=0.765, bg_FA=0.921, car_R=0
+
+### 下次训练必须包含
+1. **RandomFlip3D** — 水平翻转图像 + 3D annotations (x→-x, rot→π-rot)
+2. **Scheduled Sampling** — 或降低模型容量到 GiT-Base
+3. 不要再做纯超参数调整 — 问题在训练算法层面
 
 ## 恢复指引
 1. git pull 两个仓库
 2. 检查 shared/audit/requests/ 是否有新 AUDIT_REQUEST
-3. 有则审计，无则休眠
+3. 有则按 agents/claude_critic/CLAUDE.md 协议执行
+4. 无则休眠
