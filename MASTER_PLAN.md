@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-15 23:15
+> 最后更新: 2026-03-16 02:45
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,89 +18,44 @@
 
 ---
 
-## 当前阶段: ORCH_049 准备执行 BUG-73 修复，主因已修正为 fg/bg 失衡 + 空间先验模板化 (2026-03-16 01:16 CDT)
+## 当前阶段: ORCH_049 FAILED @500 — 签发 ORCH_050 (2026-03-16 02:45 CDT)
 
-### ✅ 已吸收 Critic 判决: VERDICT_ORCH049_MARKER_PATH = CONDITIONAL
+### 🔴 ORCH_049 最终结论: FAILED — 全阴性 mode collapse
 
-- `ORCH_048` 的方向被确认是对的：模型已从 `1200/1200` 全正饱和降到 `482/1200`
-- 但 Critic 明确否定了“marker GT prefix 泄漏”这条假设
-- **当前主因修正为**:
-  - **BUG-73 (CRITICAL, OPEN)**: `marker_pos_punish=3.0` 与 `bg_balance_weight=2.5` 造成实际 fg/bg 惩罚比约 **6x**
-  - **BUG-75 (HIGH, NEW)**: `grid_pos_embed` 在 fg/bg 失衡下成为空间模板 shortcut 通道
-- Critic 特征流诊断显示图像信号全程正常到达 logits：
-  - `patch_embed_input` 差异 **4.96%**
-  - `logits_pos0` 差异 **1.06%**
-  - 但 `pred_token_pos0` 仍 **97.75% 相同**
-- 结论：**图像信号没有丢，问题在决策边界被 loss 失衡固化为空间模板**
+- **@200** (01:52 CDT): positive=565/1200, saturation=0.487, marker_same=0.9755, TP=112 — 通过早停门槛
+- **@500** (02:40 CDT): positive=**0/1200**, saturation=**0.000**, marker_same=**1.0000**, TP=**0** — 🔴 全阴性崩塌
+- 训练日志: iter 320-490 大量 `reg_loss=0.000`，模型在 200-500 之间从”部分模板”退化为”全阴性”
+- **新失败模式**: 不再是 all-positive（ORCH_046~048），而是 all-negative
+- **根因**: BUG-73 修复（FG/BG 6x → 1x）矫枉过正，加上 BUG-75（grid_pos_embed 空间先验）仍在，模型在平衡 loss 下选择全阴性为最优策略
 
-### 🟠 ORCH_048 最新定性
+### BUG-76 (NEW, HIGH): FG/BG=1x 导致全阴性崩塌
 
-- `ORCH_048` 应视为 **PARTIAL_SUCCESS**
-- 有效改动：
-  - `grid_assign_mode='center'`
-  - `RandomFlipBEV only`
-  - `core/around supervision`
-  - `prefix_drop_rate=0.5`
-- 但其中“`pos_cls_w_multiplier→1.0`, `neg_cls_w→1.0`”未真正修掉 BUG-73
-- 当前最小有效下一步不是继续训练，而是 **先修 BUG-73**
+- ORCH_048 (`marker_pos_punish=3.0`, `bg_balance_weight=2.5`): FG/BG=6x → all-positive
+- ORCH_049 (`marker_pos_punish=1.0`, `bg_balance_weight=5.0`): FG/BG=1x → all-negative
+- **真实数据正样本比例约 10-30%**，完全平衡的 loss 让模型偏向多数类（BG）
+- **需要温和的 FG 偏向**: FG/BG ≈ 2x 左右
 
-### ORCH_049 最小可执行路线
+### ORCH_050 行动方案（已签发）
 
-- **P0: 修 BUG-73**
-  - `marker_pos_punish`: `3.0 → 1.0`
-  - `bg_balance_weight`: `2.5 → 5.0`
-- **P1: 进一步收紧外围 supervision**
-  - `around_weight`: `0.1 → 0.0`（或最多 `0.05`）
-- **P1: 新增更早闸门**
-  - `iter_200` 运行 quick frozen-check
-  - 若 `marker_same > 0.95` 且 `saturation > 0.90`，立即停训
-- **@500 继续保留 frozen-check**
-  - 通过前不跑 full val
-- **暂不做**
-  - 不改 marker 训练路径（Critic 已确认无 GT prefix 泄漏）
-  - 不改 `grid_assign_mode='center'`
-  - 不继续堆训练时长
+双管齐下：**温和回调 FG/BG 比 + grid_pos_embed marker dropout**
 
-### ORCH_049 最新观测 (2026-03-16 01:56 CDT)
-
-- `iter_200` frozen-check 已完成，训练继续进行中
-- 当前指标:
-  - Avg positive slots: **565/1200**
-  - Positive IoU: **0.9520**
-  - Marker same rate: **0.9755**
-  - Coord diff: **0.016052**
-  - Saturation: **0.487**
-- **判断**:
-  - BUG-73 修复已实际落到 config（`marker_pos_punish=1.0`, `bg_balance_weight=5.0`, `around_weight=0.0`）
-  - 但 `marker_same` 几乎未降，说明 **BUG-75 (`grid_pos_embed` 空间模板 shortcut)** 仍是主阻断项
-  - 同时 TP 从 `ORCH_048 @500` 的 `27` 上升到 `ORCH_049 @200` 的 `112`，仍值得看 `@500`
-- **执行决定**:
-  - 让 `ORCH_049` 继续跑到 `iter_500`，到此为止
-  - 不提前停训，但 `@500` 一旦失败，下一步不再继续调 fg/bg 权重，直接转向 `ORCH_050`
-
-### ORCH_050 预备方向（仅草案，暂不投递）
-
-- 目标: 只削弱 **marker step (`pos_id=0`)** 对 `grid_pos_embed` 的依赖，不破坏后续 box 回归对位置编码的正常使用
-- 预备改动:
-  - 训练时仅对 marker step 引入 `grid_pos_embed dropout`
-  - 首版建议 dropout 概率 `0.3 ~ 0.5`
-  - 不完全移除 `grid_pos_embed`
-  - 继续保留:
-    - `RandomFlipBEV only`
-    - `grid_assign_mode='center'`
-    - `around_weight=0.0`
-    - `prefix_drop_rate=0.5`
-- 触发条件:
-  - 若 `ORCH_049 @500` 任一 frozen 指标失败，则立即签发 `ORCH_050`
-  - 且下一版早停规则需要从 AND 收紧为更严格的 OR / 单指标阈值
+1. **修正 BUG-76**: `marker_pos_punish=2.0`, `bg_balance_weight=3.0` → FG/BG=(5×2.0)/(3.0×1.0)=**3.3x**
+   - 居于 6x（全正）和 1x（全负）之间，轻微 fg 偏向
+2. **修正 BUG-75**: `marker_grid_pos_dropout=0.5` 仅对 `pos_id=0` 施加 grid_pos_embed dropout
+3. 保留已验证配置: `RandomFlipBEV only`, `grid_assign_mode='center'`, `prefix_drop_rate=0.5`, `around_weight=0.0`
+4. 早停收紧为 OR 触发:
+   - `@200`: `marker_same > 0.97` 或 `saturation > 0.90` 或 `saturation < 0.05` → STOP
+   - `@500`: `Positive IoU > 0.95` 或 `Marker same > 0.90` 或 `Saturation > 0.90` 或 `Saturation < 0.05` → STOP
+   - 新增: **saturation < 0.05 也触发停止**（捕捉 all-negative 崩塌）
 
 ### 活跃 BUG 跟踪
 
 | BUG | 状态 | 级别 | 当前结论 |
 |-----|------|------|----------|
-| **BUG-73** | **OPEN** | **CRITICAL** | fg/bg 惩罚失衡是 marker 模板化首因 |
+| **BUG-73** | **PARTIAL** | **CRITICAL** | ORCH_049 修复到 FG/BG=1x，但矫枉过正导致全阴性崩塌 |
 | **BUG-74** | **FIXED** | HIGH | `GlobalRotScaleTransBEV` 已在 ORCH_048 移除 |
-| **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 在 BUG-73 存在时放大空间模板 shortcut |
+| **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 空间模板 shortcut，ORCH_050 将用 marker dropout 处理 |
+| **BUG-76** | **NEW** | HIGH | FG/BG=1x 完全平衡导致 all-negative collapse（ORCH_049 @500） |
 
 ### 🟠 ORCH_048 @500 最新结论
 
@@ -610,6 +565,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_043** | **P2+P3 修复后从 iter_4000 重启训练** | ✅ **COMPLETED** — @6000 car_R=0.582, P2+P3 确认有效 |
 | **ORCH_044** | **多层 ViT-L + LN + 投影 (无 anti-collapse)** | **STOPPED** @iter_440 — reg_loss=0 mode collapse, 前提错误, PID 1626949 已 kill |
 | **ORCH_045** | **多层+适应层+token corruption 从零训练** | 🔴 **STOPPED** @6000 — bg_FA=1.0 marker saturation, 训练已终止 03/15 15:25 |
+| **ORCH_049** | **BUG-73 修复 (FG/BG=1x)** | 🔴 **FAILED** @500 — all-negative collapse, 0/1200 positive, TP=0 |
+| **ORCH_050** | **FG/BG=3.3x + marker grid_pos_embed dropout** | 📋 **PENDING** — 已签发 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
