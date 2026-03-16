@@ -98,15 +98,6 @@ ensure_session() {
     fi
 }
 
-sync_message() {
-    cat <<'EOF'
-请只做以下两件事，不要提交、不要推送、不要签发 ORCH：
-1. 读取 shared/logs/compact_conductor.md 同步人工 Conductor 最新状态
-2. 如需下一步预案，再读取 shared/logs/DRAFT_ORCH_050.md
-读取后等待后续明确指令，不要自行行动。
-EOF
-}
-
 last_mtime=0
 if [ -f "$STATE_FILE" ]; then
     last_mtime=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
@@ -120,7 +111,7 @@ while true; do
         if [ "$current_mtime" -gt "$last_mtime" ]; then
             ensure_session
             if is_idle "$SESSION"; then
-                send_agent_message "$SESSION" "$(sync_message)"
+                send_agent_message "$SESSION" "cat shared/commands/conductor_auto_shadow.md"
                 log "delivered updated handoff (mtime=${current_mtime})"
                 last_mtime="$current_mtime"
                 echo "$last_mtime" > "$STATE_FILE"
