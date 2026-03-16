@@ -61,6 +61,39 @@
   - 不改 `grid_assign_mode='center'`
   - 不继续堆训练时长
 
+### ORCH_049 最新观测 (2026-03-16 01:56 CDT)
+
+- `iter_200` frozen-check 已完成，训练继续进行中
+- 当前指标:
+  - Avg positive slots: **565/1200**
+  - Positive IoU: **0.9520**
+  - Marker same rate: **0.9755**
+  - Coord diff: **0.016052**
+  - Saturation: **0.487**
+- **判断**:
+  - BUG-73 修复已实际落到 config（`marker_pos_punish=1.0`, `bg_balance_weight=5.0`, `around_weight=0.0`）
+  - 但 `marker_same` 几乎未降，说明 **BUG-75 (`grid_pos_embed` 空间模板 shortcut)** 仍是主阻断项
+  - 同时 TP 从 `ORCH_048 @500` 的 `27` 上升到 `ORCH_049 @200` 的 `112`，仍值得看 `@500`
+- **执行决定**:
+  - 让 `ORCH_049` 继续跑到 `iter_500`，到此为止
+  - 不提前停训，但 `@500` 一旦失败，下一步不再继续调 fg/bg 权重，直接转向 `ORCH_050`
+
+### ORCH_050 预备方向（仅草案，暂不投递）
+
+- 目标: 只削弱 **marker step (`pos_id=0`)** 对 `grid_pos_embed` 的依赖，不破坏后续 box 回归对位置编码的正常使用
+- 预备改动:
+  - 训练时仅对 marker step 引入 `grid_pos_embed dropout`
+  - 首版建议 dropout 概率 `0.3 ~ 0.5`
+  - 不完全移除 `grid_pos_embed`
+  - 继续保留:
+    - `RandomFlipBEV only`
+    - `grid_assign_mode='center'`
+    - `around_weight=0.0`
+    - `prefix_drop_rate=0.5`
+- 触发条件:
+  - 若 `ORCH_049 @500` 任一 frozen 指标失败，则立即签发 `ORCH_050`
+  - 且下一版早停规则需要从 AND 收紧为更严格的 OR / 单指标阈值
+
 ### 活跃 BUG 跟踪
 
 | BUG | 状态 | 级别 | 当前结论 |
