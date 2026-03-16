@@ -1,43 +1,37 @@
-# Critic Context Snapshot — 2026-03-16 08:00
+# Critic Context Snapshot — 2026-03-16 15:00
 
-## 当前状态: 休眠中，本轮 6 份 verdict 已完成并 push
+## 当前状态: 休眠中，本轮 7 份 verdict 已完成并 push
 
 ## 正在做什么
 - 无活跃任务。本轮所有审计请求均已处理完毕。
-- 最后完成: VERDICT_ORCH057_MARKER_NO_POS (commit `5afb4f9`)
-- 之前完成: VERDICT_ORCH049_MARKER_PATH (commit `ca183dd`)
+- 最后完成: VERDICT_ORCH059_LOSS_INIT (commit `dd964fb`)
+- 之前完成: VERDICT_ORCH057_MARKER_NO_POS (commit `5afb4f9`)
 
 ## 待办
 - 无待处理的 AUDIT_REQUEST
-- 等待 Conductor 签发新审计请求或 Admin 实现 ORCH_057 后的训练结果审计
+- 等待 Conductor 基于 ORCH_059 verdict 签发实验 ORCH
 
 ## 本轮完成的审计 (按时间倒序)
 
-### 6. VERDICT_ORCH057_MARKER_NO_POS — CONDITIONAL (2026-03-16 07:50)
-- **审计对象**: 架构变更提案 — marker step 不加 grid_pos_embed
-- **方向正确**: grid_pos_embed 是 marker 模板化的根因, 所有超参实验已失败
-- **BUG-79 (MEDIUM, NEW)**: 训练/推理路径 grid_token 注入方式不对称 (attention vs 直接加法)
-- **BUG-80 (LOW)**: decoder_inference 参数名 grid_pos_embed 实际是 grid_start_embed
-- **实现方案**: 减法替代 (~20行), 传递 grid_pos_embed_raw, pos_id=0 时减去
-- **关键数据**: ORCH_055 diff/Margin @100=54.6%✅ → @500=4.2%🔴 — 13x 下降
-- **风险**: 训练路径需同步修改, 不能只改推理
-- **代码位置**: 推理改 `git_occ_head.py:L1120,L1125-1126`; 训练改 `git.py:L553` + `get_grid_feature:L627-641`
+### 7. VERDICT_ORCH059_LOSS_INIT — CONDITIONAL (2026-03-16 ~15:00)
+- **审计对象**: marker all-positive 根因是否在 loss/init 而非位置编码
+- **核心发现 — BUG-82 (CRITICAL)**: marker 无 bias init，初始 P(FG)=75%，100% cell 预测 FG
+  - logits = x @ vocab_embed.T — 纯点积无 bias
+  - 4 marker token (near/mid/far/end) 3:1 结构偏向 FG
+  - 4 个 marker embedding 余弦相似度 ≥ 0.94，几乎无法区分
+  - 验证: 1000 个随机 hidden state, 100% 预测 FG
+- **BUG-81 (HIGH)**: focal_alpha_marker=0.75 方向错误 (FG 3× BG)，开启会加速崩塌
+- **BUG-83 (MEDIUM)**: per_class_balance 下 BG per-sample 梯度稀释 39x
+- **修复方案**: 添加 marker_init_bias = [-2.0, -2.0, -2.0, +0.5] → P(BG)=80.2%
+- **优先级**: bias init (#1) >> focal loss (#2, 需先修 alpha) > bg_balance 调整 (#3, 已穷尽)
 
-### 5. VERDICT_ORCH049_MARKER_PATH — CONDITIONAL (2026-03-16 01:15)
-- **BUG-73 (CRITICAL, STILL OPEN)**: marker_pos_punish=3.0/bg_balance_weight=2.5 fg/bg=6x
-- **BUG-75 (HIGH)**: grid_pos_embed 空间先验 + fg/bg 失衡 = marker 模板
-- **核心**: marker 无 GT 泄漏, 模板来源是空间先验 + loss 失衡
-- **特征流**: 全程 >1% rel_diff ✅, 但 diff/Margin=9.7% 🔴
-- **修复建议**: marker_pos_punish 3.0→1.0, bg_balance_weight 2.5→5.0
-
-### 4. VERDICT_ORCH048_PLAN — CONDITIONAL (2026-03-16 ~00:30)
-- **BUG-73 (CRITICAL)**: per_class_balance 归一化使 pos_cls_w/neg_cls_w 无效
-- **BUG-74 (HIGH)**: GlobalRotScaleTransBEV 不改图像
-
-### 1-3. 前轮审计 (2026-03-15)
+### 1-6. 前轮审计 (2026-03-15~16)
 - VERDICT_ORCH045_AT2000 — STOP (frozen, BUG-62/66/67/68)
 - VERDICT_ORCH046_PLAN — CONDITIONAL (BUG-69/70)
 - VERDICT_ORCH046_V2_AT500 — STOP (shortcut learning, BUG-71)
+- VERDICT_ORCH048_PLAN — CONDITIONAL (BUG-73/74)
+- VERDICT_ORCH049_MARKER_PATH — CONDITIONAL (BUG-75)
+- VERDICT_ORCH057_MARKER_NO_POS — CONDITIONAL (BUG-79/80)
 
 ## BUG 状态总表
 
@@ -52,32 +46,24 @@
 | BUG-75 | HIGH | OPEN→ORCH_057 | grid_pos_embed 空间先验 = marker 模板根因 |
 | BUG-77 | CRITICAL | CONFIRMED | cell-level grid_pos_embed dropout 破坏定位 |
 | BUG-78 | HIGH | CONFIRMED | 单 GPU batch 致 mode collapse (需 DDP) |
-| BUG-79 | MEDIUM | NEW | 训练/推理 grid_token 注入不对称 |
+| BUG-79 | MEDIUM | CONFIRMED | 训练/推理 grid_token 注入不对称 |
 | BUG-80 | LOW | NEW | decoder_inference 参数名误导 |
+| BUG-81 | HIGH | NEW | focal_alpha_marker=0.75 方向错误 |
+| BUG-82 | CRITICAL | NEW | marker 无 bias init，P(FG)=75% |
+| BUG-83 | MEDIUM | NEW | per_class_balance BG 梯度稀释 39x |
 
 ## 关键诊断数据
 
-### ORCH_055 崩塌轨迹 (决定性证据)
-| iter | diff/Margin | marker_same | 模式 |
-|------|-----------|-------------|------|
-| 100 | 54.6% ✅ | 0.887 | HEALTHY |
-| 500 | 4.2% 🔴 | 0.988 | 崩塌 |
+### 初始化 bias 验证 (debug_marker_init_bias.py)
+| 配置 | P(FG) | P(BG) | % cells predict FG |
+|------|-------|-------|-------------------|
+| 无 bias (当前) | 75.0% | 25.0% | 100% |
+| bias [-2,-2,-2,+0.5] | 19.8% | 80.2% | 0% |
 
-### ORCH_048 @500 特征流
-- patch_embed: 4.96%, image_patch: 1.68%, decoder_out: 2.23%, logits: 1.06% — 全 ✅
-- pred_token identical: 97.75% 🔴, diff/Margin: 9.7% 🔴
-- grid_interp/grid_token ratio: 178% — 图像信号幅值 > 位置先验
-
-### ORCH_049-056 实验总结 (超参空间已穷尽)
-| ORCH | FG/BG | 结果 |
-|------|-------|------|
-| 048 | 6x | @500 模板化 (marker_same=0.977) |
-| 049 | 1x | @200 TP=112 唯一存活 → @500 all-neg |
-| 051 | 3.3x | @200 all-positive |
-| 052 | 1.67x | @200 all-negative |
-| 053 | 1.25x | @200 all-negative |
-| 055 | 1x (DDP) | @100 健康 → @400 相变 |
-| 056 | 低LR | @200 更差 (sat=0.998) |
+### per_class_balance 梯度分析
+- 典型场景: 10 FG cells, 390 BG cells
+- Aggregate loss: FG 50%, BG 50%
+- Per-sample gradient: FG=0.050, BG=0.001 → FG/BG = 39x
 
 ## 恢复指引
 1. `cd /home/UNT/yz0370/projects/GiT_agent && git pull`
