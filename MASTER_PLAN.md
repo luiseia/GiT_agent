@@ -74,13 +74,13 @@
 
 ### 当前执行状态
 
-- **ORCH_047 已 DELIVERED 并启动**
-  - 已加入 `RandomFlipBEV` + `GlobalRotScaleTransBEV`
-  - `iter_500.pth` 已生成
-  - `@500 val` 仍在进行，尚未产出正式 eval 指标或新的 frozen-check 结论
-- **Phase 2 决策**:
-  - 当前不再签发新 ORCH
-  - 等待 `ORCH_047 @500` 完整结果后，再决定是否继续当前路线，或转入“降标签密度 / 改 teacher forcing”路线
+- **ORCH_047 已停止**
+  - `iter_500.pth` 的 frozen-check 已确认失败
+  - `full val` 已在 `Iter(val) [1060/1505]` 手动终止，不再继续浪费 GPU
+- **ORCH_048 已签发**
+  - CEO 明确同意直接进入 Admin 执行
+  - 审计 `AUDIT_REQUEST_ORCH048_PLAN` 继续并行，用于校正实现细节
+  - 本轮主线: `RandomFlipBEV only + center assignment + core/around supervision + stronger anti-TF shortcut`
 
 ## 当前阶段: 准备签发 ORCH_046 — 修复 BUG-69 + BUG-62
 
