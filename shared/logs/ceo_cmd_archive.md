@@ -133,3 +133,9 @@ CEO 选择选项 A: 让 Plan Q 跑完. 询问 OOM 风险.
 ## CEO_CMD — 2026-03-13 ~05:00 (Supervisor Cycle #299 处理)
 > 给我一个报告文件到shared/logs/reports中，说明为什么8000跑完了之后没有按照计划执行Phase 1: 基础修正 (当前 — ORCH_035)中的score_thr 消融 (0.1/0.2/0.3)实验以及Phase 2: 的训练优化。还有dionv3的vit-l 好像不是300M
 - **处理**: 报告已写入 shared/logs/reports/post_8000_plan_deviation_report.md
+
+---
+## [2026-03-16 03:32:54] CEO 指令
+你觉得在监督loss的时候，给所有属于同一个实例的图像grid的预测加一个loss好不好？
+
+**Conductor 回复**: 方向正确但时机不对。当前 ORCH_046-050 全部 mode collapse，模型连 fg/bg 都没稳住，加 instance consistency loss 无意义（模型给所有 cell 的预测本来就一样）。建议等 frozen-check 通过、有非零 offset 后再引入。
