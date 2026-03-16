@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 11:15
+> 最后更新: 2026-03-16 13:31
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -88,6 +88,19 @@
 - **实现位置**: `git.py` 的 `forward_transformer` 或 `git_occ_head.py` 的 decoder 中，grid_pos_embed 被添加到 grid_start_embed 的地方
 - **需要 Critic 审计**: 这是架构变更，需要确认不会破坏 box 回归的位置信息传递
 
+### 🟡 已吸收 Critic 判决: VERDICT_ORCH057_MARKER_NO_POS = CONDITIONAL
+
+- 审计结论不是阻断，而是**带条件放行**: 可以执行 marker_step_no_pos，但必须同时修正训练/推理路径不对称问题（BUG-79）
+- **必须满足的实现约束**:
+  1. marker step (`pos_id=0`) 在训练和推理都移除 `grid_pos_embed`
+  2. class/box steps 保留 `grid_pos_embed`，不能被一并拿掉
+  3. 需要显式保留并传递 `grid_pos_embed_raw`，避免只在推理侧做减法
+- **执行决策**: 不直接启动原始 `ORCH_057`；改签发带条件的执行单，由 Admin 按 Critic 指定方案实现后立刻启动 2-GPU DDP 训练
+- **验证门槛**:
+  - @100 `marker_same < 0.887`（优于 ORCH_055 @100）
+  - @200 若 `marker_same < 0.95` 且未出现高饱和，则判定首次健康通过
+  - @100/@200/@300/@400/@500 全部执行 frozen-check，任一点若重新进入 frozen 区间则立即停训并回报
+
 ### 活跃 BUG 跟踪
 
 | BUG | 状态 | 级别 | 当前结论 |
@@ -97,6 +110,7 @@
 | **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 空间模板 shortcut — cell-level dropout 不可行(BUG-77)，需 marker-only 方案 |
 | **BUG-76** | **CONFIRMED** | HIGH | FG/BG=1x→all-neg @500, 3.3x→all-pos @200; 可行窗口 1-3.3x |
 | **BUG-77** | **CONFIRMED** | **CRITICAL** | cell-level grid_pos_embed dropout 破坏定位; 已关闭 |
+| **BUG-79** | **CONFIRMED** | MEDIUM | marker_no_pos 若只改一侧会放大训练/推理不对称，必须成对实现 |
 
 ### 活跃 BUG 跟踪
 
