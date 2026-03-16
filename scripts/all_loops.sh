@@ -7,12 +7,13 @@
 # 1. rate limit 弹窗检查
 # 2. sync_loop 存活检查
 # 3. Supervisor → 等待完成
-# 4. Ops (save_tmux)
+# 4. 训练质量健康检查
 # 5. Conductor Phase 1（信息收集 + 审计决策）→ 等待完成
 # 6. 检查是否有 pending audit → 启动 Critic → 等待 VERDICT
 # 7. Conductor Phase 2（读 VERDICT + 决策 + 行动）→ 等待完成
 # 8. Admin
-# 9. 动态等待补够 30 分钟
+# 9. Ops (save_tmux) — 循环最后执行
+# 10. 动态等待补够 30 分钟
 # =============================================================
 
 AGENT_DIR="/home/UNT/yz0370/projects/GiT_agent"
@@ -140,11 +141,7 @@ while true; do
         wait_for_idle agent-supervisor 10 "supervisor"
     fi
 
-    # ─── 4. Ops: 执行快照 ────────────────────────
-    log "→ ops: 执行 save_tmux.sh"
-    bash "${AGENT_DIR}/scripts/save_tmux.sh"
-
-    # ─── 4.5 训练质量健康检查（自动审计触发）─────
+    # ─── 4. 训练质量健康检查（自动审计触发）─────
     HEALTH_ALERT=0
     HEALTH_REPORT="${AGENT_DIR}/shared/logs/supervisor_report_latest.md"
     if [ -f "$HEALTH_REPORT" ]; then
@@ -451,7 +448,11 @@ CRITICEOF
         log "⚠️ admin: 会话不存在"
     fi
 
-    # ─── 9. 动态等待补够 30 分钟 ─────────────────
+    # ─── 9. Ops: 执行快照（循环最后）────────────
+    log "→ ops: 执行 save_tmux.sh"
+    bash "${AGENT_DIR}/scripts/save_tmux.sh"
+
+    # ─── 10. 动态等待补够 30 分钟 ─────────────────
     LOOP_END=$(date +%s)
     ELAPSED=$(( LOOP_END - LOOP_START ))
     REMAINING=$(( 1800 - ELAPSED ))
