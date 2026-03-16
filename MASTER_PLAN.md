@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 07:03
+> 最后更新: 2026-03-16 07:30
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -52,10 +52,24 @@
 
 **BUG-78 确认**: 单 GPU (effective batch=1) 在 @100 就全阴性; DDP (batch=16) 在 @100 健康。batch size 是 mode collapse 的关键因素。
 
-### 下一步: ORCH_056 — 从 iter_100 出发的两个实验
+### 🔴 ORCH_056 结论: 降低 LR 加速模板化
 
-**实验 A**: 在 ORCH_055 iter_100.pth 上运行 full eval — 了解 @100 的实际 offset/recall/precision
-**实验 B**: 从 iter_100 resume 训练，降低 max_lr 到 1/5（当前 5e-5 → 1e-5）— 测试较低 LR 能否延缓模板化
+- @200: saturation=0.998, marker_same=0.999 — **比 ORCH_055 @200 更差**（ORCH_055 sat=0.82）
+- 低 LR 让模型更快固化到 all-positive 模板，可能因为梯度太弱无法逃离 grid_pos_embed shortcut
+- **超参数空间已用尽**: FG/BG 比、dropout、LR 均无法解决问题
+
+### ⭐⭐⭐ 战略结论: 需要架构级干预
+
+所有超参数实验都指向同一根因: **grid_pos_embed 为 marker step 提供了免费的空间先验**，模型不需要看图像就能决定"哪里有目标"。
+
+唯一可行的干预方向: **让 marker step 的 input 不包含 grid_pos_embed**。
+
+#### 方案: marker_step_no_pos — 分离 marker 和 box 的位置编码
+
+- **marker step (pos_id=0)**: input = image_features + text_embed（**不加** grid_pos_embed）
+- **class/box steps (pos_id=1-9)**: input = image_features + text_embed + grid_pos_embed（正常）
+- **实现位置**: `git.py` 的 `forward_transformer` 或 `git_occ_head.py` 的 decoder 中，grid_pos_embed 被添加到 grid_start_embed 的地方
+- **需要 Critic 审计**: 这是架构变更，需要确认不会破坏 box 回归的位置信息传递
 
 ### 活跃 BUG 跟踪
 
@@ -591,7 +605,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_053** | **bg_balance_weight=4.0 二分搜索** | 🔴 **FAILED** @200 — all-negative |
 | **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | ⚠️ **INVALID** — 单 GPU 执行，与 ORCH_049 的 DDP 不可比(BUG-78) |
 | **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | ✅ **DONE** — 完整崩塌轨迹: @100 HEALTHY, @300→@400 相变 |
-| **ORCH_056** | **iter_100 full eval + 低 LR resume 实验** | 📋 **PENDING** |
+| **ORCH_056** | **低 LR resume 实验** | 🔴 **FAILED** @200 — saturation=0.998, 低 LR 加速模板化 |
+| **ORCH_057** | **架构变更: marker_step_no_pos (marker 不加 grid_pos_embed)** | 📋 **PENDING** — 需 Critic 审计 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 

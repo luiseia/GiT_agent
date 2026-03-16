@@ -1,42 +1,52 @@
 # Conductor 上下文快照
-> 时间: 2026-03-16 05:53 CDT
+> 时间: 2026-03-16 07:30 CDT
 
 ---
 
 ## 当前状态
 
-- **ORCH_055 训练中** (2-GPU DDP, GPU 2,3) — 精确复现 ORCH_049 + 多点 frozen-check
-- auto_frozen_check_055.sh 等待 iter_100.pth
-- ORCH_053/054 因单 GPU 执行而无效 (BUG-78)
+- **ORCH_056 DONE**: 低 LR 假设失败 (saturation=0.998 @200)
+- **ORCH_057 PENDING**: 等待 Critic 审计 `AUDIT_REQUEST_ORCH057_MARKER_NO_POS`
+- **所有超参数实验已用尽** → 需要架构级干预
 
-## ORCH_055 配置 (= ORCH_049 精确复现)
+## 关键实验结果
 
-- `marker_pos_punish=1.0`, `bg_balance_weight=5.0` (FG/BG=1x)
-- `marker_grid_pos_dropout=0.0`, `around_weight=0.0`
-- `grid_assign_mode='center'`, `RandomFlipBEV only`, `prefix_drop_rate=0.5`
-- **2-GPU DDP**: memory=28878, accumulative_counts=8, effective batch=16 ✅
-- work_dir: `/mnt/SSD/GiT_Yihao/Train/Train_20260316/full_nuscenes_large_v1_orch055`
+### ORCH_055 崩塌轨迹 (唯一完整 5 点数据)
 
-## 多点 frozen-check 计划
+| iter | Pos slots | Saturation | marker_same | TP |
+|------|-----------|-----------|-------------|-----|
+| **100** | **750 (62.5%)** | **0.703** | **0.887** | **109** |
+| 200 | 954 (79.5%) | 0.820 | 0.962 | 147 |
+| 300 | 1010 (84.1%) | 0.873 | 0.973 | 150 |
+| 400 | 71 (5.9%) | 0.080 | 0.984 | 0 |
+| 500 | 158 (13.2%) | 0.142 | 0.988 | 12 |
 
-@100, @200, @300, @400, @500 — 仅 saturation>0.95 早停，全阴性允许继续
-- 目标: 确认 @200 可复现 ORCH_049 的 TP=112，定位 @200→@500 崩塌轨迹
+### 超参数扫描全表
 
-## FG/BG 扫描全表 (只看 2-GPU DDP 结果)
+| ORCH | 干预 | @200 结果 |
+|------|------|-----------|
+| 049 | bg=5.0, FG/BG=1x | TP=112 (唯一存活) → @500 全阴性 |
+| 050 | +dropout=0.5 | 全阴性 (BUG-77 dropout 致死) |
+| 051 | bg=3.0, FG/BG=3.3x | 全正饱和 |
+| 052 | bg=3.0, FG/BG=1.67x | 全阴性 |
+| 053/054 | bg=4.0/5.0 单GPU | 无效 (BUG-78) |
+| 055 | bg=5.0 DDP 多点追踪 | @100 HEALTHY → @300-400 相变 |
+| 056 | 低 LR (1/5) | 加速模板化, @200 sat=0.998 |
 
-| ORCH | bg_balance_weight | FG/BG | @200 | 备注 |
-|------|-------------------|-------|------|------|
-| 048 | 2.5 | 6x | — | @500 all-positive |
-| **049** | **5.0** | **1x** | **TP=112** | **唯一存活** → @500 all-neg |
-| 050 | 3.0 + dropout | 3.3x | 0/1200 | dropout 致死 |
-| 051 | 3.0 | 3.3x | 1200/1200 | all-positive |
-| 052 | 3.0 | 1.67x | 0/1200 | all-negative |
-| 053* | 4.0 | 1.25x | 0/1200 | *单GPU无效 |
-| 054* | 5.0 | 1x | 0/1200 | *单GPU无效 |
-| **055** | **5.0** | **1x** | **?** | 2-GPU DDP |
+## 下一步: 架构级干预
 
-## BUG-78: 单 GPU vs DDP 训练差异
+### ORCH_057: marker_step_no_pos
 
-- ORCH_049 (DDP): effective batch=16 → TP=112
-- ORCH_053/054 (单GPU): effective batch=1 → 全阴性
-- 结论: batch size 对 mode collapse 有关键影响
+- marker step (pos_id=0) 不加 grid_pos_embed
+- class/box steps 正常使用
+- 强制 marker 依赖图像特征决定物体存在性
+- 等待 Critic 审计
+
+## 活跃 BUG
+
+| BUG | 结论 |
+|-----|------|
+| BUG-73 | FG/BG=1x 最优但仍崩塌 |
+| BUG-75 | grid_pos_embed shortcut 是根因 → 需架构修改 |
+| BUG-77 | cell-level dropout 不可行 |
+| BUG-78 | DDP batch=16 是必要条件 |
