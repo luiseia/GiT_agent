@@ -5381,3 +5381,19 @@ nohup: ignoring input
 [2026-03-16 11:38:08] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
 [2026-03-16 11:38:11] all_loops: → admin: 指令已发送
 [2026-03-16 11:38:11] all_loops: → ops: 执行 save_tmux.sh
+[2026-03-16 11:38:12] all_loops: === 循环耗时 2 分钟，等待 7 分钟补够 10 分钟 ===
+[2026-03-16 11:39:12] all_loops: ⏳ 等待中... 1/7 分钟
+[2026-03-16 11:40:12] all_loops: ⏳ 等待中... 2/7 分钟
+[2026-03-16 11:41:12] all_loops: ⏳ 等待中... 3/7 分钟
+[2026-03-16 11:42:12] all_loops: ⏳ 等待中... 4/7 分钟
+[2026-03-16 11:43:12] all_loops: ⏳ 等待中... 5/7 分钟
+[2026-03-16 11:44:12] all_loops: ⏳ 等待中... 6/7 分钟
+[2026-03-16 11:45:12] all_loops: ⏳ 等待中... 7/7 分钟
+[2026-03-16 11:45:12] all_loops: === 新一轮循环开始 ===
+[2026-03-16 11:45:12] all_loops: → supervisor: 正在忙碌，跳过本轮
+[2026-03-16 11:45:14] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-16 11:46:14] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-16 11:46:16] all_loops: → conductor(auto) Phase 2: 指令已发送
+[2026-03-16 11:47:16] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
+[2026-03-16 11:47:18] all_loops: → admin: 指令已发送
+[2026-03-16 11:47:18] all_loops: → ops: 执行 save_tmux.sh
