@@ -12,6 +12,24 @@ log() {
     echo "[$(date '+%H:%M:%S')] $1" | tee -a "$LOG"
 }
 
+is_claude_alive() {
+    local session="$1"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        return 1
+    fi
+    local current_cmd
+    current_cmd=$(tmux display-message -p -t "$session" '#{pane_current_command}' 2>/dev/null)
+    if echo "$current_cmd" | grep -qE '^(claude|node)$'; then
+        return 0
+    fi
+    local last_lines
+    last_lines=$(tmux capture-pane -t "$session" -p | tail -10)
+    if echo "$last_lines" | grep -qE 'bypass permissions|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked|Baked|Moonwalking|Flummoxing|esc to interrupt'; then
+        return 0
+    fi
+    return 1
+}
+
 log "🔁 Supervisor 同步循环启动"
 
 while true; do
@@ -44,8 +62,7 @@ while true; do
         if [ ! -f "${AGENT_DIR}/shared/audit/pending/VERDICT_${id}.md" ]; then
             if tmux has-session -t agent-critic 2>/dev/null; then
                 # 检测 Critic 的 Claude Code 是否在运行
-                CRITIC_SCREEN=$(tmux capture-pane -t agent-critic -p | tail -10)
-                if echo "$CRITIC_SCREEN" | grep -qE 'bypass permissions|Thinking|Working|Channeling|Tempering|Churning|Fluttering|Sautéed|Brewed|Worked|Baked|Moonwalking|Flummoxing|esc to interrupt'; then
+                if is_claude_alive agent-critic; then
                     # Claude Code 在运行，发通知
                     tmux send-keys -t agent-critic \
                         "cd ${AGENT_DIR} && git pull && echo '🔔 审计请求: ${id}'" Enter

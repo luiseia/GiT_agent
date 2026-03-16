@@ -42,11 +42,22 @@ is_idle() {
     return 1  # 无法判断，视为忙碌
 }
 
+# ─── 获取 pane 当前前台命令 ───────────────────────────────
+get_pane_command() {
+    local session="$1"
+    tmux display-message -p -t "$session" '#{pane_current_command}' 2>/dev/null
+}
+
 # ─── 检测 Claude Code 是否还在运行 ────────────────────────
 is_claude_alive() {
     local session="$1"
     if ! tmux has-session -t "$session" 2>/dev/null; then
         return 1
+    fi
+    local current_cmd
+    current_cmd=$(get_pane_command "$session")
+    if echo "$current_cmd" | grep -qE '^(claude|node)$'; then
+        return 0
     fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -10)
