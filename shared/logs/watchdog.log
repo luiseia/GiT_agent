@@ -5304,3 +5304,10 @@ baseline comparison" completed (exit code 0)
 [2026-03-16 13:40:01] watchdog: === 用量检查开始 ===
 [2026-03-16 13:40:01] watchdog: → 已检测到当前客户端不支持 /usage，跳过用量检查
 [2026-03-16 13:40:01] watchdog: ✅ 用量正常，无需休眠
+[2026-03-16 13:50:01] watchdog: === 用量检查开始 ===
+[2026-03-16 13:50:01] watchdog: → 已检测到当前客户端不支持 /usage，跳过用量检查
+[2026-03-16 13:50:01] watchdog: ⚠️ agent-admin context 剩余 9%
+[2026-03-16 13:50:01] watchdog: → agent-admin: 已发送保存指令，等待 60 秒
+[2026-03-16 13:51:02] watchdog: → agent-admin: 已发送 /compact，等待 30 秒
+[2026-03-16 13:51:32] watchdog: → agent-admin: 已发送恢复指令
+[2026-03-16 13:51:32] watchdog: ✅ 用量正常，无需休眠
