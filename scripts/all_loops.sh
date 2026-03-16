@@ -71,9 +71,14 @@ is_idle() {
     if ! tmux has-session -t "$session" 2>/dev/null; then
         return 1
     fi
+    local current_cmd
+    current_cmd=$(get_pane_command "$session")
+    if ! echo "$current_cmd" | grep -qE '^(claude|node)$'; then
+        return 1
+    fi
     local last_lines
     last_lines=$(tmux capture-pane -t "$session" -p | tail -5)
-    if echo "$last_lines" | grep -q 'esc to interrupt'; then
+    if echo "$last_lines" | grep -qE 'Working \(|Thinking \(|Running…|Press up to edit queued messages'; then
         return 1
     fi
     if echo "$last_lines" | grep -q 'bypass permissions'; then
