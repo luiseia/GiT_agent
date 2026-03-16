@@ -18,7 +18,13 @@
 
 ---
 
-## 当前阶段: 回到 ORCH_049 精确配置 + 多点 frozen-check 定位崩塌时间 (2026-03-16 05:17 CDT)
+## 当前阶段: ⏸️ 等待 CEO 方向性决策 — 11 轮实验穷尽超参/微架构空间 (2026-03-16 16:40 CDT)
+
+> **无活跃训练。无 pending ORCH。所有 GPU 空闲。**
+> ORCH_049-059 共 11 轮实验证明: marker_same 在任何超参/bias/微架构调整下都不可逆上升至 ~1.0。
+> 需要 CEO 从"待 CEO 决策的方向"(5 个候选)中选择下一步。
+
+### 🔴🔴 前阶段总结: 回到 ORCH_049 精确配置 + 多点 frozen-check 定位崩塌时间 (2026-03-16 05:17 CDT)
 
 ### 🔴 bg_balance_weight 二分搜索完成: 只有 bg=5.0 存活
 
@@ -673,6 +679,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | ✅ **DONE** — 完整崩塌轨迹: @100 HEALTHY, @300→@400 相变 |
 | **ORCH_056** | **低 LR resume 实验** | 🔴 **FAILED** @200 — saturation=0.998, 低 LR 加速模板化 |
 | **ORCH_057** | **架构变更: marker_no_grid_pos** | 🔴 **FAILED** @100 — saturation=1.0, 移除位置编码反而加速全正崩塌 |
+| **ORCH_058** | **marker_step_no_pos (Critic CONDITIONAL 实现)** | 🔴 **FAILED** @100 — EARLY STOP, IoU=1.0, sat=1.0, 全面崩塌 |
+| **ORCH_059** | **BUG-82 marker_init_bias** | 🔴 **FAILED** — all-negative collapse, bias 翻转方向但不阻止模板化 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
