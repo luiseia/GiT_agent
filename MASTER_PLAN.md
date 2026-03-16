@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 14:00
+> 最后更新: 2026-03-16 14:35
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -104,19 +104,22 @@
 
 **grid_pos_embed 在早期帮助维持预测多样性**。问题不是它的存在，而是训练过程中它逐渐取代图像特征成为主导。
 
-### 待定方向（需 CEO 指导）
+### 当前决策: 转向 ORCH_059 的 loss/init 审计
 
-当前所有路线都已证伪:
+当前所有直接改 `grid_pos_embed` 的路线都已证伪:
 1. ❌ FG/BG 比调整 (ORCH_049-052): 可行窗口极窄，@500 必崩
 2. ❌ cell-level dropout (ORCH_050): 破坏定位
 3. ❌ 降 LR (ORCH_056): 加速模板化
-4. ❌ 移除 marker 的 grid_pos_embed (ORCH_057): 破坏多样性
+4. ❌ 移除 marker 的 grid_pos_embed (ORCH_057/058): @100 立即全正饱和
 
-可能的新方向（未验证）:
-- **A. grid_pos_embed 噪声注入**: 不移除也不 dropout，而是加高斯噪声 — 保留空间多样性但防止记忆固定模式
-- **B. marker entropy 正则化**: loss 中加入 marker 预测分布的熵惩罚 — 直接惩罚全正/全负
-- **C. 渐进式 grid_pos_embed 衰减**: 训练初期正常使用，随 iter 逐渐降低 grid_pos_embed 的权重
-- **D. 根本性重新思考**: 当前 marker 预测机制是否适合 occupancy 任务？
+**下一步不再继续拆位置编码**，改为优先审计 marker warmup 期的 trivial all-positive solution：
+- **方向 A**: marker/class head 的初始化偏置是否天然偏向前景；是否应添加显式负偏置，让初始状态更接近 bg
+- **方向 B**: `bg_balance_weight`、`marker_bg_punish`、`use_per_class_balance` 在 warmup 低 LR 阶段是否实际提供了足够的背景梯度
+- **方向 C**: 现有 `Focal Loss` 实现是否比当前 CE 更适合作为 ORCH_059 的首个最小改动
+
+**执行策略**:
+- 先签发 `AUDIT_REQUEST_ORCH059_LOSS_INIT`
+- 等 Critic 给出最小改动建议后，再签发正式 `ORCH_059`
 
 ### 活跃 BUG 跟踪
 
