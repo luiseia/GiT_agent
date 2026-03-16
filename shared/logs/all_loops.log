@@ -5685,3 +5685,27 @@ nohup: ignoring input
 [2026-03-16 14:31:38] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
 [2026-03-16 14:31:40] all_loops: → admin: 指令已发送
 [2026-03-16 14:31:40] all_loops: → ops: 执行 save_tmux.sh
+[2026-03-16 14:31:41] all_loops: === 循环耗时 2 分钟，等待 7 分钟补够 10 分钟 ===
+[2026-03-16 14:32:41] all_loops: ⏳ 等待中... 1/7 分钟
+[2026-03-16 14:33:41] all_loops: ⏳ 等待中... 2/7 分钟
+[2026-03-16 14:34:41] all_loops: ⏳ 等待中... 3/7 分钟
+[2026-03-16 14:35:41] all_loops: ⏳ 等待中... 4/7 分钟
+[2026-03-16 14:36:41] all_loops: ⏳ 等待中... 5/7 分钟
+[2026-03-16 14:37:41] all_loops: ⏳ 等待中... 6/7 分钟
+[2026-03-16 14:38:41] all_loops: ⏳ 等待中... 7/7 分钟
+[2026-03-16 14:38:41] all_loops: === 新一轮循环开始 ===
+[2026-03-16 14:38:41] all_loops: → supervisor: 正在忙碌，跳过本轮
+[2026-03-16 14:38:43] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-16 14:39:43] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-16 14:39:43] all_loops: 🔔 发现待审计: ORCH059_LOSS_INIT
+[2026-03-16 14:39:45] all_loops: → critic: 审计指令已发送 (ORCH059_LOSS_INIT)
+[2026-03-16 14:39:45] all_loops: → critic: 等待审计完成...
+[2026-03-16 14:40:46] all_loops: → critic: 仍在审计... 1/5 分钟
+[2026-03-16 14:41:46] all_loops: → critic: 仍在审计... 2/5 分钟
+[2026-03-16 14:42:46] all_loops: → critic: 仍在审计... 3/5 分钟
+[2026-03-16 14:43:47] all_loops: → critic: 仍在审计... 4/5 分钟
+[2026-03-16 14:44:47] all_loops: ⚠️ critic: 审计超时（5 分钟），继续执行
+[2026-03-16 14:44:49] all_loops: → conductor(auto) Phase 2: 指令已发送
+[2026-03-16 14:45:49] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
+[2026-03-16 14:45:51] all_loops: → admin: 指令已发送
+[2026-03-16 14:45:51] all_loops: → ops: 执行 save_tmux.sh
