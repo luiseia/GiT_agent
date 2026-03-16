@@ -131,6 +131,18 @@
 1. grid_pos_embed 与 marker 决策之间的因果路径太短/太强
 2. 或者 marker 的 4-class 设计（3 FG + 1 BG）本身创造了不对称的梯度动态
 
+### ⭐⭐ ORCH_060 诊断可视化结果 (2026-03-16 ~18:40)
+
+**Target 链路无 bug**，但发现两个重要新线索：
+
+| 发现 | 说明 |
+|------|------|
+| **around_weight=0.0** | 只有 center cell 有非零梯度权重，大量 FG cell weight=0，effective positive 极少 |
+| **Pred marker=ignore_id(229)** | decoder 在 target FG 区域输出 padding token 而非有效 marker (END=183) |
+| **3 slot 输出完全相同** | 同一 cell 内 3 个 slot 的 box/cls 完全一致，AR decoder 丧失 slot 间区分能力 |
+
+**around_weight=0.0 可能是模板化的促进因素**: 如果 effective positive 极度稀疏（sample 0 仅 7 个 FG cell），梯度信号不足以对抗 grid_pos_embed shortcut。
+
 ### 待 CEO 决策的方向
 
 1. **grid_pos_embed 噪声/shuffle**: 训练时对 grid_pos_embed 加随机扰动，保留空间信息但防止固定模式记忆
@@ -152,6 +164,8 @@
 | **BUG-81** | **NEW** | HIGH | focal_alpha_marker=0.75 方向错误，FG 权重 3× BG |
 | **BUG-82** | **NEW** | **CRITICAL** | marker 无 bias init，初始 P(FG)=75%，100% all-positive |
 | **BUG-83** | **NEW** | MEDIUM | per_class_balance 下 BG per-sample 梯度稀释 39x |
+| **BUG-84** | **NEW** | HIGH | around_weight=0.0 导致 effective positive 极少，梯度信号不足对抗 shortcut (ORCH_060 发现) |
+| **BUG-85** | **NEW** | MEDIUM | 同一 cell 3 slot 输出完全相同，AR decoder 丧失 slot 间区分能力 (ORCH_060 发现) |
 
 ### 活跃 BUG 跟踪
 
@@ -681,6 +695,7 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_057** | **架构变更: marker_no_grid_pos** | 🔴 **FAILED** @100 — saturation=1.0, 移除位置编码反而加速全正崩塌 |
 | **ORCH_058** | **marker_step_no_pos (Critic CONDITIONAL 实现)** | 🔴 **FAILED** @100 — EARLY STOP, IoU=1.0, sat=1.0, 全面崩塌 |
 | **ORCH_059** | **BUG-82 marker_init_bias** | 🔴 **FAILED** — all-negative collapse, bias 翻转方向但不阻止模板化 |
+| **ORCH_060** | **Pred-Target Alignment 可视化** | ✅ **COMPLETED** — target 链路无 bug，发现 BUG-84 (around_weight=0.0) 和 BUG-85 (slot 无区分) |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
