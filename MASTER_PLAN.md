@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 05:42
+> 最后更新: 2026-03-16 07:03
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -34,19 +34,28 @@
 - FG/BG 比调参空间几乎用尽
 - **策略转换**: 不再调 FG/BG 比，回到 ORCH_049 精确配置，用多点 frozen-check 定位 @200→@500 之间的崩塌时间点
 
-### 🚨 BUG-78 (流程): ORCH_053/054 被以单 GPU 执行，与 ORCH_049 的 2-GPU DDP 不同
+### ⭐⭐ ORCH_055 完整崩塌轨迹 (2-GPU DDP, 精确复现 ORCH_049)
 
-- **ORCH_049**: `torch.distributed.launch --nproc_per_node=2`, memory 28878, accumulative_counts=8, effective batch=16
-- **ORCH_053/054**: `python tools/train.py`（单 GPU）, memory 27140, 无梯度累积, effective batch=1
-- **16x batch size 差异** → 训练动态完全不同 → 结果不可比
-- **ORCH_053 (bg=4.0) 的"失败"可能是 batch size 造成的，非 bg 本身的问题**
-- **ORCH_054 (bg=5.0) 未能复现 ORCH_049 的 TP=112 也是因为训练设置不同**
+| iter | Pos slots | Saturation | marker_same | TP | 模式 |
+|------|-----------|-----------|-------------|-----|------|
+| **100** | **750 (62.5%)** | **0.703** | **0.887** | **109** | **🟢 HEALTHY** |
+| 200 | 954 (79.5%) | 0.820 | 0.962 | 147 | 向 all-positive |
+| 300 | 1010 (84.1%) | 0.873 | 0.973 | 150 | all-positive 峰值 |
+| **400** | **71 (5.9%)** | **0.080** | **0.984** | **0** | **相变→near-all-negative** |
+| 500 | 158 (13.2%) | 0.142 | 0.988 | 12 | 微回弹仍 frozen |
 
-### ORCH_055: 用 2-GPU DDP 重新执行多点 frozen-check
+**崩塌机制**:
+1. **健康期 (@100)**: LR 极低, 模型用图像特征+位置编码共同决策
+2. **模板化加速 (@100→@300)**: LR 升高, grid_pos_embed shortcut 优化效率更高, 逐渐主导
+3. **相变 (@300→@400)**: bg_weight 梯度在高 LR 下反噬, 模板从全正翻转为全负
+4. **终态 (@400+)**: marker_same→0.988, 模板固化不可逆
 
-- **必须用 2-GPU DDP** (`torch.distributed.launch --nproc_per_node=2`)
-- 精确复现 ORCH_049 的训练环境 + config
-- 多点 frozen-check @100/@200/@300/@400/@500
+**BUG-78 确认**: 单 GPU (effective batch=1) 在 @100 就全阴性; DDP (batch=16) 在 @100 健康。batch size 是 mode collapse 的关键因素。
+
+### 下一步: ORCH_056 — 从 iter_100 出发的两个实验
+
+**实验 A**: 在 ORCH_055 iter_100.pth 上运行 full eval — 了解 @100 的实际 offset/recall/precision
+**实验 B**: 从 iter_100 resume 训练，降低 max_lr 到 1/5（当前 5e-5 → 1e-5）— 测试较低 LR 能否延缓模板化
 
 ### 活跃 BUG 跟踪
 
@@ -581,7 +590,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_052** | **FG/BG=1.67x (marker_pos_punish=1.0, bg_balance_weight=3.0)** | 🔴 **FAILED** @200 — EARLY STOP, 0/1200 all-negative |
 | **ORCH_053** | **bg_balance_weight=4.0 二分搜索** | 🔴 **FAILED** @200 — all-negative |
 | **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | ⚠️ **INVALID** — 单 GPU 执行，与 ORCH_049 的 DDP 不可比(BUG-78) |
-| **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | 📋 **PENDING** |
+| **ORCH_055** | **2-GPU DDP 复现 ORCH_049 + 多点 frozen-check** | ✅ **DONE** — 完整崩塌轨迹: @100 HEALTHY, @300→@400 相变 |
+| **ORCH_056** | **iter_100 full eval + 低 LR resume 实验** | 📋 **PENDING** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
