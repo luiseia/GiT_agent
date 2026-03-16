@@ -18,6 +18,44 @@
 
 ---
 
+## 当前阶段: ORCH_048 部分解冻但 marker 仍高度模板化，先审计 marker shortcut 路径 (2026-03-16 00:15 CDT)
+
+### 🟠 ORCH_048 @500 最新结论
+
+- `ORCH_048` 已完成并按指令在 `@500` 直接执行 frozen-check，未继续 full val
+- **Frozen 指标**:
+  - Avg positive slots: **482/1200 (40.2%)**
+  - Positive IoU (cross-sample): **0.9459**
+  - Marker same rate: **0.9767**
+  - Coord diff (shared pos): **0.007028**
+  - Saturation: **0.426**
+- **进展**:
+  - 成功打破 `1200/1200` 全正饱和
+  - 首次出现真实 TP，说明 `center assignment + core/around supervision + prefix dropout + pos/neg rebalance` 方向有效
+- **仍未通过**:
+  - `marker_same=0.9767` 仍远高于 `<0.90` 阈值
+  - 当前失败模式已从“全正模板”收缩为“稀疏模板”，说明 marker 决策路径仍存在强 shortcut
+- 可视化: `shared/logs/VIS/048_iter500_frozen_check/`
+
+### 当前主线判断
+
+- **不是训练不足**
+  - `ORCH_046_v2 @500`、`ORCH_047 @500`、`ORCH_048 @500` 已连续证明：长训前就能稳定复现模板化输出
+  - `ORCH_048` 在 `@500` 已明显改善，但仍停在高 `marker_same`，继续原样训练大概率只会固化该模板
+- **当前主嫌疑上升为 BUG-72: marker shortcut / marker teacher forcing leakage**
+  - 需要优先审计 occupancy 路径中 “第一个 marker token” 是否仍能借助 GT 前缀、固定位置先验或不对称 loss 学到模板化有无目标图
+  - 重点不是 backbone，也不是继续堆训练时长
+
+### 下一步
+
+- 已准备发起新审计：`AUDIT_REQUEST_ORCH049_MARKER_PATH`
+- 审计重点：
+  - marker token 是否被 teacher forcing 间接泄漏
+  - 是否应将 marker 决策从 GT prefix 中剥离
+  - 是否应把 supervision 进一步收紧到 `around_weight=0.0`
+  - 是否应只对 marker/head 单独加大负样本压力
+  - 是否应新增 `iter_200` quick frozen-check 作为更早闸门
+
 ## 当前阶段: ORCH_047 @500 仍 Frozen，后续改用 frozen-check 代替 full val 作为首道闸门 (2026-03-15 23:15 CDT)
 
 ### 🔴 ORCH_047 @500 结论
