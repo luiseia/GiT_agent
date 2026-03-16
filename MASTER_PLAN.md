@@ -104,22 +104,15 @@
 
 **grid_pos_embed 在早期帮助维持预测多样性**。问题不是它的存在，而是训练过程中它逐渐取代图像特征成为主导。
 
-### 当前决策: 转向 ORCH_059 的 loss/init 审计
+### ✅ Critic 审计完成: ORCH_059 = BUG-82 marker_init_bias（唯一改动）
 
-当前所有直接改 `grid_pos_embed` 的路线都已证伪:
-1. ❌ FG/BG 比调整 (ORCH_049-052): 可行窗口极窄，@500 必崩
-2. ❌ cell-level dropout (ORCH_050): 破坏定位
-3. ❌ 降 LR (ORCH_056): 加速模板化
-4. ❌ 移除 marker 的 grid_pos_embed (ORCH_057/058): @100 立即全正饱和
+**BUG-82 (CRITICAL)**: Marker 4 token (near/mid/far/end) 中 3 个 FG → 初始 P(FG)=75%, 100% cell 预测 FG。
+**修复**: `marker_init_bias = nn.Parameter([-2.0, -2.0, -2.0, +0.5])` → 初始 P(BG)=80.2%
 
-**下一步不再继续拆位置编码**，改为优先审计 marker warmup 期的 trivial all-positive solution：
-- **方向 A**: marker/class head 的初始化偏置是否天然偏向前景；是否应添加显式负偏置，让初始状态更接近 bg
-- **方向 B**: `bg_balance_weight`、`marker_bg_punish`、`use_per_class_balance` 在 warmup 低 LR 阶段是否实际提供了足够的背景梯度
-- **方向 C**: 现有 `Focal Loss` 实现是否比当前 CE 更适合作为 ORCH_059 的首个最小改动
+**BUG-81 (HIGH)**: focal_alpha_marker=0.75 方向错误（FG 权重 3× BG），不修正不能开启 Focal Loss。
+**BUG-83 (MEDIUM)**: per_class_balance 下 BG per-sample 梯度稀释 39x。
 
-**执行策略**:
-- 先签发 `AUDIT_REQUEST_ORCH059_LOSS_INIT`
-- 等 Critic 给出最小改动建议后，再签发正式 `ORCH_059`
+Critic 强烈建议: **ORCH_059 仅做 bias init，不改 Focal Loss 或 bg_balance_weight**（单变量实验）。
 
 ### 活跃 BUG 跟踪
 
@@ -130,7 +123,10 @@
 | **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 空间模板 shortcut — cell-level dropout 不可行(BUG-77)，需 marker-only 方案 |
 | **BUG-76** | **CONFIRMED** | HIGH | FG/BG=1x→all-neg @500, 3.3x→all-pos @200; 可行窗口 1-3.3x |
 | **BUG-77** | **CONFIRMED** | **CRITICAL** | cell-level grid_pos_embed dropout 破坏定位; 已关闭 |
-| **BUG-79** | **CONFIRMED** | MEDIUM | marker_no_pos 若只改一侧会放大训练/推理不对称，必须成对实现 |
+| **BUG-79** | **CONFIRMED** | MEDIUM | marker_no_pos 若只改一侧会放大训练/推理不对称 |
+| **BUG-81** | **NEW** | HIGH | focal_alpha_marker=0.75 方向错误，FG 权重 3× BG |
+| **BUG-82** | **NEW** | **CRITICAL** | marker 无 bias init，初始 P(FG)=75%，100% all-positive |
+| **BUG-83** | **NEW** | MEDIUM | per_class_balance 下 BG per-sample 梯度稀释 39x |
 
 ### 活跃 BUG 跟踪
 
