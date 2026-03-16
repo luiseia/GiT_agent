@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 02:45
+> 最后更新: 2026-03-16 03:22
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,35 +18,50 @@
 
 ---
 
-## 当前阶段: ORCH_049 FAILED @500 — 签发 ORCH_050 (2026-03-16 02:45 CDT)
+## 当前阶段: ORCH_050 FAILED @200 — 签发 ORCH_051 隔离变量 (2026-03-16 03:22 CDT)
 
-### 🔴 ORCH_049 最终结论: FAILED — 全阴性 mode collapse
+### 🔴 ORCH_050 最终结论: FAILED @200 — EARLY STOP 全阴性崩塌
 
-- **@200** (01:52 CDT): positive=565/1200, saturation=0.487, marker_same=0.9755, TP=112 — 通过早停门槛
-- **@500** (02:40 CDT): positive=**0/1200**, saturation=**0.000**, marker_same=**1.0000**, TP=**0** — 🔴 全阴性崩塌
-- 训练日志: iter 320-490 大量 `reg_loss=0.000`，模型在 200-500 之间从”部分模板”退化为”全阴性”
-- **新失败模式**: 不再是 all-positive（ORCH_046~048），而是 all-negative
-- **根因**: BUG-73 修复（FG/BG 6x → 1x）矫枉过正，加上 BUG-75（grid_pos_embed 空间先验）仍在，模型在平衡 loss 下选择全阴性为最优策略
+- **@200** (03:19 CDT): positive=**0/1200**, saturation=**0.000**, marker_same=**1.0000**, TP=**0**
+- 训练已被 auto_frozen_check 在 @200 EARLY STOP 终止
+- **比 ORCH_049 @200 严重退化**: ORCH_049 @200 有 TP=112, ORCH_050 @200 是 TP=0
 
-### BUG-76 (NEW, HIGH): FG/BG=1x 导致全阴性崩塌
+### 根因: cell-level grid_pos_embed dropout 破坏定位能力 (BUG-77)
 
-- ORCH_048 (`marker_pos_punish=3.0`, `bg_balance_weight=2.5`): FG/BG=6x → all-positive
-- ORCH_049 (`marker_pos_punish=1.0`, `bg_balance_weight=5.0`): FG/BG=1x → all-negative
-- **真实数据正样本比例约 10-30%**，完全平衡的 loss 让模型偏向多数类（BG）
-- **需要温和的 FG 偏向**: FG/BG ≈ 2x 左右
+- ORCH_050 同时改了两个变量: FG/BG 3.3x + `marker_grid_pos_dropout=0.5`
+- 实现偏差: dropout 作用于整 cell（所有 token），而非仅 marker step
+- 50% 的 cell 所有 token（含 box 回归）失去位置编码 → 模型丧失空间定位能力 → 全阴性
+- 对照: ORCH_049 无 dropout，@200 有 565/1200 正样本和 TP=112
 
-### ORCH_050 行动方案（已签发）
+### 全系列 @200 frozen-check 对比
 
-双管齐下：**温和回调 FG/BG 比 + grid_pos_embed marker dropout**
+| ORCH | FG/BG | grid_pos_dropout | Pos slots | marker_same | TP | 结果 |
+|------|-------|-----------------|-----------|-------------|-----|------|
+| 048 | 6x | 0 | 482 (40%) | 0.977 | 27 | marker 模板 |
+| **049** | **1x** | **0** | **565 (47%)** | **0.976** | **112** | **@200 最优** |
+| 050 | 3.3x | 0.5 (cell) | 0 (0%) | 1.000 | 0 | 全阴性 |
 
-1. **修正 BUG-76**: `marker_pos_punish=2.0`, `bg_balance_weight=3.0` → FG/BG=(5×2.0)/(3.0×1.0)=**3.3x**
-   - 居于 6x（全正）和 1x（全负）之间，轻微 fg 偏向
-2. **修正 BUG-75**: `marker_grid_pos_dropout=0.5` 仅对 `pos_id=0` 施加 grid_pos_embed dropout
-3. 保留已验证配置: `RandomFlipBEV only`, `grid_assign_mode='center'`, `prefix_drop_rate=0.5`, `around_weight=0.0`
-4. 早停收紧为 OR 触发:
-   - `@200`: `marker_same > 0.97` 或 `saturation > 0.90` 或 `saturation < 0.05` → STOP
-   - `@500`: `Positive IoU > 0.95` 或 `Marker same > 0.90` 或 `Saturation > 0.90` 或 `Saturation < 0.05` → STOP
-   - 新增: **saturation < 0.05 也触发停止**（捕捉 all-negative 崩塌）
+### ORCH_051 行动方案: 隔离变量 — 纯 FG/BG=3.3x，无 dropout
+
+- **关键假设**: cell-level dropout 是 ORCH_050 退化的主因，FG/BG=3.3x 本身可能是合理的
+- **修改**: `marker_grid_pos_dropout=0.0`（关闭 dropout），其余保持 ORCH_050 配置
+  - `marker_pos_punish=2.0`, `bg_balance_weight=3.0` (FG/BG=3.3x)
+  - `around_weight=0.0`, `grid_assign_mode='center'`, `RandomFlipBEV only`, `prefix_drop_rate=0.5`
+- **如果 ORCH_051 @200 类似 ORCH_049 @200** (TP>0, saturation 0.1-0.8):
+  - 确认 dropout 是罪魁祸首，FG/BG=3.3x 可行
+  - 继续跑到 @500 看是否避免 ORCH_049 的 @500 全阴性崩塌
+- **如果 ORCH_051 @200 仍全阴性**:
+  - FG/BG=3.3x 也有问题，需进一步降低到 ~2x (marker_pos_punish=2.5, bg_balance_weight=2.5)
+
+### 活跃 BUG 跟踪
+
+| BUG | 状态 | 级别 | 当前结论 |
+|-----|------|------|----------|
+| **BUG-73** | **PARTIAL** | **CRITICAL** | ORCH_049 修复到 FG/BG=1x 方向正确(TP=112)但 @500 崩塌 |
+| **BUG-74** | **FIXED** | HIGH | `GlobalRotScaleTransBEV` 已在 ORCH_048 移除 |
+| **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 空间模板 shortcut — cell-level dropout 不可行 |
+| **BUG-76** | **OPEN** | HIGH | FG/BG=1x all-negative collapse, 3.3x 待隔离验证 |
+| **BUG-77** | **NEW** | **CRITICAL** | cell-level grid_pos_embed dropout 破坏所有 token 的定位能力 |
 
 ### 活跃 BUG 跟踪
 
@@ -566,7 +581,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_044** | **多层 ViT-L + LN + 投影 (无 anti-collapse)** | **STOPPED** @iter_440 — reg_loss=0 mode collapse, 前提错误, PID 1626949 已 kill |
 | **ORCH_045** | **多层+适应层+token corruption 从零训练** | 🔴 **STOPPED** @6000 — bg_FA=1.0 marker saturation, 训练已终止 03/15 15:25 |
 | **ORCH_049** | **BUG-73 修复 (FG/BG=1x)** | 🔴 **FAILED** @500 — all-negative collapse, 0/1200 positive, TP=0 |
-| **ORCH_050** | **FG/BG=3.3x + marker grid_pos_embed dropout** | 📋 **PENDING** — 已签发 |
+| **ORCH_050** | **FG/BG=3.3x + cell-level grid_pos_embed dropout** | 🔴 **FAILED** @200 — EARLY STOP, 0/1200 positive, dropout 破坏定位 |
+| **ORCH_051** | **纯 FG/BG=3.3x，无 dropout（隔离变量）** | 📋 **PENDING** — 已签发 |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
