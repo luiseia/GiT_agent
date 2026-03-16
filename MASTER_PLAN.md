@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 14:35
+> 最后更新: 2026-03-16 16:20
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -104,15 +104,34 @@
 
 **grid_pos_embed 在早期帮助维持预测多样性**。问题不是它的存在，而是训练过程中它逐渐取代图像特征成为主导。
 
-### ✅ Critic 审计完成: ORCH_059 = BUG-82 marker_init_bias（唯一改动）
+### 🔴 ORCH_059 (BUG-82 marker_init_bias) 结论: 改变崩塌方向但不阻止模板化 (2026-03-16 16:20)
 
-**BUG-82 (CRITICAL)**: Marker 4 token (near/mid/far/end) 中 3 个 FG → 初始 P(FG)=75%, 100% cell 预测 FG。
-**修复**: `marker_init_bias = nn.Parameter([-2.0, -2.0, -2.0, +0.5])` → 初始 P(BG)=80.2%
+| iter | 055 sat | 059 sat | 055 marker_same | 059 marker_same |
+|------|---------|---------|-----------------|-----------------|
+| 100 | 0.703 | **0.253** | 0.887 | 0.963 |
+| 300 | 0.873 | 0.035 | 0.973 | 0.996 |
+| 500 | 0.142 | 0.025 | 0.988 | 0.995 |
 
-**BUG-81 (HIGH)**: focal_alpha_marker=0.75 方向错误（FG 权重 3× BG），不修正不能开启 Focal Loss。
-**BUG-83 (MEDIUM)**: per_class_balance 下 BG per-sample 梯度稀释 39x。
+- ✅ bias init 成功翻转 saturation（从偏正到偏负）
+- ❌ marker_same 在两个实验中都不可逆升至 ~1.0
+- **BUG-82 不是模板化的根因**；初始化偏置只影响崩塌方向
 
-Critic 强烈建议: **ORCH_059 仅做 bias init，不改 Focal Loss 或 bg_balance_weight**（单变量实验）。
+### ⭐⭐⭐ 核心问题重新聚焦: marker_same 不可逆上升
+
+11 轮实验 (ORCH_049-059) 的共同现象: **marker_same 始终单调上升至 ~1.0**。
+无论 FG/BG 比、dropout、LR、grid_pos_embed 移除、bias init — marker_same 都不可阻止。
+
+**这意味着**: grid_pos_embed → marker 的映射是一个强 shortcut，模型在任何超参/bias/架构微调下都会找到这条路径。根因可能在于:
+1. grid_pos_embed 与 marker 决策之间的因果路径太短/太强
+2. 或者 marker 的 4-class 设计（3 FG + 1 BG）本身创造了不对称的梯度动态
+
+### 待 CEO 决策的方向
+
+1. **grid_pos_embed 噪声/shuffle**: 训练时对 grid_pos_embed 加随机扰动，保留空间信息但防止固定模式记忆
+2. **二元 marker**: 将 4-class marker (near/mid/far/end) 改为 2-class (FG/BG)，消除 3:1 结构偏差
+3. **marker 与 box 解耦**: marker 用独立的轻量 head（不共享 decoder），直接从图像特征分类
+4. **接受现状，尝试长训练**: ORCH_055 @100 有 TP=109 和 diff/Margin=54.6%，也许在更长训练(>500 iter)中模板化会自然缓解
+5. **回退到 ORCH_024 架构**: DINOv3 7B frozen + 单层 L16 从未出现 marker_same 问题，@8000 car_R=0.718
 
 ### 活跃 BUG 跟踪
 
