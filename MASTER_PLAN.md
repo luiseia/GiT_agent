@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 04:38
+> 最后更新: 2026-03-16 05:17
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -18,28 +18,28 @@
 
 ---
 
-## 当前阶段: bg_balance_weight 二分搜索 — 3.0(死) vs 5.0(活) (2026-03-16 04:38 CDT)
+## 当前阶段: 回到 ORCH_049 精确配置 + 多点 frozen-check 定位崩塌时间 (2026-03-16 05:17 CDT)
 
-### 🔴 FG/BG 扫描结论: 可行点不是 FG/BG 比，而是 bg_balance_weight 绝对值
+### 🔴 bg_balance_weight 二分搜索完成: 只有 bg=5.0 存活
 
 | ORCH | marker_pos_punish | bg_balance_weight | FG/BG | @200 结果 |
 |------|-------------------|-------------------|-------|-----------|
 | 048 | 3.0 | 2.5 | 6x | @500 all-positive |
 | **049** | **1.0** | **5.0** | **1x** | **TP=112 唯一存活** → @500 all-neg |
-| 051 | 2.0 | 3.0 | 3.3x | all-positive 1200/1200 |
-| 052 | 1.0 | 3.0 | 1.67x | **all-negative** 0/1200 |
+| 051 | 2.0 | 3.0 | 3.3x | all-positive |
+| 052 | 1.0 | 3.0 | 1.67x | all-negative |
+| 053 | 1.0 | 4.0 | 1.25x | all-negative |
 
-- ORCH_049 (bg=5.0) 和 ORCH_052 (bg=3.0) 唯一区别是 bg_balance_weight
-- bg 从 5.0→3.0，结果从"存活"→"全阴性"
-- **与 FG/BG 比的直觉预测相反**: 高 bg_weight 本应更偏 BG，但实际更"健康"
-- **假设**: bg_balance_weight 影响分母（归一化尺度），bg=5.0 时分母=10 降低整体梯度量级，训练更稳定
+- bg=3.0, 4.0 均死亡；只有 bg=5.0 存活
+- FG/BG 比调参空间几乎用尽
+- **策略转换**: 不再调 FG/BG 比，回到 ORCH_049 精确配置，用多点 frozen-check 定位 @200→@500 之间的崩塌时间点
 
-### ORCH_053: bg_balance_weight=4.0 二分搜索
+### ORCH_054: 复现 ORCH_049 + 多点 frozen-check (@100/@200/@300/@400/@500)
 
-- `marker_pos_punish=1.0`, `bg_balance_weight=4.0` → FG/BG=1.25x
-- 居于 bg=3.0（死）和 bg=5.0（活）之间
-- 如果 bg=4.0 活 → 可行窗口 [4.0, 5.0]，下一步试 @500 是否避免崩塌
-- 如果 bg=4.0 死 → 可行窗口接近 5.0，问题可能不在 FG/BG 比而在梯度尺度
+- 精确复现 ORCH_049 配置: `marker_pos_punish=1.0`, `bg_balance_weight=5.0`, `around_weight=0.0`
+- 新增 @100, @300, @400 frozen-check 点（ORCH_049 只查了 @200 和 @500）
+- 目标: 确认 @200 可复现(TP>0)，并定位崩塌发生在 @300, @400 还是 @500
+- 崩塌轨迹信息将指导下一步干预（LR 调整、梯度裁剪、正则化等）
 
 ### 活跃 BUG 跟踪
 
@@ -572,7 +572,8 @@ CEO 对 label generation pipeline 逐项审查, 发现多个问题:
 | **ORCH_050** | **FG/BG=3.3x + cell-level grid_pos_embed dropout** | 🔴 **FAILED** @200 — EARLY STOP, 0/1200 positive, dropout 破坏定位 |
 | **ORCH_051** | **纯 FG/BG=3.3x，无 dropout（隔离变量）** | 🔴 **FAILED** @200 — EARLY STOP, 1200/1200 all-positive |
 | **ORCH_052** | **FG/BG=1.67x (marker_pos_punish=1.0, bg_balance_weight=3.0)** | 🔴 **FAILED** @200 — EARLY STOP, 0/1200 all-negative |
-| **ORCH_053** | **bg_balance_weight=4.0 二分搜索** | 📋 **PENDING** |
+| **ORCH_053** | **bg_balance_weight=4.0 二分搜索** | 🔴 **FAILED** @200 — all-negative |
+| **ORCH_054** | **复现 ORCH_049 + 多点 frozen-check** | 📋 **PENDING** |
 | ORCH_030 | 多层特征代码实现 | ✅ DONE (commit `8a961de`) |
 | ORCH_031 | BUG-54/55 修复 | ✅ DONE (commit `dba4760`) |
 
