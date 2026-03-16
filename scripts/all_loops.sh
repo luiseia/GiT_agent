@@ -31,6 +31,22 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] all_loops: $1" | tee -a "$LOG"
 }
 
+send_agent_message() {
+    local session="$1"
+    local message="$2"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        return 1
+    fi
+    # 先尝试退出弹窗/多行草稿态，再清空当前输入框。
+    tmux send-keys -t "$session" Escape
+    sleep 1
+    tmux send-keys -t "$session" C-u
+    sleep 1
+    tmux send-keys -l -t "$session" "$message"
+    tmux send-keys -t "$session" C-m
+    return 0
+}
+
 # ─── 检测 Agent 是否空闲 ─────────────────────────────────
 is_idle() {
     local session="$1"
@@ -120,13 +136,13 @@ while true; do
     if tmux has-session -t agent-supervisor 2>/dev/null; then
         if ! is_claude_alive agent-supervisor; then
             log "⚠️ supervisor: Claude Code 已退出，正在重启..."
-            tmux send-keys -t agent-supervisor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+            send_agent_message agent-supervisor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions"
             sleep 15
-            tmux send-keys -t agent-supervisor "请阅读 agents/claude_supervisor/CLAUDE.md 并开始自主循环" Enter
+            send_agent_message agent-supervisor "请阅读 agents/claude_supervisor/CLAUDE.md 并开始自主循环"
             log "→ supervisor: 已重启"
             SUPERVISOR_SENT=1
         elif is_idle agent-supervisor; then
-            tmux send-keys -t agent-supervisor "cat shared/commands/supervisor_cmd.md" Enter
+            send_agent_message agent-supervisor "cat shared/commands/supervisor_cmd.md"
             log "→ supervisor: 指令已发送"
             SUPERVISOR_SENT=1
         else
@@ -204,14 +220,14 @@ HEALTHEOF
     if tmux has-session -t agent-conductor 2>/dev/null; then
         if ! is_claude_alive agent-conductor; then
             log "⚠️ conductor: Claude Code 已退出，正在重启..."
-            tmux send-keys -t agent-conductor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+            send_agent_message agent-conductor "cd ${AGENT_DIR} && claude --dangerously-skip-permissions"
             sleep 15
-            tmux send-keys -t agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待指令" Enter
+            send_agent_message agent-conductor "请阅读 agents/claude_conductor/CLAUDE.md 并等待指令"
             log "→ conductor: 已重启"
             sleep 10
         fi
-        if is_idle agent-conductor || is_claude_alive agent-conductor; then
-            tmux send-keys -t agent-conductor "cat shared/commands/phase1_cmd.md" Enter
+        if is_idle agent-conductor; then
+            send_agent_message agent-conductor "cat shared/commands/phase1_cmd.md"
             log "→ conductor Phase 1: 指令已发送"
             CONDUCTOR_P1_SENT=1
         else
@@ -381,10 +397,10 @@ CRITICEOF
             if tmux has-session -t agent-critic 2>/dev/null; then
                 if ! is_claude_alive agent-critic; then
                     log "⚠️ critic: Claude Code 已退出，正在重启..."
-                    tmux send-keys -t agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions" Enter
+                    send_agent_message agent-critic "cd ${AGENT_DIR} && claude --dangerously-skip-permissions"
                     sleep 15
                 fi
-                tmux send-keys -t agent-critic "cat shared/commands/critic_cmd.md" Enter
+                send_agent_message agent-critic "cat shared/commands/critic_cmd.md"
                 log "→ critic: 审计指令已发送 (${id})"
             else
                 log "⚠️ critic: 会话不存在，无法执行审计"
@@ -424,7 +440,7 @@ CRITICEOF
             if ! is_idle agent-conductor; then
                 wait_for_idle agent-conductor 5 "conductor 等待空闲"
             fi
-            tmux send-keys -t agent-conductor "cat shared/commands/phase2_cmd.md" Enter
+            send_agent_message agent-conductor "cat shared/commands/phase2_cmd.md"
             log "→ conductor Phase 2: 指令已发送"
             wait_for_idle agent-conductor 10 "conductor Phase 2"
         fi
@@ -434,12 +450,12 @@ CRITICEOF
     if tmux has-session -t agent-admin 2>/dev/null; then
         if ! is_claude_alive agent-admin; then
             log "⚠️ admin: Claude Code 已退出，正在重启..."
-            tmux send-keys -t agent-admin "cd /home/UNT/yz0370/projects/GiT && claude --dangerously-skip-permissions" Enter
+            send_agent_message agent-admin "cd /home/UNT/yz0370/projects/GiT && claude --dangerously-skip-permissions"
             sleep 15
-            tmux send-keys -t agent-admin "请阅读 /home/UNT/yz0370/projects/GiT_agent/agents/claude_admin/CLAUDE.md 并开始自主循环" Enter
+            send_agent_message agent-admin "请阅读 /home/UNT/yz0370/projects/GiT_agent/agents/claude_admin/CLAUDE.md 并开始自主循环"
             log "→ admin: 已重启"
         elif is_idle agent-admin; then
-            tmux send-keys -t agent-admin "cat /home/UNT/yz0370/projects/GiT_agent/shared/commands/admin_cmd.md" Enter
+            send_agent_message agent-admin "cat /home/UNT/yz0370/projects/GiT_agent/shared/commands/admin_cmd.md"
             log "→ admin: 指令已发送"
         else
             log "→ admin: 正在忙碌，跳过本轮"
