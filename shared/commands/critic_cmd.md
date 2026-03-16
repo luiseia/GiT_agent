@@ -1,4 +1,4 @@
-# Critic 审计指令 — ORCH049_MARKER_PATH
+# Critic 审计指令 — ORCH057_MARKER_NO_POS
 
 严格按以下步骤执行，不可跳过任何步骤：
 
@@ -10,7 +10,7 @@ cd /home/UNT/yz0370/projects/GiT && git pull
 读取 agents/claude_critic/CLAUDE.md，理解你的职责、性格规则和写入边界
 
 ## 3. 读取审计请求
-读取 shared/audit/requests/AUDIT_REQUEST_ORCH049_MARKER_PATH.md
+读取 shared/audit/requests/AUDIT_REQUEST_ORCH057_MARKER_NO_POS.md
 
 ## 4. 读取 MASTER_PLAN
 读取 MASTER_PLAN.md，审视 Conductor 的计划和决策是否合理
@@ -98,11 +98,11 @@ python scripts/diagnose_v3c_single_ckpt.py iter_8000 <dir> <config>
 文件名必须以 debug_ 前缀
 
 ## 8. 写入判决
-写入 shared/audit/pending/VERDICT_ORCH049_MARKER_PATH.md
+写入 shared/audit/pending/VERDICT_ORCH057_MARKER_NO_POS.md
 判决必须包含以下所有部分：
 
 ```markdown
-# 审计判决 — ORCH049_MARKER_PATH
+# 审计判决 — ORCH057_MARKER_NO_POS
 
 ## 结论: PROCEED / STOP / CONDITIONAL
 
@@ -133,4 +133,4 @@ python scripts/diagnose_v3c_single_ckpt.py iter_8000 <dir> <config>
 
 ## 9. 提交
 cd /home/UNT/yz0370/projects/GiT_agent
-git add shared/audit/pending/ && git commit -m "critic: verdict ORCH049_MARKER_PATH" && git push
+git add shared/audit/pending/ && git commit -m "critic: verdict ORCH057_MARKER_NO_POS" && git push
