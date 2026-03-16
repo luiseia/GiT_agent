@@ -41,6 +41,12 @@
   2. 若 `Positive IoU > 0.95` 或 `Marker same rate > 0.90` 或 `Saturation > 0.90` → **立即停训**
   3. 只有 frozen-check 通过的实验，才继续 full val / 长训练
 - 这样可以把 “1 小时以上的无效 val” 缩短为 “几分钟的 frozen 诊断”
+- **CEO 当前明确不同意**把 `filter_invisible=True` 纳入下一轮修复；后续方案默认保持 `filter_invisible=False`
+- 当前准备中的 `ORCH_048` 主线只考虑：
+  - 去掉 `GlobalRotScaleTransBEV`，只保留 `RandomFlipBEV`
+  - 显式设 `grid_assign_mode='center'`
+  - 回收前景/背景权重失衡（`pos_cls_w_multiplier↓`, `neg_cls_w↑`）
+  - 用更强的 scheduled sampling / prefix dropout 替代单纯 `token_drop_rate`
 
 ### 🔴 已吸收 Critic 判决: VERDICT_ORCH046_V2_AT500 = STOP
 
