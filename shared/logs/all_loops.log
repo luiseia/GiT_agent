@@ -9415,3 +9415,12 @@ nohup: ignoring input
 [2026-03-16 01:53:19] all_loops: → conductor: 正在忙碌，跳过本轮
 [2026-03-16 01:53:21] all_loops: → admin: 指令已发送
 [2026-03-16 01:53:21] all_loops: → ops: 执行 save_tmux.sh
+[2026-03-16 01:53:22] all_loops: === 循环耗时 0 分钟，等待 9 分钟补够 10 分钟 ===
+[2026-03-16 01:53:27] all_loops_tmux: all_loops.sh exited code=143, restarting in 5s
+[2026-03-16 01:53:29] all_loops: all_loops.sh 启动 (PID 2323610)
+[2026-03-16 01:53:29] all_loops: === 新一轮循环开始 ===
+[2026-03-16 01:53:29] all_loops: → supervisor: 正在忙碌，跳过本轮
+[2026-03-16 01:53:31] all_loops: → conductor Phase 1: 指令已强制发送
+[2026-03-16 01:53:34] all_loops: → conductor Phase 2: 指令已强制发送
+[2026-03-16 01:53:36] all_loops: → admin: 指令已发送
+[2026-03-16 01:53:36] all_loops: → ops: 执行 save_tmux.sh
