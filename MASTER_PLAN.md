@@ -18,7 +18,56 @@
 
 ---
 
-## 当前阶段: ORCH_048 部分解冻但 marker 仍高度模板化，先审计 marker shortcut 路径 (2026-03-16 00:15 CDT)
+## 当前阶段: ORCH_049 准备执行 BUG-73 修复，主因已修正为 fg/bg 失衡 + 空间先验模板化 (2026-03-16 01:16 CDT)
+
+### ✅ 已吸收 Critic 判决: VERDICT_ORCH049_MARKER_PATH = CONDITIONAL
+
+- `ORCH_048` 的方向被确认是对的：模型已从 `1200/1200` 全正饱和降到 `482/1200`
+- 但 Critic 明确否定了“marker GT prefix 泄漏”这条假设
+- **当前主因修正为**:
+  - **BUG-73 (CRITICAL, OPEN)**: `marker_pos_punish=3.0` 与 `bg_balance_weight=2.5` 造成实际 fg/bg 惩罚比约 **6x**
+  - **BUG-75 (HIGH, NEW)**: `grid_pos_embed` 在 fg/bg 失衡下成为空间模板 shortcut 通道
+- Critic 特征流诊断显示图像信号全程正常到达 logits：
+  - `patch_embed_input` 差异 **4.96%**
+  - `logits_pos0` 差异 **1.06%**
+  - 但 `pred_token_pos0` 仍 **97.75% 相同**
+- 结论：**图像信号没有丢，问题在决策边界被 loss 失衡固化为空间模板**
+
+### 🟠 ORCH_048 最新定性
+
+- `ORCH_048` 应视为 **PARTIAL_SUCCESS**
+- 有效改动：
+  - `grid_assign_mode='center'`
+  - `RandomFlipBEV only`
+  - `core/around supervision`
+  - `prefix_drop_rate=0.5`
+- 但其中“`pos_cls_w_multiplier→1.0`, `neg_cls_w→1.0`”未真正修掉 BUG-73
+- 当前最小有效下一步不是继续训练，而是 **先修 BUG-73**
+
+### ORCH_049 最小可执行路线
+
+- **P0: 修 BUG-73**
+  - `marker_pos_punish`: `3.0 → 1.0`
+  - `bg_balance_weight`: `2.5 → 5.0`
+- **P1: 进一步收紧外围 supervision**
+  - `around_weight`: `0.1 → 0.0`（或最多 `0.05`）
+- **P1: 新增更早闸门**
+  - `iter_200` 运行 quick frozen-check
+  - 若 `marker_same > 0.95` 且 `saturation > 0.90`，立即停训
+- **@500 继续保留 frozen-check**
+  - 通过前不跑 full val
+- **暂不做**
+  - 不改 marker 训练路径（Critic 已确认无 GT prefix 泄漏）
+  - 不改 `grid_assign_mode='center'`
+  - 不继续堆训练时长
+
+### 活跃 BUG 跟踪
+
+| BUG | 状态 | 级别 | 当前结论 |
+|-----|------|------|----------|
+| **BUG-73** | **OPEN** | **CRITICAL** | fg/bg 惩罚失衡是 marker 模板化首因 |
+| **BUG-74** | **FIXED** | HIGH | `GlobalRotScaleTransBEV` 已在 ORCH_048 移除 |
+| **BUG-75** | **OPEN** | HIGH | `grid_pos_embed` 在 BUG-73 存在时放大空间模板 shortcut |
 
 ### 🟠 ORCH_048 @500 最新结论
 
@@ -40,21 +89,11 @@
 ### 当前主线判断
 
 - **不是训练不足**
-  - `ORCH_046_v2 @500`、`ORCH_047 @500`、`ORCH_048 @500` 已连续证明：长训前就能稳定复现模板化输出
-  - `ORCH_048` 在 `@500` 已明显改善，但仍停在高 `marker_same`，继续原样训练大概率只会固化该模板
-- **当前主嫌疑上升为 BUG-72: marker shortcut / marker teacher forcing leakage**
-  - 需要优先审计 occupancy 路径中 “第一个 marker token” 是否仍能借助 GT 前缀、固定位置先验或不对称 loss 学到模板化有无目标图
-  - 重点不是 backbone，也不是继续堆训练时长
-
-### 下一步
-
-- 已准备发起新审计：`AUDIT_REQUEST_ORCH049_MARKER_PATH`
-- 审计重点：
-  - marker token 是否被 teacher forcing 间接泄漏
-  - 是否应将 marker 决策从 GT prefix 中剥离
-  - 是否应把 supervision 进一步收紧到 `around_weight=0.0`
-  - 是否应只对 marker/head 单独加大负样本压力
-  - 是否应新增 `iter_200` quick frozen-check 作为更早闸门
+  - `ORCH_046_v2 @500`、`ORCH_047 @500`、`ORCH_048 @500` 已连续证明：错误模式在早期就成型
+- **不是 marker teacher forcing 泄漏**
+  - Critic 已确认 marker 作为第一个 token，不接收 GT prefix
+- **当前阻断项就是 BUG-73**
+  - 不先修 BUG-73，就不值得继续任何长训练
 
 ## 当前阶段: ORCH_047 @500 仍 Frozen，后续改用 frozen-check 代替 full val 作为首道闸门 (2026-03-15 23:15 CDT)
 
