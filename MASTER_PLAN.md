@@ -1,6 +1,6 @@
 # MASTER_PLAN.md
 > 由 claude_conductor 维护 | 其他 Agent 只读
-> 最后更新: 2026-03-16 07:30
+> 最后更新: 2026-03-16 11:15
 >
 > **归档索引**: 历史 VERDICT/训练数据/架构审计详情 → `shared/logs/archive/verdict_history.md`
 > **归档索引**: 指标参考/历史决策日志 → `shared/logs/archive/experiment_history.md`
@@ -51,6 +51,23 @@
 4. **终态 (@400+)**: marker_same→0.988, 模板固化不可逆
 
 **BUG-78 确认**: 单 GPU (effective batch=1) 在 @100 就全阴性; DDP (batch=16) 在 @100 健康。batch size 是 mode collapse 的关键因素。
+
+### ORCH_055 iter_100 Full Eval (2026-03-16 11:13 CDT)
+
+| 指标 | @100 | ORCH_024 @2000 |
+|------|------|----------------|
+| car_R | 0.000 | 0.627 |
+| cone_R | 0.588 | — |
+| 其余 8 类 R | 全 0 | — |
+| bg_FA | 0.618 | 0.222 |
+| off_cx | 0.311 | 0.056 |
+| off_cy | 0.090 | 0.069 |
+| off_w | 0.021 | 0.020 |
+| off_h | 0.018 | 0.005 |
+| off_th | 0.211 | 0.174 |
+
+- **@100 只训练了 100 iter**，car_R=0 是预期的（分类器冷启动）
+- frozen-check HEALTHY 但 full eval 性能极弱 — 证明 ORCH_057 架构变更是必要的：需要让模型在更长训练中保持健康，而非在 @100 就判定成功
 
 ### 🔴 ORCH_056 结论: 降低 LR 加速模板化
 
