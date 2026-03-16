@@ -18,6 +18,37 @@
 
 ---
 
+## 当前阶段: ORCH_046_v2 @500 Frozen 已确认 (2026-03-15 20:30 CDT)
+
+### 🔴 ORCH_046_v2 @500 快速诊断结论
+
+- `iter_500.pth` 已生成，`scripts/check_frozen_predictions.py` 已执行完毕
+- **Frozen 指标**:
+  - Avg positive slots: **1200/1200 (100.0%)**
+  - Positive IoU (cross-sample): **1.0000**
+  - Marker same rate: **1.0000**
+  - Coord diff (shared pos): **0.008769**
+  - Saturation: **1.000**
+- **结论**: 即使 `BUG-69 (adapt lr_mult=1.0)`、`BUG-62 (clip_grad=50)`、`BUG-64 (bert-large pretrain)` 已生效，模型在 `@500` 仍然直接坍缩到固定模板，未跳出局部最优
+
+### 当前判断
+
+- **DINOv3“Layer 16 方差过小”不是当前主嫌疑**
+  - 2026-03-15 的 `ORCH_046_v2` 配置实际使用 `online_dinov3_layer_indices=[5,11,17,23]`，不是单层 L16，也不是“新加入 L16”
+  - `ORCH_024` 的单层 L16 和 `ORCH_046_v2` 的四层拼接都出现过 frozen，说明症状跨特征配置存在，更像 decoder/pipeline shortcut，而不是某一层特征方差单点失效
+- **BEV 空间增强缺失仍是高优先级根因**
+  - 当前 `train_pipeline` 只有 `PhotoMetricDistortion`，**没有** `RandomFlipBEV/RandomFlip3D/GlobalRotScaleTrans`
+  - 仓库内也**没有**这些增强的实现代码，说明 CEO 要求的 BEV 空间增强实际上未落地
+  - 在 frozen 已跨多代 config 复现的前提下，这意味着模型仍可利用稳定空间先验记固定 BEV 模板
+- **训练/推理不一致仍未修复**
+  - 训练端 `git.py` 使用 `get_attn_mask()` 构造 causal mask
+  - 推理端 `git_occ_head.py` 仍为 `attn_mask=None`
+
+### 已决定动作
+
+- **签发 AUDIT_REQUEST_ORCH046_V2_AT500**
+- **起草 ORCH_047**: 强制加入 `RandomFlipBEV` + `GlobalRotScaleTrans`，并要求可视化验收
+
 ## 当前阶段: 准备签发 ORCH_046 — 修复 BUG-69 + BUG-62
 
 ### ⭐⭐ Critic VERDICT_ORCH046_PLAN (2026-03-15 17:15) — 根因修正
