@@ -6779,3 +6779,33 @@ nohup: ignoring input
 [2026-03-17 00:36:39] all_loops: 🚨🚨 训练质量 RED 告警！自动触发紧急审计
 [2026-03-17 00:36:40] all_loops: → 已自动签发紧急审计: HEALTH_20260317_0036
 [2026-03-17 00:36:42] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-17 00:37:42] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-17 00:37:42] all_loops: 🔔 发现待审计: HEALTH_20260316_1836
+[2026-03-17 00:37:44] all_loops: → critic: 审计指令已发送 (HEALTH_20260316_1836)
+[2026-03-17 00:37:44] all_loops: → critic: 等待审计完成...
+[2026-03-17 00:38:44] all_loops: → critic: 仍在审计... 1/5 分钟
+[2026-03-17 00:39:45] all_loops: → critic: 仍在审计... 2/5 分钟
+[2026-03-17 00:40:45] all_loops: → critic: 仍在审计... 3/5 分钟
+[2026-03-17 00:41:45] all_loops: → critic: 仍在审计... 4/5 分钟
+[2026-03-17 00:42:46] all_loops: ⚠️ critic: 审计超时（5 分钟），继续执行
+[2026-03-17 00:42:48] all_loops: → conductor(auto) Phase 2: 指令已发送
+[2026-03-17 00:43:48] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
+[2026-03-17 00:43:50] all_loops: → admin: 指令已发送
+[2026-03-17 00:43:50] all_loops: → ops: 执行 save_tmux.sh
+[2026-03-17 00:43:50] all_loops: === 循环耗时 8 分钟，等待 1 分钟补够 10 分钟 ===
+[2026-03-17 00:44:50] all_loops: ⏳ 等待中... 1/1 分钟
+[2026-03-17 00:44:50] all_loops: === 新一轮循环开始 ===
+[2026-03-17 00:44:52] all_loops: → supervisor: 指令已发送
+[2026-03-17 00:45:52] all_loops: → supervisor: 已完成（等待 1 分钟）
+[2026-03-17 00:45:52] all_loops: 🚨🚨 训练质量 RED 告警！自动触发紧急审计
+[2026-03-17 00:45:52] all_loops: → 已自动签发紧急审计: HEALTH_20260317_0045
+[2026-03-17 00:45:54] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-17 00:46:54] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-17 00:46:55] all_loops: 🔔 发现待审计: HEALTH_20260317_0027
+[2026-03-17 00:46:57] all_loops: → critic: 审计指令已发送 (HEALTH_20260317_0027)
+[2026-03-17 00:46:57] all_loops: → critic: 等待审计完成...
+[2026-03-17 00:47:57] all_loops: → critic: VERDICT_HEALTH_20260316_1836 已产出（等待 1 分钟）
+[2026-03-17 00:47:59] all_loops: → conductor(auto) Phase 2: 指令已发送
+[2026-03-17 00:48:59] all_loops: → conductor(auto) Phase 2: 已完成（等待 1 分钟）
+[2026-03-17 00:49:01] all_loops: → admin: 指令已发送
+[2026-03-17 00:49:01] all_loops: → ops: 执行 save_tmux.sh
