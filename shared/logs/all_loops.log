@@ -8930,3 +8930,13 @@ nohup: ignoring input
 [2026-03-17 18:40:17] all_loops: → supervisor: 指令已发送
 [2026-03-17 18:41:17] all_loops: → supervisor: 已完成（等待 1 分钟）
 [2026-03-17 18:41:19] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-17 18:42:19] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-17 18:42:19] all_loops: 🔔 发现待审计: HEALTH_20260316_1836
+[2026-03-17 18:42:21] all_loops: → critic: 审计指令已发送 (HEALTH_20260316_1836)
+[2026-03-17 18:42:21] all_loops: → critic: 等待审计完成...
+[2026-03-17 18:43:22] all_loops: → critic: 仍在审计... 1/5 分钟
+[2026-03-17 18:44:22] all_loops: → critic: 仍在审计... 2/5 分钟
+[2026-03-17 18:45:23] all_loops: → critic: 仍在审计... 3/5 分钟
+[2026-03-17 18:46:23] all_loops: → critic: 仍在审计... 4/5 分钟
+[2026-03-17 18:47:23] all_loops: ⚠️ critic: 审计超时（5 分钟），继续执行
+[2026-03-17 18:47:25] all_loops: → conductor(auto) Phase 2: 指令已发送
