@@ -1,26 +1,24 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-17 17:00:37
+> 时间: 2026-03-17 17:54:33
 
-## 训练状态 — imgabs0 已停止
-- **最后 iter**: 11690/40000 (29%), 停于 ~13:50 CDT (~3h 前)
-- **0 训练进程运行**
-- **Checkpoints**: iter_8000, iter_10000 (各 ~6GB)
-- /home 恢复至 29GB (CEO 可能清理了空间)
-
-### 最后 Loss (iter 11670-11690) — reg 连续活跃！
-| iter | loss | cls | reg | grad_norm |
-|------|------|-----|-----|-----------|
-| 11670 | 9.02 | 6.91 | **2.11** | 61.2 |
-| 11680 | 7.02 | 4.47 | **2.56** | 39.6 |
-| 11690 | 7.01 | 4.29 | **2.72** | 31.6 |
-
-**注意**: 停止前 reg_loss 连续 3 iter 活跃 (2.11→2.56→2.72 递增)，cls 也在 4-7 范围。这与之前 90%+ iter reg=0 的模式不同。
+## 训练状态
+- **无训练运行** (imgabs0 停于 @11690, ~4h 前)
+- Checkpoints 可用: iter_8000, iter_10000
 
 ## 磁盘
 | /home | **100%** | **29 GB** | /mnt/SSD | **100%** | **0** |
 
 ## GPU
-| GPU 0,1,2 | idle (我方) |
-| GPU 3 | 7430 MiB | xg0091 (streampetr_vggt) |
+| GPU 0-2 | ~0.8-1 GB | yl0826 轻量 |
+| GPU 3 | 8208 MiB | xg0091 (streampetr_vggt) |
 
-## 0 PENDING | Agent: ops UP
+## Agent 状态
+- 8 tmux sessions UP
+- Conductor idle #131, 清理了重复 health verdict
+- Critic: batch verdict #3 — 标记 requests/pending 死循环, 要求 conductor 清理
+- 0 PENDING
+
+## 系统观察
+- imgabs0 停止前 reg_loss 连续活跃 (2.11→2.56→2.72)
+- iter_10000 checkpoint 未评估
+- 等待 CEO 决策下一步
