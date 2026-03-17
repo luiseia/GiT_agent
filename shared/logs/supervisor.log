@@ -6408,3 +6408,4 @@
 [02:30:17] 🔔 通知 Critic: REQUEST_HEALTH_20260317_0138
 [02:30:17] 🔔 通知 Critic: REQUEST_HEALTH_20260317_0151
 [02:30:30] ✅ 循环 #64: imgabs0 @890/40000, spike 21.2(reg=2.71), /home 23GB
+[02:30:56] ✅ 循环 #65: imgabs0 @900/40000, consecutive spikes(21→11, reg活跃), /home 23GB
