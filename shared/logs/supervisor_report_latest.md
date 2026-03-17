@@ -1,41 +1,34 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-17 00:08:07
+> 时间: 2026-03-17 00:17:22
 
-## ⚡ 新训练已启动！
-- **Config**: `plan_full_nuscenes_large_v1_slot0_marker_only.py`
+## 训练状态 — slot0_marker_only
+- **进度**: iter **300/40000** (0.75%)
+- **GPU**: GPU 2 (30449 MiB, 100%)
+- **ETA**: ~21h
 - **Work dir**: `/home/UNT/yz0370/projects/GiT/work_dirs/full_nuscenes_large_v1_slot0_marker_only`
-- **GPU**: GPU 2 (30015 MiB, 99% util), 单 GPU 训练
-- **启动时间**: 00:07 CDT
-- **进度**: iter 30/40000, ETA ~20h
-- **注意**: work_dir 在 /home (非 /mnt/SSD)，因 SSD 已满
 
-### 早期 Loss
+### Loss 趋势
 | iter | loss | cls | reg | grad_norm |
 |------|------|-----|-----|-----------|
 | 10 | 0.552 | 0.552 | 0.000 | 28.93 |
-| 20 | 0.457 | 0.457 | 0.000 | 28.59 |
 | 30 | 0.443 | 0.443 | 0.000 | 26.83 |
-
-**观察**: loss 正常下降 (0.55→0.44)，reg=0（仅 marker 分类，符合 slot0_marker_only 设定），memory 26139 MiB
-
-## 🚨 磁盘
-/mnt/SSD **100%** (0 bytes!) | /home **99%** (45GB)
-⚡ /mnt/SSD 完全满了 (0 free)，训练写入 /home
-
-## GPU 状态
-| GPU | 显存 | 利用率 | 用户 |
-|-----|------|--------|------|
-| 0 | 1436 MiB | 0% | yl0826 |
-| 1 | 1420 MiB | 0% | yl0826 |
-| 2 | **30015 MiB** | **99%** | **yz0370 训练中** |
-| 3 | 1440 MiB | 0% | yl0826 |
+| 100 | ~0.05 | ~0.05 | 0.000 | ~1.0 |
+| 210 | 0.017 | 0.017 | 0.000 | 0.11 |
+| 250 | 0.0004 | 0.0004 | 0.000 | 0.05 |
+| 300 | **0.0003** | **0.0003** | 0.000 | **0.03** |
 
 ## 🚨 训练质量告警
-- [YELLOW] reg_loss=0 — 但这是 slot0_marker_only 设计，需确认是否预期
-- [YELLOW] /home 仅 45GB，训练 checkpoint 会消耗空间
+- [RED] loss @300 = 0.0003, grad_norm = 0.03 — 与 ORCH_055/059 的 trivial solution 模式一致
+- [RED] reg_loss = 0 全程 — marker_only 设计 or 无正预测?
+- [YELLOW] 需确认: slot0_marker_only 是否预期如此快收敛，还是又陷入 all-bg collapse
+- [YELLOW] /mnt/SSD **0 bytes free**, /home 45GB
 
-## ORCH 指令状态
-0 PENDING | ORCH_060 COMPLETED | 新训练可能由 CEO 手动启动
+## GPU 状态
+| GPU | 显存 | 用户 |
+|-----|------|------|
+| 0 | 1730 MiB | yl0826 |
+| 1 | 1854 MiB | yl0826 |
+| 2 | **30449 MiB** | **yz0370 训练** |
+| 3 | 1874 MiB | yl0826 |
 
-## Agent: 全部 ✅ UP (8 sessions)
-## Conductor idle #36
+## 0 PENDING | Agent 全部 ✅ UP
