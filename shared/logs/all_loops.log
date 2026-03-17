@@ -6254,3 +6254,13 @@ nohup: ignoring input
 [2026-03-16 20:45:56] all_loops: 🚨🚨 训练质量 RED 告警！自动触发紧急审计
 [2026-03-16 20:45:57] all_loops: → 已自动签发紧急审计: HEALTH_20260316_2045
 [2026-03-16 20:45:59] all_loops: → conductor(auto) Phase 1: 指令已发送
+[2026-03-16 20:46:59] all_loops: → conductor(auto) Phase 1: 已完成（等待 1 分钟）
+[2026-03-16 20:46:59] all_loops: 🔔 发现待审计: HEALTH_20260316_1836
+[2026-03-16 20:47:01] all_loops: → critic: 审计指令已发送 (HEALTH_20260316_1836)
+[2026-03-16 20:47:01] all_loops: → critic: 等待审计完成...
+[2026-03-16 20:48:01] all_loops: → critic: 仍在审计... 1/5 分钟
+[2026-03-16 20:49:02] all_loops: → critic: 仍在审计... 2/5 分钟
+[2026-03-16 20:50:02] all_loops: → critic: 仍在审计... 3/5 分钟
+[2026-03-16 20:51:02] all_loops: → critic: 仍在审计... 4/5 分钟
+[2026-03-16 20:52:03] all_loops: ⚠️ critic: 审计超时（5 分钟），继续执行
+[2026-03-16 20:52:05] all_loops: → conductor(auto) Phase 2: 指令已发送
