@@ -1,14 +1,14 @@
 # 实验室状态面板
-> 最后更新: 2026-03-17 03:41:36
+> 最后更新: 2026-03-17 03:54:52
 > 由 claude_ops 自动生成，请勿手动编辑
 
 | Agent | tmux | 最后快照 | 备注 |
 |-------|------|---------|------|
-| conductor | ✅ UP | 20260317_034136 | - |
-| conductor-auto | ✅ UP | 20260317_034136 | - |
-| critic | ✅ UP | 20260317_034136 | - |
-| supervisor | ✅ UP | 20260317_034136 | - |
-| admin | ✅ UP | 20260317_034136 | - |
+| conductor | ✅ UP | 20260317_035452 | - |
+| conductor-auto | ✅ UP | 20260317_035452 | - |
+| critic | ✅ UP | 20260317_035452 | - |
+| supervisor | ✅ UP | 20260317_035452 | - |
+| admin | ✅ UP | 20260317_035452 | - |
 | ops | ✅ UP | - | - |
 
 ## 告警
@@ -17,6 +17,6 @@
 ## 基础设施
 | 组件 | 状态 | 详情 |
 |------|------|------|
-| all_loops.sh | ✅ PID 28366 | 运行 9h24m |
-| sync_loop | ✅ PID 28447 | 运行 9h24m |
-| watchdog | ✅ crontab | 最后活跃 1min ago |
+| all_loops.sh | ✅ PID 28366 | 运行 9h37m |
+| sync_loop | ✅ PID 28447 | 运行 9h37m |
+| watchdog | ✅ crontab | 最后活跃 4min ago |
