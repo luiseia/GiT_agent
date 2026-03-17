@@ -1,34 +1,40 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-17 00:17:22
+> 时间: 2026-03-17 00:26:36
 
-## 训练状态 — slot0_marker_only
-- **进度**: iter **300/40000** (0.75%)
-- **GPU**: GPU 2 (30449 MiB, 100%)
-- **ETA**: ~21h
-- **Work dir**: `/home/UNT/yz0370/projects/GiT/work_dirs/full_nuscenes_large_v1_slot0_marker_only`
+## 训练状态 — 3 个 slot0_marker_only 变体同时运行
 
-### Loss 趋势
-| iter | loss | cls | reg | grad_norm |
-|------|------|-----|-----|-----------|
-| 10 | 0.552 | 0.552 | 0.000 | 28.93 |
-| 30 | 0.443 | 0.443 | 0.000 | 26.83 |
-| 100 | ~0.05 | ~0.05 | 0.000 | ~1.0 |
-| 210 | 0.017 | 0.017 | 0.000 | 0.11 |
-| 250 | 0.0004 | 0.0004 | 0.000 | 0.05 |
-| 300 | **0.0003** | **0.0003** | 0.000 | **0.03** |
+### 1. slot0_marker_only (GPU 2)
+- iter **560/40000**, ETA ~22h
+- loss: 0.0006, grad_norm: 0.06
+- 🚨 loss @iter200 已降至 0.0003, 可能 trivial solution
+
+### 2. slot0_marker_only_imgabs0_500 (GPU 3?)
+- iter **80/500**, ETA ~16min
+- loss: 0.022, grad_norm: 1.08
+- 短期实验 (max 500 iter)
+
+### 3. slot0_marker_only_imgabs0_clip30_500 (刚启动)
+- 初始化中
+
+### 4. slot0_marker_only_imgabs0_smoke (已完成)
+- 1 iter 烟雾测试, loss=0.298
+
+## ⚠️ /home 磁盘快速下降
+| /mnt/SSD | **100%** | **0 bytes** | /home | **99%** | **39 GB** ← (从 45GB 降了 6GB) |
+
+3 个训练同时写 /home，消耗速率 ~6GB/20min。**预计 /home 将在数小时内耗尽。**
 
 ## 🚨 训练质量告警
-- [RED] loss @300 = 0.0003, grad_norm = 0.03 — 与 ORCH_055/059 的 trivial solution 模式一致
-- [RED] reg_loss = 0 全程 — marker_only 设计 or 无正预测?
-- [YELLOW] 需确认: slot0_marker_only 是否预期如此快收敛，还是又陷入 all-bg collapse
-- [YELLOW] /mnt/SSD **0 bytes free**, /home 45GB
+- [RED] 主训练 loss=0.0006 @iter560, grad_norm<0.1 — trivial solution 风险
+- [RED] /home 磁盘快速消耗中
+- [YELLOW] 需确认 CEO 是否在手动操作这些实验
 
 ## GPU 状态
-| GPU | 显存 | 用户 |
-|-----|------|------|
-| 0 | 1730 MiB | yl0826 |
-| 1 | 1854 MiB | yl0826 |
-| 2 | **30449 MiB** | **yz0370 训练** |
-| 3 | 1874 MiB | yl0826 |
+| GPU | 显存 | 利用率 | 用途 |
+|-----|------|--------|------|
+| 0 | 5664 MiB | 21% | yl0826 + ? |
+| 1 | 1854 MiB | 20% | yl0826 |
+| 2 | **30303 MiB** | **100%** | slot0_marker_only |
+| 3 | **30100 MiB** | **100%** | imgabs0_500 |
 
-## 0 PENDING | Agent 全部 ✅ UP
+## 0 PENDING | Agent 全部 ✅ UP | Conductor idle #38
