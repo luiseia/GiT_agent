@@ -1,24 +1,23 @@
 # Supervisor 摘要报告
-> 时间: 2026-03-17 17:54:33
+> 时间: 2026-03-17 19:00:33
 
 ## 训练状态
-- **无训练运行** (imgabs0 停于 @11690, ~4h 前)
-- Checkpoints 可用: iter_8000, iter_10000
+- **无训练运行** (imgabs0 停于 @11690, ~5h 前)
+- Checkpoints: iter_8000, iter_10000 可用
+- 0 yz0370 进程
 
 ## 磁盘
-| /home | **100%** | **29 GB** | /mnt/SSD | **100%** | **0** |
+| /home | **99%** | **43 GB** (CEO 清理后恢复) |
+| /mnt/SSD | **100%** | **0** |
 
 ## GPU
-| GPU 0-2 | ~0.8-1 GB | yl0826 轻量 |
-| GPU 3 | 8208 MiB | xg0091 (streampetr_vggt) |
+| GPU 0,1,2 | idle |
+| GPU 3 | 7430 MiB | xg0091 |
 
-## Agent 状态
-- 8 tmux sessions UP
-- Conductor idle #131, 清理了重复 health verdict
-- Critic: batch verdict #3 — 标记 requests/pending 死循环, 要求 conductor 清理
-- 0 PENDING
+## 系统总结 (自 18:17 CDT 03/16 启动以来)
+- **已完成实验**: ORCH_057(FAIL), 058(FAIL), 059(FAIL), 060(COMPLETED诊断)
+- **CEO 手动实验**: slot0_marker_only系列(4个短期), imgabs0全量(@11690停)
+- **关键发现**: BUG-84(around_weight=0), BUG-85(slot collapse), imgabs0 reg_loss @11690连续活跃
+- **iter_10000 未评估**
 
-## 系统观察
-- imgabs0 停止前 reg_loss 连续活跃 (2.11→2.56→2.72)
-- iter_10000 checkpoint 未评估
-- 等待 CEO 决策下一步
+## 0 PENDING | 8 sessions UP | Conductor idle #139
